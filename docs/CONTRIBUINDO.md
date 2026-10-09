@@ -28,9 +28,9 @@ cp .env.example .env
 Edite `.env` e preencha:
 
 ```bash
-OPENAI_API_KEY=sua-chave          # https://console.groq.com/keys (gratuita)
-OPENAI_BASE_URL=https://api.groq.com/openai/v1
-LAUDO_MODELO=openai/gpt-oss-20b
+OPENAI_API_KEY=sua-chave          # https://aistudio.google.com/apikey (gratuita)
+OPENAI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
+LAUDO_MODELO=gemini-3.8-flash
 LAUDO_MAX_TOKENS=16000
 ```
 

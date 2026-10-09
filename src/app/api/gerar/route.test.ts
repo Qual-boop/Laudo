@@ -104,6 +104,8 @@ beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => {});
   vi.stubEnv("OPENAI_BASE_URL", "https://api.groq.com/openai/v1");
   vi.stubEnv("OPENAI_API_KEY", "chave-de-teste");
+  // Backoff mínimo: os testes de retry não devem dormir de verdade.
+  vi.stubEnv("LAUDO_RETRY_BASE_MS", "1");
 });
 
 afterEach(() => {
@@ -310,10 +312,12 @@ describe("POST /api/gerar — fallback local", () => {
   });
 
   it("cai no fallback quando a API responde com erro HTTP", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(new Response("rate limit", { status: 429 })),
+    // Novo Response por chamada: o corpo de um Response só pode ser lido uma vez,
+    // e a rota agora repete a requisição em status transitórios.
+    const fetchSpy = vi.fn().mockImplementation(() =>
+      Promise.resolve(new Response("rate limit", { status: 429 })),
     );
+    vi.stubGlobal("fetch", fetchSpy);
 
     const res = await POST(requisicao(ENTRADA));
     const corpo: Relatorio = await res.json();
@@ -322,6 +326,47 @@ describe("POST /api/gerar — fallback local", () => {
     expect(ehFallback(corpo)).toBe(true);
     // O motivo do fallback precisa ficar visível para o usuário saber por quê.
     expect(corpo.sumarioExecutivo.visaoGeral).toContain("429");
+    // 4 tentativas antes de desistir.
+    expect(fetchSpy).toHaveBeenCalledTimes(4);
+  });
+
+  it("não repete em erro permanente (modelo inexistente, 404)", async () => {
+    const fetchSpy = vi.fn().mockImplementation(() =>
+      Promise.resolve(new Response("model not found", { status: 404 })),
+    );
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const corpo: Relatorio = await (await POST(requisicao(ENTRADA))).json();
+
+    expect(ehFallback(corpo)).toBe(true);
+    expect(corpo.sumarioExecutivo.visaoGeral).toContain("404");
+    // 404 não melhora com repetição — desiste na primeira.
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("recupera quando uma tentativa transitoria falha e a seguinte funciona", async () => {
+    const fetchSpy = vi
+      .fn()
+      .mockImplementationOnce(() =>
+        Promise.resolve(new Response("high demand", { status: 503 })),
+      )
+      .mockImplementationOnce(() =>
+        Promise.resolve(
+          new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(RELATORIO_IA) } }] }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+        ),
+      );
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const res = await POST(requisicao(ENTRADA));
+    const corpo: Relatorio = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(ehFallback(corpo)).toBe(false);
+    expect(corpo.achados).toHaveLength(1);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 
   it("cai no fallback quando a conexão com a IA cai", async () => {

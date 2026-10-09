@@ -23,7 +23,7 @@ O Laudo é um App Router do Next.js com três camadas bem separadas:
                              │ HTTP (API compatível OpenAI)
                              ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  Groq  →  modelo de linguagem                             │
+│  Gemini → modelo de linguagem                             │
 └────────────────────────────┬────────────────────────────────┘
                              │ JSON cru, possivelmente quebrado
                              ▼
@@ -170,15 +170,43 @@ Os campos indexados existem só para a listagem; o conteúdo vive no JSON.
 > Decisão revisável: se surgir busca por texto dentro de achados ou histórico de
 > versões, aí sim vale migrar.
 
-### Por que Groq
+### Por que um provedor compatível com a API da OpenAI
 
--Compatível com a API da OpenAI — trocar de provedor é mudar `OPENAI_BASE_URL`.
-- Latência baixa e janela de contexto grande, essencial porque o prompt carrega
-  todos os achados e pede um documento longo.
-- **Limite real:** `max_tokens` precisou subir de 3000 para 16000. Um relatório
-  com vários achados estoura 3000 com facilidade e o modelo devolve JSON
-  truncado — que o normalizador não consegue recuperar, então a rota cai no
-  fallback.
+- Compatível com a API da OpenAI — trocar de provedor é mudar `OPENAI_BASE_URL`.
+- **Provedor atual: Google Gemini** (`gemini-3.8-flash`), via a camada
+  `generativelanguage.googleapis.com/v1beta/openai/`.
+- **Limite de tokens:** `max_tokens` teve de subir de 3000 para 16000. Um
+  relatório com vários achados estoura 3000 com facilidade e o modelo devolve
+  JSON truncado — que o normalizador não recupera, então a rota cai no fallback.
+
+### Por que existe retentativa (`chamarComRetry`)
+
+O Gemini responde `503 "high demand"` com frequência mesmo no plano gratuito,
+e o erro atinge qualquer modelo disponível da conta. Em medição real, 3 de 4
+chamadas consecutivas receberam 503.
+
+Por isso a rota repete a chamada até 4 vezes em status transitórios
+(`408, 409, 425, 429, 500, 502, 503, 504`) com backoff exponencial e jitter
+(2s → 4s → 8s). Erros permanentes — `400` de modelo inexistente, `404` de modelo
+descontinuado — **não** são repetidos, porque não melhoram.
+
+Isso não substitui o fallback: se as 4 tentativas falharem, o relatório local é
+entregue com o motivo registrado. Os dois mecanismos são complementares —
+a retentativa evita cair no fallback em falhas curtas; o fallback garante que
+exista um documento quando o provedor está fora.
+
+### Modelos descontinuados (histórico)
+
+| Modelo | Status em 2026-10 |
+| --- | --- |
+| `openai/gpt-oss-20b` (Groq) | anterior ao projeto |
+| `gemini-2.5-flash` | `404` — descontinuado, redireciona para `gemini-3.8-flash` |
+| `gemini-2.5-pro` | `404` — descontinuado |
+| `gemini-2.5-flash-lite` | `404` — descontinuado |
+
+Quando trocar de modelo, atualize `LAUDO_MODELO` **e** `MODELO_PADRAO` em
+`src/app/api/gerar/route.ts` — o segundo é o que vale quando a variável de
+ambiente não está definida.
 
 ### Por que existe o fallback local
 

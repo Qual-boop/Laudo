@@ -28,7 +28,7 @@ documento final leva dias. E o resultado quase nunca é reaproveitado.
 | Linguagem | TypeScript 5 (modo `strict`) |
 | Estilo | [Tailwind CSS 4](https://tailwindcss.com) (via `@tailwindcss/turbopack`, sem `tailwind.config.js`) |
 | Tipografia | Geist Sans + Geist Mono |
-| IA | API compatível com OpenAI — [Groq](https://groq.com) por padrão |
+| IA | API compatível com OpenAI — [Google Gemini](https://ai.google.dev/gemini-api) por padrão |
 | Banco | SQLite via [`better-sqlite3`](https://github.com/WiseLibs/better-sqlite3) |
 | Testes | [Vitest](https://vitest.dev) |
 
@@ -40,7 +40,7 @@ documento final leva dias. E o resultado quase nunca é reaproveitado.
 
 - Node.js 20 ou superior (testado no 22)
 - npm 10 ou superior
-- Uma chave da API do Groq (gratuita em [console.groq.com](https://console.groq.com))
+- Uma chave da API do Gemini (gratuita em [aistudio.google.com/apikey](https://aistudio.google.com/apikey))
 
 ### Instalação
 
@@ -59,9 +59,10 @@ cp .env.example .env
 | Variável | Obrigatória | Padrão | Descrição |
 | --- | --- | --- | --- |
 | `OPENAI_API_KEY` | sim | — | Chave da API. Sem ela o app monta o relatório localmente, sem enriquecimento por IA. |
-| `OPENAI_BASE_URL` | não | `https://api.openai.com/v1` | Endpoint do provedor. Groq: `https://api.groq.com/openai/v1` |
-| `LAUDO_MODELO` | não | `openai/gpt-oss-20b` | Modelo usado para gerar o relatório. |
+| `OPENAI_BASE_URL` | não | `https://api.openai.com/v1` | Endpoint do provedor. Gemini: `https://generativelanguage.googleapis.com/v1beta/openai/` |
+| `LAUDO_MODELO` | não | `gemini-3.8-flash` | Modelo usado para gerar o relatório. |
 | `LAUDO_MAX_TOKENS` | não | `16000` | Limite de tokens da resposta. Relatórios completos precisam de folga. |
+| `LAUDO_RETRY_BASE_MS` | não | `2000` | Espera base do backoff entre retentativas. |
 
 ### Comandos
 
