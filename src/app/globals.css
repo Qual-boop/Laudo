@@ -1,0 +1,168 @@
+@import "tailwindcss";
+
+@theme {
+  /* Superfícies */
+  --color-fundo: #0a0e14;
+  --color-superficie: #111820;
+  --color-superficie-2: #161f2a;
+  --color-borda: #1f2937;
+
+  /* Texto */
+  --color-texto: #e5e7eb;
+  --color-texto-2: #9ca3af;
+
+  /* Accent principal */
+  --color-accent: #00ff88;
+
+  /* Cores de destaque das visões */
+  --color-ciano: #00aaff;
+  --color-violeta: #a78bfa;
+
+  /* Severidade */
+  --color-critica: #ff4444;
+  --color-alta: #ff8800;
+  --color-media: #ffcc00;
+  --color-baixa: #00aaff;
+
+  /* Tipografia */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+
+  /* Animações */
+  --animate-blink: blink 1.05s step-end infinite;
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+body {
+  color: var(--color-texto);
+  background-color: var(--color-fundo);
+  background-image:
+    radial-gradient(
+      ellipse 70% 45% at 50% -10%,
+      color-mix(in oklab, var(--color-accent) 8%, transparent),
+      transparent 70%
+    ),
+    linear-gradient(
+      color-mix(in oklab, var(--color-accent) 4%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--color-accent) 4%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 100% 100%, 32px 32px, 32px 32px;
+}
+
+::selection {
+  color: var(--color-fundo);
+  background-color: var(--color-accent);
+}
+
+select option {
+  color: var(--color-texto);
+  background-color: var(--color-fundo);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: color-mix(in oklab, var(--color-texto-2) 50%, transparent);
+}
+
+* {
+  scrollbar-color: var(--color-borda) var(--color-fundo);
+}
+
+@page {
+  size: A4;
+  margin: 20mm 16mm;
+}
+
+/* Visível apenas na impressão — controlado por CSS, não por utilitário
+   `hidden`, para não disputar especificidade com as regras @media print. */
+.print-rodape {
+  display: none;
+}
+
+/* ============================================================
+   Impressão / PDF
+   Sobrescreve o tema para fundo claro — as utilities do Tailwind
+   referenciam var(--color-*), então basta redefinir as variáveis.
+   ============================================================ */
+@media print {
+  :root {
+    --color-fundo: #ffffff;
+    --color-superficie: #ffffff;
+    --color-superficie-2: #ffffff;
+    --color-borda: #cbd5e1;
+    --color-texto: #0f172a;
+    --color-texto-2: #475569;
+    --color-accent: #047857;
+    --color-ciano: #0369a1;
+    --color-violeta: #6d28d9;
+    --color-critica: #b91c1c;
+    --color-alta: #c2410c;
+    --color-media: #a16207;
+    --color-baixa: #1d4ed8;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    background-image: none !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-shadowless {
+    box-shadow: none !important;
+  }
+
+  /* Capa ocupa a página inteira e força quebra */
+  .print-capa {
+    min-height: 235mm;
+    break-after: page;
+    page-break-after: always;
+  }
+
+  /* Cada achado começa em página nova e nunca parte ao meio */
+  .print-achado {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-quebra {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  .print-detalhe {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Cabeçalho e rodapé se repetem em todas as páginas no Chrome */
+  .print-rodape {
+    display: block;
+    position: fixed;
+    bottom: -12mm;
+    left: 0;
+    right: 0;
+  }
+
+  .no-print-backdrop {
+    background: transparent !important;
+    backdrop-filter: none !important;
+  }
+}
