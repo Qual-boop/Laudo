@@ -48,6 +48,25 @@ export default function Home() {
     setAchados((atuais) => [...atuais, { ...ACHADO_VAZIO }]);
   }
 
+  function duplicarAchado(indice: number) {
+    setAchados((atuais) => {
+      const copia = [...atuais];
+      copia.splice(indice + 1, 0, { ...copia[indice], titulo: `${copia[indice].titulo} (cópia)` });
+      return copia;
+    });
+  }
+
+  function confirmarRemoverAchado(indice: number) {
+    const achado = achados[indice];
+    const rotulo = achado.titulo.trim()
+      ? `"${achado.titulo.trim()}"`
+      : `o achado ${indice + 1}`;
+
+    if (window.confirm(`Remover ${rotulo}? Esta ação não pode ser desfeita.`)) {
+      removerAchado(indice);
+    }
+  }
+
   function removerAchado(indice: number) {
     setAchados((atuais) => atuais.filter((_, i) => i !== indice));
   }
@@ -69,7 +88,20 @@ export default function Home() {
     const entrada = montarEntrada();
 
     if (entrada.achados.length === 0) {
-      setErro("Adicione ao menos um achado com título ou descrição.");
+      setErro(
+        "Nenhum achado tem título. Preencha o título de pelo menos um achado antes de gerar o relatório.",
+      );
+      return;
+    }
+
+    const semTitulo = entrada.achados.filter((a) => !a.titulo.trim()).length;
+
+    if (semTitulo > 0) {
+      setErro(
+        semTitulo === 1
+          ? "1 achado está sem título. O relatório usa o título como identificação (FINDING-001). Preencha-o ou remova o achado."
+          : `${semTitulo} achados estão sem título. Preencha o título de cada um ou remova os que estão vazios.`,
+      );
       return;
     }
 
@@ -130,6 +162,9 @@ export default function Home() {
       setSalvando(false);
     }
   }
+
+  const entrada = montarEntrada();
+  const achadosSemTitulo = entrada.achados.filter((a) => !a.titulo.trim()).length;
 
   return (
     <>
@@ -247,6 +282,11 @@ export default function Home() {
               </div>
               <span className="font-mono text-[11px] text-texto-2">
                 {achados.length} achado{achados.length === 1 ? "" : "s"}
+                {achadosSemTitulo > 0 && (
+                  <span className="ml-2 text-media">
+                    · {achadosSemTitulo} sem título
+                  </span>
+                )}
               </span>
             </CardHeader>
 
@@ -262,10 +302,19 @@ export default function Home() {
                     </span>
                     <div className="flex items-center gap-2">
                       <SeverityBadge severidade={achado.severidade} />
+                      <button
+                        type="button"
+                        onClick={() => duplicarAchado(i)}
+                        title="Duplicar este achado"
+                        className="cursor-pointer rounded-sm border border-borda px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-texto-2 transition-colors duration-200 hover:border-accent hover:text-accent"
+                      >
+                        duplicar
+                      </button>
                       {achados.length > 1 && (
                         <button
                           type="button"
-                          onClick={() => removerAchado(i)}
+                          onClick={() => confirmarRemoverAchado(i)}
+                          title="Remover este achado"
                           className="cursor-pointer rounded-sm border border-borda px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-texto-2 transition-colors duration-200 hover:border-critica/50 hover:text-critica"
                         >
                           remover
