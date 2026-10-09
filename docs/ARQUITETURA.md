@@ -60,26 +60,29 @@ O Laudo é um App Router do Next.js com três camadas bem separadas:
 5. montarPrompt() monta a instrução + os dados do usuário
         │
         ▼
-6. fetch → POST {base}/chat/completions
-        │   body: { model, messages, response_format: json_object,
-        │           max_tokens: 16000, temperature: 0.3 }
+6. cadeiaProvedores() monta a lista na ordem de preferência
+        │   cada um com chave, URL, modelo e max_tokens próprios
         │
-        ├─► rede caída / HTTP != 200 ──┐
-        ├─► choices vazio ─────────────┤
-        ├─► content não é JSON ────────┤
-        └─► JSON sem achados ──────────┤
-                                       ▼
-                          relatorioFallback(entrada, motivo)
-                                       │
-        ┌──────────────────────────────┴──────────────────┐
-        ▼                                                  ▼
-7. normalizarRelatorio(bruto, entrada)              resposta 200 com
-        │                                          relatório local completo
+        ├──────────────┐
+        ▼              │
+   7. Gemini          │  chamarComRetry (4x, backoff 2s→4s→8s)
+        │             │      ├─► ok ──────────────► segue
+        │  falha ──────┘      ├─► rede caída ─────► próximo provedor
+        ▼                    ├─► choices vazio ───► próximo provedor
+   8. Groq                   ├─► content não JSON ► próximo provedor
+        │                    └─► JSON sem achados ► próximo provedor
+        │  falha
         ▼
-8. setRelatorio() em app/page.tsx
+   9. relatorioFallback(entrada, "todos os provedores falharam — …")
+        │        cada motivo individual entra na visaoGeral
+        ▼
+  10. normalizarRelatorio(bruto, entrada)   ← só no caminho feliz
         │
         ▼
-9. RelatorioView renderiza; "Exportar PDF" chama window.print()
+  11. setRelatorio() em app/page.tsx
+        │
+        ▼
+  12. RelatorioView renderiza; "Exportar PDF" chama window.print()
 ```
 
 O passo 7 nunca lança. O passo 9 nunca vê campo faltando.
@@ -208,6 +211,30 @@ Quando trocar de modelo, atualize `LAUDO_MODELO` **e** `MODELO_PADRAO` em
 `src/app/api/gerar/route.ts` — o segundo é o que vale quando a variável de
 ambiente não está definida.
 
+### Por que existe a cadeia de provedores
+
+O Gemini responde `503 "high demand"` em ~75% das chamadas na conta gratuita.
+Com um provedor só, três de cada quatro gerações caíam no relatório local — o
+app "funcionava", mas perdia o valor da IA quase sempre.
+
+A cadeia resolve isso sem mudar o contrato do relatório:
+
+| Nível | Provedor | Variáveis | Quando entra |
+| --- | --- | --- | --- |
+| 1 | Gemini | `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `LAUDO_MODELO`, `LAUDO_MAX_TOKENS` | sempre que a chave existir |
+| 2 | Groq | `GROQ_API_KEY`, `GROQ_BASE_URL`, `GROQ_MODELO`, `GROQ_MAX_TOKENS` | quando o Gemini falha de verdade |
+| 3 | Relatório local | — | quando não há chave, ou todos falharam |
+
+Um provedor sem chave configurada é **omitido** da cadeia — não é um erro. Com
+só o Gemini configurado o comportamento é idêntico ao de um provedor único, e
+com nenhuma chave o app nem toca na rede.
+
+O motivo de cada falha entra em `sumarioExecutivo.visaoGeral`, então o
+pentester sabe se foi 503 do Gemini, 404 de modelo morto, ou rede caída:
+
+> `Relatório montado localmente — motivo: todos os provedores falharam —
+> Gemini: respondeu HTTP 503 · Groq: falha de comunicação (fetch failed)`
+
 ### Por que existe o fallback local
 
 Três motivos independentes:
@@ -323,5 +350,6 @@ npm run build   # TypeScript estrito
 | Cor, grid de fundo, CSS de impressão | `src/app/globals.css` |
 | Prompt e instruções de conteúdo | `montarPrompt()` em `lib/relatorio.ts` |
 | Schema do banco | `src/lib/db.ts` |
-| Modelo e limite de tokens | env `LAUDO_MODELO`, `LAUDO_MAX_TOKENS` |
+| Cadeia de provedores | `cadeiaProvedores()` e `tentarProvedor()` em `app/api/gerar/route.ts` |
+| Modelo e limite de tokens | env `LAUDO_MODELO`/`GROQ_MODELO`, `LAUDO_MAX_TOKENS`/`GROQ_MAX_TOKENS` |
 | Domínios liberados em dev | `next.config.ts` (`allowedDevOrigins`) |

@@ -28,7 +28,7 @@ documento final leva dias. E o resultado quase nunca é reaproveitado.
 | Linguagem | TypeScript 5 (modo `strict`) |
 | Estilo | [Tailwind CSS 4](https://tailwindcss.com) (via `@tailwindcss/turbopack`, sem `tailwind.config.js`) |
 | Tipografia | Geist Sans + Geist Mono |
-| IA | API compatível com OpenAI — [Google Gemini](https://ai.google.dev/gemini-api) por padrão |
+| IA | Cadeia de provedores via API compatível com OpenAI: [Google Gemini](https://ai.google.dev/gemini-api) → [Groq](https://groq.com) → relatório local |
 | Banco | SQLite via [`better-sqlite3`](https://github.com/WiseLibs/better-sqlite3) |
 | Testes | [Vitest](https://vitest.dev) |
 
@@ -63,6 +63,10 @@ cp .env.example .env
 | `LAUDO_MODELO` | não | `gemini-3.8-flash` | Modelo usado para gerar o relatório. |
 | `LAUDO_MAX_TOKENS` | não | `16000` | Limite de tokens da resposta. Relatórios completos precisam de folga. |
 | `LAUDO_RETRY_BASE_MS` | não | `2000` | Espera base do backoff entre retentativas. |
+| `GROQ_API_KEY` | não | — | Chave do Groq, **provedor secundário**. Sem ela só o Gemini é usado. |
+| `GROQ_BASE_URL` | não | `https://api.groq.com/openai/v1` | Endpoint do Groq. |
+| `GROQ_MODELO` | não | `openai/gpt-oss-120b` | Modelo do Groq. |
+| `GROQ_MAX_TOKENS` | não | `6000` | Limite de tokens do Groq. |
 
 ### Comandos
 
@@ -141,14 +145,26 @@ Validação da entrada
    ▼
 Prompt (lib/relatorio.ts)
    ▼
-Chamada à IA  ──── falha / sem chave ───┐
-   ▼                                    │
-Normalização                            │
-   ▼                                    │
-Resposta JSON ──────────────────────────┤
-                                        ▼
-                          Fallback local (relatorioFallback)
+┌─ Cadeia de provedores ──────────────────────────────┐
+│                                                     │
+│  1. Gemini ──── falha (503 após retry) ────┐        │
+│  2. Groq   ──── falha ──────────────────────┤        │
+│  3. Relatório local (relatorioFallback) ◄───┘        │
+│                                                     │
+└─────────────────────────────────────────────────────┘
+   ▼
+Normalização (nunca lança)
+   ▼
+Relatorio com as 7 seções
 ```
+
+Cada provedor tem **chave, URL, modelo e limite de tokens próprios**, e é
+retentado até 4 vezes com backoff exponencial em status transitórios
+(`408/409/425/429/5xx`). Erros permanentes — `404` de modelo descontinuado —
+não são repetidos, porque não melhoram: a cadeia segue direto para o próximo.
+
+Se todos falharem, o relatório local é entregue com o motivo de cada provedor
+registrado em `sumarioExecutivo.visaoGeral`.
 
 O normalizador garante que a UI nunca receba campo faltando, tipo trocado ou
 número fora de faixa. `totalAchados`, `resumoPorSeveridade` e `riscoGeral` são

@@ -4,10 +4,34 @@ import {
   normalizarRelatorio,
   relatorioFallback,
 } from "@/lib/relatorio";
-import type { RelatorioEntrada } from "@/lib/tipos";
+import type { Relatorio, RelatorioEntrada } from "@/lib/tipos";
 
+/* ============================================================
+   Cadeia de provedores
+   O Gemini responde 503 "high demand" com frequência na cota
+   gratuita. Em vez de cair direto no relatório local, tentamos
+   o próximo provedor da cadeia.
+   ============================================================ */
+
+type Provedor = {
+  nome: string;
+  url: string;
+  modelo: string;
+  maxTokens: number;
+  chave: string;
+};
+
+/** Nível 1 — Gemini (principal). */
 const MODELO_PADRAO = "gemini-3.8-flash";
 const MAX_TOKENS_PADRAO = 16000;
+const BASE_PADRAO = "https://api.openai.com/v1";
+
+/** Nível 2 — Groq (secundário). */
+const GROQ_URL_PADRAO = "https://api.groq.com/openai/v1";
+const GROQ_MODELO_PADRAO = "openai/gpt-oss-120b";
+const GROQ_MAX_TOKENS_PADRAO = 6000;
+
+/** Nível 3 — relatório local (relatorioFallback), sem rede. */
 
 /**
  * O Gemini devolve 503 "high demand" com frequência mesmo no plano gratuito.
@@ -58,6 +82,134 @@ async function chamarComRetry(
   }
 
   return ultimo as Response;
+}
+
+/** A base do Gemini já termina em "/" — sem normalizar viraria "openai//chat/completions". */
+function montarUrl(base: string): string {
+  return `${base.replace(/\/+$/, "")}/chat/completions`;
+}
+
+function numeroEnv(v: string | undefined, padrao: number): number {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : padrao;
+}
+
+/** Monta a cadeia na ordem de preferência. Provedor sem chave é simply ignorado. */
+export function cadeiaProvedores(): Provedor[] {
+  const lista: Provedor[] = [];
+
+  const chaveGemini = process.env.OPENAI_API_KEY?.trim();
+  if (chaveGemini) {
+    lista.push({
+      nome: "Gemini",
+      url: montarUrl(process.env.OPENAI_BASE_URL || BASE_PADRAO),
+      modelo: process.env.LAUDO_MODELO || MODELO_PADRAO,
+      maxTokens: numeroEnv(process.env.LAUDO_MAX_TOKENS, MAX_TOKENS_PADRAO),
+      chave: chaveGemini,
+    });
+  }
+
+  const chaveGroq = process.env.GROQ_API_KEY?.trim();
+  if (chaveGroq) {
+    lista.push({
+      nome: "Groq",
+      url: montarUrl(process.env.GROQ_BASE_URL || GROQ_URL_PADRAO),
+      modelo: process.env.GROQ_MODELO || GROQ_MODELO_PADRAO,
+      maxTokens: numeroEnv(process.env.GROQ_MAX_TOKENS, GROQ_MAX_TOKENS_PADRAO),
+      chave: chaveGroq,
+    });
+  }
+
+  return lista;
+}
+
+type ResultadoProvedor =
+  | { relatorio: Relatorio }
+  | { erro: string };
+
+/**
+ * Executa um provedor do início ao fim. Devolve o relatório normalizado ou o
+ * motivo da falha — nunca lança, porque o chamador precisa poder seguir para o
+ * próximo provedor da cadeia.
+ */
+async function tentarProvedor(
+  provedor: Provedor,
+  entrada: RelatorioEntrada,
+): Promise<ResultadoProvedor> {
+  console.log(
+    `[IA] ${provedor.nome}: ${provedor.url} | modelo: ${provedor.modelo} | max_tokens: ${provedor.maxTokens}`,
+  );
+
+  const corpo = JSON.stringify({
+    model: provedor.modelo,
+    messages: [{ role: "user", content: montarPrompt(entrada) }],
+    response_format: { type: "json_object" },
+    max_tokens: provedor.maxTokens,
+    temperature: 0.3,
+  });
+
+  let res: Response;
+  try {
+    res = await chamarComRetry(provedor.url, corpo, provedor.chave);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(`[IA] ${provedor.nome}: falha de comunicação:`, msg);
+    return { erro: `falha de comunicação (${msg})` };
+  }
+
+  console.log(`[IA] ${provedor.nome}: status HTTP ${res.status}`);
+
+  if (!res.ok) {
+    const corpoErro = await res.text();
+    console.error(
+      `[IA] ${provedor.nome}: erro ${res.status}:`,
+      corpoErro.slice(0, 500),
+    );
+    return { erro: `respondeu HTTP ${res.status}` };
+  }
+
+  let data: unknown;
+  try {
+    data = await res.json();
+  } catch {
+    console.error(`[IA] ${provedor.nome}: corpo da resposta não é JSON.`);
+    return { erro: "corpo da resposta não é JSON" };
+  }
+
+  const conteudo = (data as { choices?: { message?: { content?: unknown } }[] })
+    ?.choices?.[0]?.message?.content;
+
+  if (typeof conteudo !== "string" || !conteudo.trim()) {
+    console.error(`[IA] ${provedor.nome}: resposta vazia.`);
+    return { erro: "resposta vazia" };
+  }
+
+  let bruto: unknown;
+  try {
+    bruto = JSON.parse(conteudo);
+  } catch {
+    // Modelos às vezes embrulham o JSON em ```json ... ```
+    const casaco = conteudo.match(/\{[\s\S]*\}/);
+    if (!casaco) {
+      console.error(`[IA] ${provedor.nome}: texto que não é JSON.`);
+      return { erro: "devolveu texto que não é JSON" };
+    }
+    try {
+      bruto = JSON.parse(casaco[0]);
+    } catch {
+      console.error(`[IA] ${provedor.nome}: JSON irrecuperável.`);
+      return { erro: "devolveu JSON inválido" };
+    }
+  }
+
+  const relatorio = normalizarRelatorio(bruto, entrada);
+
+  if (relatorio.achados.length === 0) {
+    console.error(`[IA] ${provedor.nome}: relatório normalizado sem achados.`);
+    return { erro: "não devolveu nenhum achado" };
+  }
+
+  return { relatorio };
 }
 
 function validarEntrada(bruto: unknown): RelatorioEntrada {
@@ -112,91 +264,38 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: mensagem }, { status: 400 });
   }
 
-  const baseUrl = process.env.OPENAI_BASE_URL || "https://api.openai.com/v1";
-  // A base do Gemini já termina em "/" — sem normalizar viraria "openai//chat/completions".
-  const url = `${baseUrl.replace(/\/+$/, "")}/chat/completions`;
-  const modelo = process.env.LAUDO_MODELO || MODELO_PADRAO;
-  const maxTokens = Number(process.env.LAUDO_MAX_TOKENS) || MAX_TOKENS_PADRAO;
+  const provedores = cadeiaProvedores();
 
-  if (!process.env.OPENAI_API_KEY) {
+  if (provedores.length === 0) {
     return Response.json(
-      relatorioFallback(entrada, "OPENAI_API_KEY não configurada."),
+      relatorioFallback(
+        entrada,
+        "nenhuma chave de IA configurada (OPENAI_API_KEY ou GROQ_API_KEY).",
+      ),
     );
   }
 
-  console.log("[IA] URL:", url, "| modelo:", modelo, "| max_tokens:", maxTokens);
+  const falhas: string[] = [];
 
-  const corpo = JSON.stringify({
-    model: modelo,
-    messages: [{ role: "user", content: montarPrompt(entrada) }],
-    response_format: { type: "json_object" },
-    max_tokens: maxTokens,
-    temperature: 0.3,
-  });
+  for (const provedor of provedores) {
+    const resultado = await tentarProvedor(provedor, entrada);
 
-  let res: Response;
-  try {
-    res = await chamarComRetry(url, corpo, process.env.OPENAI_API_KEY);
-  } catch (e) {
-    console.error("[IA] Falha ao chamar a API:", e);
-    return Response.json(
-      relatorioFallback(entrada, "Falha de comunicação com a IA."),
-    );
-  }
-
-  console.log("[IA] Status HTTP:", res.status);
-
-  if (!res.ok) {
-    const corpoErro = await res.text();
-    console.error("[IA] Erro na API:", res.status, corpoErro.slice(0, 500));
-    return Response.json(relatorioFallback(entrada, `A IA respondeu ${res.status}.`));
-  }
-
-  try {
-    const data = await res.json();
-    const conteudo = data?.choices?.[0]?.message?.content;
-
-    if (typeof conteudo !== "string" || !conteudo.trim()) {
-      console.error("[IA] Resposta vazia:", JSON.stringify(data).slice(0, 500));
-      return Response.json(relatorioFallback(entrada, "Resposta vazia da IA."));
-    }
-
-    let bruto: unknown;
-    try {
-      bruto = JSON.parse(conteudo);
-    } catch {
-      // Modelos às vezes embrulham o JSON em ```json ... ```
-      const casaco = conteudo.match(/\{[\s\S]*\}/);
-      if (!casaco) {
-        console.error("[IA] JSON inválido e sem objeto recuperável.");
-        return Response.json(
-          relatorioFallback(entrada, "A IA devolveu texto que não é JSON."),
+    if ("relatorio" in resultado) {
+      if (falhas.length > 0) {
+        console.log(
+          `[IA] ${provedor.nome} assumiu após falha de: ${falhas.join(" · ")}`,
         );
       }
-      try {
-        bruto = JSON.parse(casaco[0]);
-      } catch {
-        console.error("[IA] JSON irrecuperável.");
-        return Response.json(
-          relatorioFallback(entrada, "A IA devolveu JSON inválido."),
-        );
-      }
+      return Response.json(resultado.relatorio);
     }
 
-    const relatorio = normalizarRelatorio(bruto, entrada);
-
-    if (relatorio.achados.length === 0) {
-      console.error("[IA] Relatório normalizado sem achados.");
-      return Response.json(
-        relatorioFallback(entrada, "A IA não devolveu nenhum achado."),
-      );
-    }
-
-    return Response.json(relatorio);
-  } catch (e) {
-    console.error("[IA] Falha ao processar a resposta:", e);
-    return Response.json(
-      relatorioFallback(entrada, "Resposta da IA não pôde ser processada."),
+    falhas.push(`${provedor.nome}: ${resultado.erro}`);
+    console.error(
+      `[IA] ${provedor.nome} falhou (${resultado.erro}) — indo para o próximo provedor.`,
     );
   }
+
+  const motivo = `todos os provedores falharam — ${falhas.join(" · ")}`;
+  console.error(`[IA] ${motivo}. Usando relatório local.`);
+  return Response.json(relatorioFallback(entrada, motivo));
 }

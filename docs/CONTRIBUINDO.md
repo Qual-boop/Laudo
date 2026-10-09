@@ -32,6 +32,10 @@ OPENAI_API_KEY=sua-chave          # https://aistudio.google.com/apikey (gratuita
 OPENAI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
 LAUDO_MODELO=gemini-3.8-flash
 LAUDO_MAX_TOKENS=16000
+
+GROQ_API_KEY=sua-chave            # https://console.groq.com/keys (opcional)
+GROQ_MODELO=openai/gpt-oss-120b
+GROQ_MAX_TOKENS=6000
 ```
 
 Sem `OPENAI_API_KEY` o app **ainda funciona**: monta o relatório localmente, sem

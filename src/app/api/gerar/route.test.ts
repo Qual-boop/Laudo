@@ -102,8 +102,17 @@ let silenciado: ReturnType<typeof vi.spyOn>;
 beforeEach(() => {
   silenciado = vi.spyOn(console, "log").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
-  vi.stubEnv("OPENAI_BASE_URL", "https://api.groq.com/openai/v1");
+  // Host distinto do Groq de propósito: os testes da cadeia roteiam por host.
+  vi.stubEnv("OPENAI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/");
   vi.stubEnv("OPENAI_API_KEY", "chave-de-teste");
+  vi.stubEnv("LAUDO_MODELO", "meu-modelo");
+  vi.stubEnv("LAUDO_MAX_TOKENS", "9999");
+  // Groq desligado por padrão: os testes antigos exercitam só o provedor principal.
+  // Os testes da cadeia ligam explicitamente com vi.stubEnv.
+  vi.stubEnv("GROQ_API_KEY", "");
+  vi.stubEnv("GROQ_BASE_URL", "");
+  vi.stubEnv("GROQ_MODELO", "");
+  vi.stubEnv("GROQ_MAX_TOKENS", "");
   // Backoff mínimo: os testes de retry não devem dormir de verdade.
   vi.stubEnv("LAUDO_RETRY_BASE_MS", "1");
 });
@@ -392,5 +401,248 @@ describe("POST /api/gerar — fallback local", () => {
 
     const res = await POST(requisicao(ENTRADA));
     expect(res.status).toBe(200);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Cadeia de provedores: Gemini → Groq → relatório local               *
+ * ------------------------------------------------------------------ */
+
+const RESPOSTA_OK = (payload: unknown) =>
+  new Response(
+    JSON.stringify({ choices: [{ message: { content: JSON.stringify(payload) } }] }),
+    { status: 200, headers: { "Content-Type": "application/json" } },
+  );
+
+const RESPOSTA_OK_TEXTO = (content: string) =>
+  new Response(JSON.stringify({ choices: [{ message: { content } }] }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+
+const erro503 = () => new Response("high demand", { status: 503 });
+
+describe("cadeiaProvedores", () => {
+  it("monta Gemini e Groq, nessa ordem, quando ambas as chaves existem", async () => {
+    const { cadeiaProvedores } = await import("@/app/api/gerar/route");
+    vi.stubEnv("GROQ_API_KEY", "gsk_teste");
+
+    const cadeia = cadeiaProvedores();
+    expect(cadeia.map((p) => p.nome)).toEqual(["Gemini", "Groq"]);
+    expect(cadeia[0].url).toBe(
+      "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+    );
+    expect(cadeia[1].url).toBe("https://api.groq.com/openai/v1/chat/completions");
+  });
+
+  it("normaliza barra final da base para não duplicar na URL", async () => {
+    const { cadeiaProvedores } = await import("@/app/api/gerar/route");
+    vi.stubEnv("GROQ_API_KEY", "gsk_teste");
+    vi.stubEnv("GROQ_BASE_URL", "https://api.groq.com/openai/v1///");
+
+    const groq = cadeiaProvedores().find((p) => p.nome === "Groq");
+    expect(groq?.url).toBe("https://api.groq.com/openai/v1/chat/completions");
+    expect(groq?.url).not.toContain("//chat");
+  });
+
+  it("usa o modelo e max_tokens de cada provedor", async () => {
+    const { cadeiaProvedores } = await import("@/app/api/gerar/route");
+    vi.stubEnv("GROQ_API_KEY", "gsk_teste");
+    vi.stubEnv("GROQ_MODELO", "meu-groq");
+    vi.stubEnv("GROQ_MAX_TOKENS", "1234");
+
+    const [gemini, groq] = cadeiaProvedores();
+    expect(gemini.modelo).toBe("meu-modelo");
+    expect(gemini.maxTokens).toBe(9999);
+    expect(groq.modelo).toBe("meu-groq");
+    expect(groq.maxTokens).toBe(1234);
+  });
+
+  it("omite o provedor sem chave configurada", async () => {
+    const { cadeiaProvedores } = await import("@/app/api/gerar/route");
+
+    vi.stubEnv("OPENAI_API_KEY", "");
+    expect(cadeiaProvedores().map((p) => p.nome)).toEqual([]);
+
+    vi.stubEnv("GROQ_API_KEY", "gsk_teste");
+    expect(cadeiaProvedores().map((p) => p.nome)).toEqual(["Groq"]);
+
+    vi.stubEnv("OPENAI_API_KEY", "chave-de-teste");
+    expect(cadeiaProvedores().map((p) => p.nome)).toEqual(["Gemini", "Groq"]);
+  });
+
+  it("ignora chave em branco (só espaços)", async () => {
+    const { cadeiaProvedores } = await import("@/app/api/gerar/route");
+    vi.stubEnv("OPENAI_API_KEY", "   ");
+    vi.stubEnv("GROQ_API_KEY", "");
+    expect(cadeiaProvedores()).toEqual([]);
+  });
+});
+
+describe("POST /api/gerar — fallback Gemini → Groq", () => {
+  it("Groq assume quando o Gemini esgota as 4 tentativas com 503", async () => {
+    vi.stubEnv("GROQ_API_KEY", "gsk_teste");
+
+    const fetchSpy = vi.fn().mockImplementation((url: string) =>
+      Promise.resolve(
+        url.includes("groq.com") ? RESPOSTA_OK(RELATORIO_IA) : erro503(),
+      ),
+    );
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const res = await POST(requisicao(ENTRADA));
+    const corpo: Relatorio = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(ehFallback(corpo)).toBe(false);
+    expect(corpo.capa.cliente).toBe("Acme Corp");
+    expect(corpo.achados).toHaveLength(1);
+
+    // 4 tentativas no Gemini, 1 no Groq.
+    expect(fetchSpy).toHaveBeenCalledTimes(5);
+    const urls = fetchSpy.mock.calls.map((c) => c[0] as string);
+    expect(urls.filter((u) => u.includes("generativelanguage")).length).toBe(4);
+    expect(urls.filter((u) => u.includes("groq.com")).length).toBe(1);
+  });
+
+  it("envia o modelo, max_tokens e a chave de cada provedor corretamente", async () => {
+    vi.stubEnv("GROQ_API_KEY", "gsk_segredo");
+    vi.stubEnv("GROQ_MODELO", "llama-3.3-70b");
+    vi.stubEnv("GROQ_MAX_TOKENS", "777");
+
+    const fetchSpy = vi.fn().mockImplementation((url: string) =>
+      Promise.resolve(
+        url.includes("groq.com") ? RESPOSTA_OK(RELATORIO_IA) : erro503(),
+      ),
+    );
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await POST(requisicao(ENTRADA));
+
+    const chamadaGroq = fetchSpy.mock.calls.at(-1)!;
+    const corpo = JSON.parse(chamadaGroq[1].body as string);
+    const headers = chamadaGroq[1].headers as Record<string, string>;
+
+    expect(corpo.model).toBe("llama-3.3-70b");
+    expect(corpo.max_tokens).toBe(777);
+    expect(headers.Authorization).toBe("Bearer gsk_segredo");
+
+    const chamadaGemini = fetchSpy.mock.calls[0];
+    const headersGemini = chamadaGemini[1].headers as Record<string, string>;
+    expect(headersGemini.Authorization).toBe("Bearer chave-de-teste");
+  });
+
+  it("não chama o Groq quando o Gemini funciona de primeira", async () => {
+    vi.stubEnv("GROQ_API_KEY", "gsk_teste");
+    const fetchSpy = vi.fn().mockResolvedValue(RESPOSTA_OK(RELATORIO_IA));
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const res = await POST(requisicao(ENTRADA));
+    const corpo: Relatorio = await res.json();
+
+    expect(ehFallback(corpo)).toBe(false);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(fetchSpy.mock.calls[0][0] as string).toContain("generativelanguage");
+  });
+
+  it("vai direto ao Groq quando só ele tem chave", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "");
+    vi.stubEnv("GROQ_API_KEY", "gsk_teste");
+
+    const fetchSpy = vi.fn().mockResolvedValue(RESPOSTA_OK(RELATORIO_IA));
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const res = await POST(requisicao(ENTRADA));
+    const corpo: Relatorio = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(ehFallback(corpo)).toBe(false);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(fetchSpy.mock.calls[0][0] as string).toContain("groq.com");
+  });
+
+  it("usa o Groq quando o Gemini devolve JSON inválido (não só em erro HTTP)", async () => {
+    vi.stubEnv("GROQ_API_KEY", "gsk_teste");
+
+    const fetchSpy = vi.fn().mockImplementation((url: string) =>
+      Promise.resolve(
+        url.includes("groq.com")
+          ? RESPOSTA_OK(RELATORIO_IA)
+          : RESPOSTA_OK_TEXTO("Desculpe, não posso gerar isso."),
+      ),
+    );
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const res = await POST(requisicao(ENTRADA));
+    const corpo: Relatorio = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(ehFallback(corpo)).toBe(false);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("usa o Groq quando o Gemini devolve relatório sem achados", async () => {
+    vi.stubEnv("GROQ_API_KEY", "gsk_teste");
+
+    const fetchSpy = vi.fn().mockImplementation((url: string) =>
+      Promise.resolve(
+        url.includes("groq.com")
+          ? RESPOSTA_OK(RELATORIO_IA)
+          : RESPOSTA_OK({ capa: {}, achados: [] }),
+      ),
+    );
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const corpo: Relatorio = await (await POST(requisicao(ENTRADA))).json();
+    expect(ehFallback(corpo)).toBe(false);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("relatório final cita os dois provedores e o motivo de cada falha", async () => {
+    vi.stubEnv("GROQ_API_KEY", "gsk_teste");
+
+    const fetchSpy = vi
+      .fn()
+      .mockImplementation(() => Promise.resolve(erro503()));
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const res = await POST(requisicao(ENTRADA));
+    const corpo: Relatorio = await res.json();
+    const visao = corpo.sumarioExecutivo.visaoGeral;
+
+    expect(res.status).toBe(200);
+    expect(ehFallback(corpo)).toBe(true);
+    expect(visao).toContain("Gemini");
+    expect(visao).toContain("Groq");
+    expect(visao).toContain("503");
+    // 4 tentativas em cada um dos dois provedores.
+    expect(fetchSpy).toHaveBeenCalledTimes(8);
+  });
+
+  it("relatório final é completo mesmo com a cadeia inteira fora", async () => {
+    vi.stubEnv("GROQ_API_KEY", "gsk_teste");
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("sem rede")));
+
+    const corpo: Relatorio = await (await POST(requisicao(ENTRADA))).json();
+
+    expect(contratoCompleto(corpo)).toBe(true);
+    expect(ehFallback(corpo)).toBe(true);
+    expect(corpo.achados).toHaveLength(1);
+    expect(corpo.sumarioExecutivo.visaoGeral).toContain("falha de comunicação");
+  });
+
+  it("não toca na rede quando nenhuma chave está configurada", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "");
+    vi.stubEnv("GROQ_API_KEY", "");
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const res = await POST(requisicao(ENTRADA));
+    const corpo: Relatorio = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(ehFallback(corpo)).toBe(true);
+    expect(corpo.sumarioExecutivo.visaoGeral).toContain("nenhuma chave de IA");
   });
 });
