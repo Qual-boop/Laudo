@@ -12,15 +12,17 @@ import type {
    Coerção de valores vindos da IA
    A IA pode devolver campos faltando, null, tipos trocados ou
    strings informais. Nada disso pode chegar na tela.
+
+   Exportados para a suíte de testes — comportamento é o contrato.
    ============================================================ */
 
-function obj(v: unknown): Record<string, unknown> {
+export function obj(v: unknown): Record<string, unknown> {
   return v && typeof v === "object" && !Array.isArray(v)
     ? (v as Record<string, unknown>)
     : {};
 }
 
-function txt(v: unknown, padrao = ""): string {
+export function txt(v: unknown, padrao = ""): string {
   let s = "";
   if (typeof v === "string") s = v;
   else if (typeof v === "number" || typeof v === "boolean") s = String(v);
@@ -29,12 +31,16 @@ function txt(v: unknown, padrao = ""): string {
   return s.length > 0 ? s : padrao;
 }
 
-function numero(v: unknown, padrao = 0): number {
-  const n = typeof v === "string" ? Number(v.replace(",", ".")) : Number(v);
+export function numero(v: unknown, padrao = 0): number {
+  // Number(null), Number("") e Number(false) devolvem 0 — precisam cair no padrão.
+  if (v === null || v === undefined || v === "" || typeof v === "boolean") {
+    return padrao;
+  }
+  const n = typeof v === "string" ? Number(v.trim().replace(",", ".")) : Number(v);
   return Number.isFinite(n) ? n : padrao;
 }
 
-function lista(v: unknown): string[] {
+export function lista(v: unknown): string[] {
   if (!Array.isArray(v)) return [];
   return v
     .filter((i): i is string => typeof i === "string")
@@ -257,7 +263,7 @@ export function relatorioFallback(
         `Foram registrados ${achados.length} achado(s) (${frases.join(", ") || "nenhum"}). ` +
         `O risco geral foi classificado como ${riscoGeral}. ` +
         (motivo
-          ? "Relatório montado localmente, sem enriquecimento por IA — o texto precisa de revisão manual."
+          ? `Relatório montado localmente — motivo: ${motivo}. O texto precisa de revisão manual.`
           : "Revise o conteúdo antes de entregar ao cliente."),
       riscoGeral,
       totalAchados: achados.length,
