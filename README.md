@@ -1,36 +1,189 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Laudo
 
-## Getting Started
+**Gerador de relatórios de pentest com IA.** Transforme anotações de teste em um
+relatório profissional completo — capa, sumário executivo, escopo e metodologia,
+achados com CVSS e passos de reprodução, recomendações, conclusão e disclaimer —
+pronto para entregar ao cliente.
 
-First, run the development server:
+<!-- Screenshot: adicione aqui a captura da tela principal.
+     Sugestão: `docs/assets/laudo-relatorio.png` e referencie com
+     `![Tela principal do Laudo](docs/assets/laudo-relatorio.png)` -->
+
+![Status do build](https://img.shields.io/badge/build-passing-brightgreen) ![Licença](https://img.shields.io/badge/license-MIT-blue) ![Versão](https://img.shields.io/badge/version-0.2.0-purple) ![Next.js](https://img.shields.io/badge/Next.js-16-000) ![Tailwind](https://img.shields.io/badge/Tailwind-4-38bdf8)
+
+> Os badges acima usam URLs de exemplo. Troque pelo repositório real ao publicar.
+
+---
+
+## O problema
+
+Escrever relatório de pentest é a parte chata do trabalho. O teste leva horas; o
+documento final leva dias. E o resultado quase nunca é reaproveitado.
+
+## Stack técnica
+
+| Camada | Tecnologia |
+| --- | --- |
+| Framework | [Next.js 16](https://nextjs.org) (App Router, Turbopack, React 19) |
+| Linguagem | TypeScript 5 (modo `strict`) |
+| Estilo | [Tailwind CSS 4](https://tailwindcss.com) (via `@tailwindcss/turbopack`, sem `tailwind.config.js`) |
+| Tipografia | Geist Sans + Geist Mono |
+| IA | API compatível com OpenAI — [Groq](https://groq.com) por padrão |
+| Banco | SQLite via [`better-sqlite3`](https://github.com/WiseLibs/better-sqlite3) |
+| Testes | [Vitest](https://vitest.dev) |
+
+> O projeto usa `better-sqlite3` diretamente. **Não há Prisma neste projeto.**
+
+## Como rodar localmente
+
+### Pré-requisitos
+
+- Node.js 20 ou superior (testado no 22)
+- npm 10 ou superior
+- Uma chave da API do Groq (gratuita em [console.groq.com](https://console.groq.com))
+
+### Instalação
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Variáveis de ambiente
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Crie um arquivo `.env` na raiz:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+cp .env.example .env
+```
 
-## Learn More
+| Variável | Obrigatória | Padrão | Descrição |
+| --- | --- | --- | --- |
+| `OPENAI_API_KEY` | sim | — | Chave da API. Sem ela o app monta o relatório localmente, sem enriquecimento por IA. |
+| `OPENAI_BASE_URL` | não | `https://api.openai.com/v1` | Endpoint do provedor. Groq: `https://api.groq.com/openai/v1` |
+| `LAUDO_MODELO` | não | `openai/gpt-oss-20b` | Modelo usado para gerar o relatório. |
+| `LAUDO_MAX_TOKENS` | não | `16000` | Limite de tokens da resposta. Relatórios completos precisam de folga. |
 
-To learn more about Next.js, take a look at the following resources:
+### Comandos
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run dev      # servidor de desenvolvimento em http://localhost:3000
+npm run build    # build de produção
+npm run start    # serve o build de produção
+npm test         # suíte de testes (Vitest)
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+O banco `pentest.db` é criado automaticamente na primeira execução.
 
-## Deploy on Vercel
+### Testando com um túnel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+O `next.config.ts` já libera origens do Cloudflare Tunnel em desenvolvimento:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+cloudflared tunnel --url http://localhost:3000
+```
+
+## Estrutura de pastas
+
+```
+src/
+├── app/
+│   ├── layout.tsx            # Root layout: fontes, metadata, tema
+│   ├── globals.css           # Tokens de tema (@theme) + regras de impressão
+│   ├── icon.svg              # Favicon (escudo)
+│   ├── page.tsx              # Página principal: formulário + relatório
+│   └── api/
+│       ├── gerar/route.ts    # POST: chama a IA e devolve o relatório
+│       └── relatorios/
+│           ├── route.ts      # POST (salva) e GET (lista)
+│           └── [id]/route.ts # GET (recupera um relatório)
+├── components/
+│   ├── Button, Card, Badge, Field, Alert, Spinner
+│   ├── SeverityBadge.tsx     # Badge colorido por severidade
+│   ├── TerminalBar.tsx       # Barra estilo terminal
+│   ├── Logo.tsx              # Escudo SVG inline
+│   └── relatorio/            # Componentes de renderização do relatório
+│       ├── RelatorioView.tsx # Compõe o documento inteiro
+│       ├── RelatorioCapa.tsx
+│       ├── RelatorioSumario.tsx
+│       ├── RelatorioEscopo.tsx
+│       ├── RelatorioAchado.tsx
+│       ├── RelatorioRecomendacoes.tsx
+│       ├── RelatorioSkeleton.tsx
+│       ├── Secao.tsx         # Cabeçalho numerado + blocos reutilizáveis
+│       └── SeloCvss.tsx      # Badge de CVSS e de risco geral
+└── lib/
+    ├── db.ts                 # Conexão SQLite e schema
+    ├── tipos.ts              # Tipos do relatório e da entrada do formulário
+    └── relatorio.ts          # Prompt, normalizador e fallback local
+docs/                         # Arquitetura e guia de contribuição
+```
+
+### Camadas
+
+- **`app/`** — rotas. `page.tsx` é Client Component porque controla formulário e
+  estado do relatório.
+- **`app/api/`** — Route Handlers. Validam a entrada, chamam a IA e devolvem
+  JSON já normalizado.
+- **`lib/`** — lógica pura e testável, sem React. `relatorio.ts` concentra o
+  prompt, o normalizador (que protege a UI de resposta malformada) e o fallback
+  local que monta o relatório sem IA.
+- **`components/`** — apresentação. `components/relatorio/` só renderiza; não
+  contém lógica de negócio.
+
+## Como o relatório é gerado
+
+```
+Formulário
+   │  POST /api/gerar  { cliente, escopo, achados[] }
+   ▼
+Validação da entrada
+   ▼
+Prompt (lib/relatorio.ts)
+   ▼
+Chamada à IA  ──── falha / sem chave ───┐
+   ▼                                    │
+Normalização                            │
+   ▼                                    │
+Resposta JSON ──────────────────────────┤
+                                        ▼
+                          Fallback local (relatorioFallback)
+```
+
+O normalizador garante que a UI nunca receba campo faltando, tipo trocado ou
+número fora de faixa. `totalAchados`, `resumoPorSeveridade` e `riscoGeral` são
+**derivados dos achados reais**, não lidos da resposta da IA.
+
+## Exportação
+
+O botão **Exportar PDF** usa `window.print()`. O CSS de impressão em
+`globals.css` cuida de:
+
+- inverter a paleta para fundo claro (o tema da tela é escuro);
+- isolar a capa em uma página e forçar quebra por seção;
+- impedir que um achado seja cortado no meio;
+- repetir cabeçalho e rodapé em todas as páginas.
+
+> O Chrome não implementa `counter(page)` em `@page`, então **numeração de página
+> não aparece no PDF**. Cabeçalho e rodapé se repetem; a numeração exigiria uma
+> geração de PDF no servidor.
+
+## Contribuindo
+
+Leia o [guia de contribuição](docs/CONTRIBUINDO.md) e a
+[documentação de arquitetura](docs/ARQUITETURA.md).
+
+```bash
+git clone <url-do-repo>
+cd relatorio-pentest
+npm install
+cp .env.example .env
+npm test
+npm run dev
+```
+
+Convenções: commits no padrão [Conventional Commits](https://www.conventionalcommits.org/pt-br/),
+componentes pequenos e tipados, nenhuma lógica de negócio em `components/`.
+
+## Licença
+
+MIT — veja [LICENSE](LICENSE).
