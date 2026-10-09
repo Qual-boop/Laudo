@@ -14,8 +14,23 @@ export function RelatorioView({ relatorio }: { relatorio: DadosRelatorio }) {
 
   return (
     <article className="flex flex-col gap-10">
-      <div className="print-rodape border-t border-borda pt-2 font-mono text-[9px] tracking-wide text-texto-2/70">
-        {capa.cliente} · {capa.titulo} · v{capa.versao} · {capa.classificacao}
+      <div className="print-cabecalho border-b border-borda pb-1.5 text-[9px] tracking-wide text-texto-2/70">
+        <div className="flex items-baseline justify-between gap-4">
+          <span className="font-semibold uppercase tracking-widest">
+            {capa.cliente}
+          </span>
+          <span>{capa.titulo}</span>
+          <span>{capa.data}</span>
+        </div>
+      </div>
+
+      <div className="print-rodape border-t border-borda pt-1.5 text-[9px] tracking-wide text-texto-2/70">
+        <div className="flex items-baseline justify-between gap-4">
+          <span>
+            {capa.classificacao} · v{capa.versao}
+          </span>
+          <span>Gerado por Laudo — laudo.app</span>
+        </div>
       </div>
 
       <RelatorioCapa capa={capa} />

@@ -87,9 +87,10 @@ textarea::placeholder {
   margin: 20mm 16mm;
 }
 
-/* Visível apenas na impressão — controlado por CSS, não por utilitário
+/* Visíveis apenas na impressão — controlado por CSS, não por utilitário
    `hidden`, para não disputar especificidade com as regras @media print. */
-.print-rodape {
+.print-rodape,
+.print-cabecalho {
   display: none;
 }
 
@@ -152,17 +153,53 @@ textarea::placeholder {
     page-break-inside: avoid;
   }
 
-  /* Cabeçalho e rodapé se repetem em todas as páginas no Chrome */
-  .print-rodape {
+  /* Cabeçalho e rodapé se repetem em todas as páginas no Chrome.
+     Nota: o Chrome não implementa counter(page) em @page, então não há
+     numeração de página. Para isso seria preciso gerar o PDF no servidor. */
+  .print-rodape,
+  .print-cabecalho {
     display: block;
     position: fixed;
-    bottom: -12mm;
     left: 0;
     right: 0;
+    font-family: var(--font-mono);
+  }
+
+  .print-cabecalho {
+    top: -12mm;
+  }
+
+  .print-rodape {
+    bottom: -12mm;
   }
 
   .no-print-backdrop {
     background: transparent !important;
     backdrop-filter: none !important;
+  }
+
+  /* ---------------------------------------------------------------
+     Impressão em preto e branco.
+     Fundo translúcido não imprime, então cada badge de severidade
+     ganha borda grossa à esquerda e peso alto. Não usamos
+     print-color-adjust: exact de propósito — forçar fundo gasta toner
+     e a borda já carrega a informação.
+     --------------------------------------------------------------- */
+  .print-marca-severidade {
+    border: 1.5pt solid currentColor !important;
+    border-left-width: 5pt !important;
+    border-radius: 1pt !important;
+    padding-left: 5pt !important;
+    font-weight: 700 !important;
+  }
+
+  /* O ponto colorido não sobrevive ao B&W — a borda substitui */
+  .print-marca-severidade > span:first-child {
+    display: none !important;
+  }
+
+  /* Barra de severidade na lateral do achado */
+  .print-barra-severidade {
+    width: 4pt !important;
   }
 }

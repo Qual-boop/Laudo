@@ -20,11 +20,24 @@ function Vazio({ children }: { children: React.ReactNode }) {
   return <span className="text-texto-2 italic">{children}</span>;
 }
 
+/** Barra lateral colorida por severidade — leitura rápida no relatório e no PDF. */
+const BARRAS: Record<string, string> = {
+  Critica: "bg-critica",
+  Alta: "bg-alta",
+  Media: "bg-media",
+  Baixa: "bg-baixa",
+};
+
 export function RelatorioAchado({ achado }: { achado: DadosAchado }) {
   const temPassos = achado.passosReproducao.length > 0;
+  const barra = BARRAS[achado.severidade] ?? "bg-borda";
 
   return (
-    <article className="print-achado rounded-md border border-borda bg-superficie">
+    <article className="print-achado relative overflow-hidden rounded-md border border-borda bg-superficie pl-5">
+      <span
+        aria-hidden="true"
+        className={`print-barra-severidade absolute inset-y-0 left-0 w-[3px] ${barra}`}
+      />
       <header className="border-b border-borda px-5 py-4 sm:px-6">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <span className="rounded-sm border border-accent/30 bg-accent/10 px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-wider text-accent">

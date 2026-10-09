@@ -13,7 +13,7 @@ export function SeverityBadge({ severidade }: { severidade: string }) {
   const estilo = ESTILOS[severidade.toLowerCase()] ?? PADRAO;
 
   return (
-    <Badge className={estilo.classe}>
+    <Badge className={`print-marca-severidade ${estilo.classe}`}>
       <span className={`h-1.5 w-1.5 ${estilo.ponto}`} />
       {severidade}
     </Badge>
