@@ -43,7 +43,7 @@ export function PainelVerificacao({ onCopiar, onAviso, onResumo }: Props) {
     async (signal?: AbortSignal, silencioso = false) => {
       if (!silencioso) setCarregando(true);
       try {
-        const res = await fetch("/api/verificacao", { signal });
+        const res = await fetch("/api/v1/verificacao", { signal });
         if (!res.ok) throw new Error("falha");
         const dados = (await res.json()) as AchadoVerificavel[];
         if (signal?.aborted) return;

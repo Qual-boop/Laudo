@@ -39,7 +39,7 @@ export function FormularioReteste({ achado, onCancelar, onSalvo, onAviso }: Prop
     setEnviando(true);
 
     try {
-      const res = await fetch("/api/verificacao", {
+      const res = await fetch("/api/v1/verificacao", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

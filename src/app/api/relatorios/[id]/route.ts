@@ -1,16 +1,14 @@
 import type { NextRequest } from "next/server";
-import db from "@/lib/db";
+import { NextResponse } from "next/server";
 
-export async function GET(_req: NextRequest, ctx: RouteContext<"/api/relatorios/[id]">) {
+/** Compatibilidade: a API agora vive em /api/v1/*. 308 preserva o método. */
+export async function GET(
+  req: NextRequest,
+  ctx: { params: Promise<{ id: string }> },
+) {
   const { id } = await ctx.params;
-
-  const linha = db
-    .prepare("SELECT relatorio_json FROM relatorios WHERE id = ?")
-    .get(Number(id)) as { relatorio_json: string } | undefined;
-
-  if (!linha) {
-    return Response.json({ error: "Relatório não encontrado." }, { status: 404 });
-  }
-
-  return Response.json(JSON.parse(linha.relatorio_json));
+  return NextResponse.redirect(
+    new URL(`/api/v1/relatorios/${id}`, req.url),
+    308,
+  );
 }

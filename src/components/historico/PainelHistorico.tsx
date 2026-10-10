@@ -28,7 +28,7 @@ export function PainelHistorico({ onAbrir, onAviso, onResumo }: Props) {
     async (signal?: AbortSignal) => {
       setCarregando(true);
       try {
-        const res = await fetch("/api/relatorios", { signal });
+        const res = await fetch("/api/v1/relatorios", { signal });
         if (!res.ok) throw new Error("falha");
         const dados = (await res.json()) as ResumoRelatorio[];
         if (signal?.aborted) return;
@@ -54,7 +54,7 @@ export function PainelHistorico({ onAbrir, onAviso, onResumo }: Props) {
   async function abrir(id: number) {
     setAbrindo(id);
     try {
-      const res = await fetch(`/api/relatorios/${id}`);
+      const res = await fetch(`/api/v1/relatorios/${id}`);
       if (!res.ok) throw new Error("falha");
       onAbrir((await res.json()) as Relatorio);
     } catch {

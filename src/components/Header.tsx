@@ -1,3 +1,6 @@
+"use client";
+
+import { signOut, useSession } from "next-auth/react";
 import { Logo } from "@/components/Logo";
 import { Tabs, type Aba } from "@/components/Tabs";
 
@@ -9,6 +12,8 @@ type Props = {
 };
 
 export function Header({ aba, onAba, contagem, pendentes }: Props) {
+  const { data: sessao } = useSession();
+
   return (
     <header className="no-print sticky top-0 z-30 border-b border-borda bg-fundo/85 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3.5 sm:px-6">
@@ -28,6 +33,24 @@ export function Header({ aba, onAba, contagem, pendentes }: Props) {
             <span className="hidden font-mono text-[10px] uppercase tracking-wider text-media sm:inline">
               {pendentes} pendente{pendentes === 1 ? "" : "s"}
             </span>
+          )}
+          {sessao?.user?.name && (
+            <span
+              className="hidden max-w-32 truncate text-xs text-texto-2 sm:inline"
+              title={sessao.user.email ?? undefined}
+            >
+              {sessao.user.name}
+            </span>
+          )}
+          {sessao && (
+            <button
+              type="button"
+              onClick={() => signOut({ callbackUrl: "/login" })}
+              aria-label="Sair da conta"
+              className="interativo cursor-pointer rounded-sm border border-borda px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-texto-2 hover:border-critica/50 hover:text-critica"
+            >
+              sair
+            </button>
           )}
           <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-texto-2">
             <span className="animate-ping-suave h-1.5 w-1.5 rounded-full bg-accent" />

@@ -1,5 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { POST } from "@/app/api/gerar/route";
+
+vi.mock("@/lib/api-auth", () => ({
+  exigirUsuario: vi.fn(
+    async () =>
+      ({ ok: true, usuario: { id: 1, nome: "QA", email: "qa@laudo.teste" } }) as const,
+  ),
+  erroApi: (error: string, code: string, status: number) =>
+    Response.json({ error, code }, { status }),
+}));
+
+import { POST } from "@/app/api/v1/gerar/route";
 import type { NextRequest } from "next/server";
 import type { Relatorio } from "@/lib/tipos";
 
@@ -26,7 +36,7 @@ const ENTRADA = {
 };
 
 function requisicao(body: unknown): NextRequest {
-  return new Request("http://localhost/api/gerar", {
+  return new Request("http://localhost/api/v1/gerar", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -128,7 +138,7 @@ afterEach(() => {
  * Validação de entrada (ocorre antes de qualquer chamada externa)     *
  * ------------------------------------------------------------------ */
 
-describe("POST /api/gerar — validação de entrada", () => {
+describe("POST /api/v1/gerar — validação de entrada", () => {
   it("rejeita lista de achados vazia com 400", async () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
@@ -156,7 +166,7 @@ describe("POST /api/gerar — validação de entrada", () => {
 
   it("rejeita corpo não-JSON com 400 em vez de estourar", async () => {
     const res = await POST(
-      new Request("http://localhost/api/gerar", {
+      new Request("http://localhost/api/v1/gerar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: "isto não é json",
@@ -182,7 +192,7 @@ describe("POST /api/gerar — validação de entrada", () => {
  * Caminho feliz                                                        *
  * ------------------------------------------------------------------ */
 
-describe("POST /api/gerar — caminho da IA", () => {
+describe("POST /api/v1/gerar — caminho da IA", () => {
   it("devolve o relatório normalizado quando a IA responde bem", async () => {
     vi.stubGlobal(
       "fetch",
@@ -245,7 +255,7 @@ describe("POST /api/gerar — caminho da IA", () => {
  * Fallbacks — cada modo de falha precisa devolver relatório utilizável *
  * ------------------------------------------------------------------ */
 
-describe("POST /api/gerar — fallback local", () => {
+describe("POST /api/v1/gerar — fallback local", () => {
   it("monta o relatório sem chamar a IA quando OPENAI_API_KEY está ausente", async () => {
     vi.stubEnv("OPENAI_API_KEY", "");
     const fetchSpy = vi.fn();
@@ -424,7 +434,7 @@ const erro503 = () => new Response("high demand", { status: 503 });
 
 describe("cadeiaProvedores", () => {
   it("monta Gemini e Groq, nessa ordem, quando ambas as chaves existem", async () => {
-    const { cadeiaProvedores } = await import("@/app/api/gerar/route");
+    const { cadeiaProvedores } = await import("@/lib/ia");
     vi.stubEnv("GROQ_API_KEY", "gsk_teste");
 
     const cadeia = cadeiaProvedores();
@@ -436,7 +446,7 @@ describe("cadeiaProvedores", () => {
   });
 
   it("normaliza barra final da base para não duplicar na URL", async () => {
-    const { cadeiaProvedores } = await import("@/app/api/gerar/route");
+    const { cadeiaProvedores } = await import("@/lib/ia");
     vi.stubEnv("GROQ_API_KEY", "gsk_teste");
     vi.stubEnv("GROQ_BASE_URL", "https://api.groq.com/openai/v1///");
 
@@ -446,7 +456,7 @@ describe("cadeiaProvedores", () => {
   });
 
   it("usa o modelo e max_tokens de cada provedor", async () => {
-    const { cadeiaProvedores } = await import("@/app/api/gerar/route");
+    const { cadeiaProvedores } = await import("@/lib/ia");
     vi.stubEnv("GROQ_API_KEY", "gsk_teste");
     vi.stubEnv("GROQ_MODELO", "meu-groq");
     vi.stubEnv("GROQ_MAX_TOKENS", "1234");
@@ -459,7 +469,7 @@ describe("cadeiaProvedores", () => {
   });
 
   it("omite o provedor sem chave configurada", async () => {
-    const { cadeiaProvedores } = await import("@/app/api/gerar/route");
+    const { cadeiaProvedores } = await import("@/lib/ia");
 
     vi.stubEnv("OPENAI_API_KEY", "");
     expect(cadeiaProvedores().map((p) => p.nome)).toEqual([]);
@@ -472,14 +482,14 @@ describe("cadeiaProvedores", () => {
   });
 
   it("ignora chave em branco (só espaços)", async () => {
-    const { cadeiaProvedores } = await import("@/app/api/gerar/route");
+    const { cadeiaProvedores } = await import("@/lib/ia");
     vi.stubEnv("OPENAI_API_KEY", "   ");
     vi.stubEnv("GROQ_API_KEY", "");
     expect(cadeiaProvedores()).toEqual([]);
   });
 });
 
-describe("POST /api/gerar — fallback Gemini → Groq", () => {
+describe("POST /api/v1/gerar — fallback Gemini → Groq", () => {
   it("Groq assume quando o Gemini esgota as 4 tentativas com 503", async () => {
     vi.stubEnv("GROQ_API_KEY", "gsk_teste");
 

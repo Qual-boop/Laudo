@@ -124,7 +124,7 @@ export default function Home() {
     let ativo = true;
     (async () => {
       try {
-        const res = await fetch("/api/relatorios");
+        const res = await fetch("/api/v1/relatorios");
         if (!res.ok || !ativo) return;
         const dados = (await res.json()) as ResumoRelatorio[];
         setResumo((atual) => ({
@@ -230,7 +230,7 @@ export default function Home() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/gerar", {
+      const res = await fetch("/api/v1/gerar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(entrada),
@@ -261,7 +261,7 @@ export default function Home() {
     setSalvando(true);
 
     try {
-      const res = await fetch("/api/relatorios", {
+      const res = await fetch("/api/v1/relatorios", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(relatorio),

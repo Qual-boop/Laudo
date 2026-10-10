@@ -3,6 +3,38 @@ import path from "path";
 
 const db = new Database(path.join(process.cwd(), "pentest.db"));
 
+// Sem isso as cláusulas ON DELETE CASCADE abaixo seriam ignoradas:
+// o better-sqlite3 (e o SQLite) deixa FKs desligadas por padrão.
+db.pragma("foreign_keys = ON");
+
+/* ------------------------------------------------------------
+   Multi-usuário (SaaS).
+   usuarios ← relatorios (usuario_id) ← achados_verificacao ← retestes.
+   sessoes guarda hashes dos JWTs emitidos para clientes
+   não-web (mobile/desktop), permitindo revogação (logout).
+   ------------------------------------------------------------ */
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS usuarios (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    senha_hash TEXT,
+    criado_em TEXT DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em TEXT DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS sessoes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    token_hash TEXT NOT NULL UNIQUE,
+    expira_em TEXT NOT NULL,
+    criado_em TEXT DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS relatorios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -13,6 +45,7 @@ db.exec(`
     risco_geral TEXT NOT NULL,
     total_achados INTEGER NOT NULL,
     relatorio_json TEXT NOT NULL,
+    usuario_id INTEGER REFERENCES usuarios(id) ON DELETE CASCADE,
     criado_em TEXT DEFAULT CURRENT_TIMESTAMP
   )
 `);
@@ -54,11 +87,27 @@ db.exec(`
   )
 `);
 
+// Migração leve: bancos criados antes do multi-usuário não têm usuario_id.
+const colunasRelatorios = db
+  .prepare("PRAGMA table_info(relatorios)")
+  .all() as { name: string }[];
+if (!colunasRelatorios.some((c) => c.name === "usuario_id")) {
+  db.exec("ALTER TABLE relatorios ADD COLUMN usuario_id INTEGER REFERENCES usuarios(id) ON DELETE CASCADE");
+}
+
 // Índices das consultas mais frequentes da aba Verificação.
 db.exec(`
   CREATE INDEX IF NOT EXISTS idx_achados_status ON achados_verificacao(status);
   CREATE INDEX IF NOT EXISTS idx_achados_relatorio ON achados_verificacao(relatorio_id);
   CREATE INDEX IF NOT EXISTS idx_retestes_achado ON retestes(achado_id, data_reteste DESC);
+`);
+
+// Índices multi-tenant e de auth.
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_usuarios_email ON usuarios(email);
+  CREATE INDEX IF NOT EXISTS idx_relatorios_usuario ON relatorios(usuario_id);
+  CREATE INDEX IF NOT EXISTS idx_sessoes_usuario ON sessoes(usuario_id);
+  CREATE INDEX IF NOT EXISTS idx_sessoes_token ON sessoes(token_hash);
 `);
 
 export default db;
