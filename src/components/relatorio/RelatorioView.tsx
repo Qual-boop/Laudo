@@ -6,11 +6,14 @@ import {
 } from "@/components/relatorio/RelatorioRecomendacoes";
 import { RelatorioEscopo } from "@/components/relatorio/RelatorioEscopo";
 import { RelatorioSumario } from "@/components/relatorio/RelatorioSumario";
+import { ResumoVisual } from "@/components/relatorio/ResumoVisual";
+import { MatrizRisco } from "@/components/relatorio/MatrizRisco";
+import { TimelineAchados } from "@/components/relatorio/TimelineAchados";
 import { Secao } from "@/components/relatorio/Secao";
 import type { Relatorio as DadosRelatorio } from "@/lib/tipos";
 
 export function RelatorioView({ relatorio }: { relatorio: DadosRelatorio }) {
-  const { capa, sumarioExecutivo, escopoMetodologia, achados } = relatorio;
+  const { capa, sumarioExecutivo, escopoMetodologia, achados, recomendacoesGerais, conclusao } = relatorio;
 
   return (
     <article className="flex flex-col gap-10">
@@ -36,10 +39,25 @@ export function RelatorioView({ relatorio }: { relatorio: DadosRelatorio }) {
       <RelatorioCapa capa={capa} />
 
       <div className="flex flex-col gap-10">
-        <RelatorioSumario sumario={sumarioExecutivo} />
-        <RelatorioEscopo escopo={escopoMetodologia} />
+        <ResumoVisual sumario={sumarioExecutivo} />
 
-        <Secao numero="03" titulo="Achados" quebra>
+        <Secao numero="01" titulo="Sumário Executivo">
+          <RelatorioSumario sumario={sumarioExecutivo} />
+        </Secao>
+
+        <Secao numero="02" titulo="Matriz de Risco" quebra>
+          <MatrizRisco achados={achados} />
+        </Secao>
+
+        <Secao numero="03" titulo="Escopo e Metodologia">
+          <RelatorioEscopo escopo={escopoMetodologia} />
+        </Secao>
+
+        <Secao numero="04" titulo="Timeline" quebra>
+          <TimelineAchados achados={achados} />
+        </Secao>
+
+        <Secao numero="05" titulo="Achados" quebra>
           <div className="flex flex-col gap-5">
             {achados.map((achado) => (
               <RelatorioAchado key={achado.id} achado={achado} />
@@ -47,7 +65,7 @@ export function RelatorioView({ relatorio }: { relatorio: DadosRelatorio }) {
           </div>
         </Secao>
 
-        <RelatorioRecomendacoes recomendacoes={relatorio.recomendacoesGerais} />
+        <RelatorioRecomendacoes recomendacoes={recomendacoesGerais} />
         <RelatorioConclusao relatorio={relatorio} />
       </div>
     </article>
