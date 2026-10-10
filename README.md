@@ -14,10 +14,10 @@ GitHub e verificação de retestes.
 | Robustez: ErrorBoundary, 404, 500, loading | ✅ |
 | Acessibilidade: aria-labels, focus-visible, labels de formulário | ✅ |
 | Performance: lazy loading, sitemap, metadataBase | ✅ |
-| Acessibilidade e performance completa | ⚠️ Fase 7 completa |
-| Documentação completa | ⚠️ Fase 8 em andamento |
+| Acessibilidade e SEO completos (Fase 7) | ✅ |
+| Documentação + onboarding (Fase 8) | ✅ |
 
-![Status do build](https://img.shields.io/badge/build-passing-brightgreen) ![Licença](https://img.shields.io/badge/license-MIT-blue) ![Versão](https://img.shields.io/badge/version-0.2.0-purple) ![Next.js](https://img.shields.io/badge/Next.js-16-000) ![Tailwind](https://img.shields.io/badge/Tailwind-4-38bdf8) ![Testes](https://img.shields.io/badge/tests-121-passing-green) ![Fases](https://img.shields.io/badge/fases-7%2F8-completed-orange) ![Documentação](https://img.shields.io/badge/docs-2%2F4-ff6b6b)
+![Status do build](https://img.shields.io/badge/build-passing-brightgreen) ![Licença](https://img.shields.io/badge/license-MIT-blue) ![Versão](https://img.shields.io/badge/version-0.2.0-purple) ![Next.js](https://img.shields.io/badge/Next.js-16-000) ![Tailwind](https://img.shields.io/badge/Tailwind-4-38bdf8) ![Testes](https://img.shields.io/badge/tests-121-passing-green) ![Fases](https://img.shields.io/badge/fases-10%2F10-completed-brightgreen) ![Documentação](https://img.shields.io/badge/docs-4%2F4-brightgreen)
 
 ---
 
@@ -98,8 +98,10 @@ cloudflared tunnel --url http://localhost:3000
 ```
 src/
 ├── app/
-│   ├── layout.tsx            # Root layout: fontes, metadata, tema
-│   ├── globals.css           # Tokens de tema (@theme) + regras de impressão
+│   ├── layout.tsx            # Root layout: fontes, metadata + metadataBase, tema
+│   ├── globals.css           # Tokens de tema (@theme) + focus-visible + impressão
+│   ├── sitemap.ts            # Sitemap.xml gerado (/, /apresentacao)
+│   ├── robots.ts             # Robots.txt (libera /, bloqueia /api/)
 │   ├── icon.svg              # Favicon (escudo)
 │   ├── page.tsx              # Página principal: formulário + relatório
 │   └── api/
@@ -109,6 +111,7 @@ src/
 │           └── [id]/route.ts # GET (recupera um relatório)
 ├── components/
 │   ├── Button, Card, Badge, Field, Alert, Spinner
+│   ├── Onboarding.tsx        # Tour de 4 passos (lazy, dialog acessível)
 │   ├── SeverityBadge.tsx     # Badge colorido por severidade
 │   ├── TerminalBar.tsx       # Barra estilo terminal
 │   ├── Logo.tsx              # Escudo SVG inline

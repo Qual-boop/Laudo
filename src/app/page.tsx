@@ -1,21 +1,66 @@
 "use client";
 
-import React from "react";
 import { useEffect, useState, Suspense } from "react";
-import { Onboarding } from "@/components/Onboarding";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/Button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/Card";
 import { Field, Input, Select, Textarea } from "@/components/Field";
 import { SeverityBadge } from "@/components/SeverityBadge";
 import { Spinner } from "@/components/Spinner";
 import { RelatorioSkeleton } from "@/components/relatorio/RelatorioSkeleton";
-import { PainelHistorico } from "@/components/historico/PainelHistorico";
-import { PainelVerificacao } from "@/components/verificacao/PainelVerificacao";
 import { Header } from "@/components/Header";
 import { LayoutComSidebar, type ResumoGeral } from "@/components/LayoutComSidebar";
 import { ToastViewport, useToast } from "@/components/Toast";
-import { AcoesExportacao } from "@/components/exportacao/AcoesExportacao";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+
+// Componentes pesados carregados sob demanda (code splitting).
+// `ssr: false` porque todos dependem de APIs do browser ou de estado
+// interativo que só faz sentido no cliente.
+const Onboarding = dynamic(
+  () => import("@/components/Onboarding").then((mod) => mod.Onboarding),
+  { ssr: false },
+);
+const PainelHistorico = dynamic(
+  () =>
+    import("@/components/historico/PainelHistorico").then(
+      (mod) => mod.PainelHistorico,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <p className="font-mono text-xs text-texto-2">carregando histórico…</p>
+    ),
+  },
+);
+const PainelVerificacao = dynamic(
+  () =>
+    import("@/components/verificacao/PainelVerificacao").then(
+      (mod) => mod.PainelVerificacao,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <p className="font-mono text-xs text-texto-2">carregando verificação…</p>
+    ),
+  },
+);
+const AcoesExportacao = dynamic(
+  () =>
+    import("@/components/exportacao/AcoesExportacao").then(
+      (mod) => mod.AcoesExportacao,
+    ),
+  { ssr: false },
+);
+const RelatorioView = dynamic(
+  () =>
+    import("@/components/relatorio/RelatorioView").then(
+      (mod) => mod.RelatorioView,
+    ),
+  {
+    ssr: false,
+    loading: () => <RelatorioSkeleton />,
+  },
+);
 import type { Aba } from "@/components/Tabs";
 import type {
   AchadoEntrada,
@@ -245,22 +290,38 @@ export default function Home() {
       <main className="flex-1">
         <LayoutComSidebar resumo={resumo}>
         {aba === "verificacao" && (
-          <PainelVerificacao
-            onCopiar={copiar}
-            onAviso={toast.erro}
-            onResumo={atualizarResumo}
-          />
+          <Suspense
+            fallback={
+              <p className="font-mono text-xs text-texto-2">
+                carregando verificação…
+              </p>
+            }
+          >
+            <PainelVerificacao
+              onCopiar={copiar}
+              onAviso={toast.erro}
+              onResumo={atualizarResumo}
+            />
+          </Suspense>
         )}
 
         {aba === "historico" && (
-          <PainelHistorico
-            onAviso={toast.erro}
-            onResumo={atualizarResumoDeRelatorios}
-            onAbrir={(r) => {
-              setRelatorio(r);
-              setAba("novo");
-            }}
-          />
+          <Suspense
+            fallback={
+              <p className="font-mono text-xs text-texto-2">
+                carregando histórico…
+              </p>
+            }
+          >
+            <PainelHistorico
+              onAviso={toast.erro}
+              onResumo={atualizarResumoDeRelatorios}
+              onAbrir={(r) => {
+                setRelatorio(r);
+                setAba("novo");
+              }}
+            />
+          </Suspense>
         )}
 
         {aba === "novo" && (
@@ -388,7 +449,7 @@ export default function Home() {
                         onClick={() => duplicarAchado(i)}
                         aria-label="Duplicar achado"
                         title="Duplicar este achado"
-                        className="cursor-pointer rounded-sm border border-borda px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-texto-2 transition-colors duration-200 hover-border-accent hover:text-accent"
+                        className="cursor-pointer rounded-sm border border-borda px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-texto-2 transition-colors duration-200 hover:border-accent hover:text-accent"
                       >
                         duplicar
                       </button>
@@ -587,31 +648,35 @@ export default function Home() {
         )}
 
 {!loading && relatorio && (
-           <>
-             <div className="no-print mt-8 flex flex-wrap items-center justify-between gap-3">
-               <p className="font-mono text-[11px] uppercase tracking-widest text-texto-2">
-                 pré-visualização · o PDF oculta esta barra
-               </p>
-               <div className="flex flex-wrap items-center gap-2">
-                 <AcoesExportacao
-                   relatorio={relatorio}
-                   jiraBaseUrl={process.env.NEXT_PUBLIC_JIRA_URL}
-                   githubRepoUrl={process.env.NEXT_PUBLIC_GITHUB_REPO_URL}
-                 />
-                 <Button variante="secundaria" onClick={salvar} disabled={salvando}>
-                   {salvando ? "salvando..." : "salvar"}
-                 </Button>
-                 <Button variante="sucesso" onClick={() => window.print()}>
-                   exportar pdf
-                 </Button>
-               </div>
-             </div>
-
-<div className="mt-4">
-              <p className="text-texto-2/60">relatório gerado — veja a visualização acima</p>
+          <>
+            <div className="no-print mt-8 flex flex-wrap items-center justify-between gap-3">
+              <p className="font-mono text-[11px] uppercase tracking-widest text-texto-2">
+                pré-visualização · o PDF oculta esta barra
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Suspense fallback={null}>
+                  <AcoesExportacao
+                    relatorio={relatorio}
+                    jiraBaseUrl={process.env.NEXT_PUBLIC_JIRA_URL}
+                    githubRepoUrl={process.env.NEXT_PUBLIC_GITHUB_REPO_URL}
+                  />
+                </Suspense>
+                <Button variante="secundaria" onClick={salvar} disabled={salvando}>
+                  {salvando ? "salvando..." : "salvar"}
+                </Button>
+                <Button variante="sucesso" onClick={() => window.print()}>
+                  exportar pdf
+                </Button>
+              </div>
             </div>
-           </>
-         )}
+
+            <div className="mt-4">
+              <Suspense fallback={<RelatorioSkeleton />}>
+                <RelatorioView relatorio={relatorio} />
+              </Suspense>
+            </div>
+          </>
+        )}
           </>
         )}
         </LayoutComSidebar>

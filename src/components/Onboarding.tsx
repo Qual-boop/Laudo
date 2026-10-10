@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
-import { useToast } from "@/components/Toast";
 
 type EtapaOnboarding = "step1" | "step2" | "step3" | "step4";
 
@@ -37,7 +36,6 @@ interface OnboardingProps {
 export function Onboarding({ alreadyShown }: OnboardingProps = {}) {
   const [etapa, setEtapa] = useState<EtapaOnboarding>("step1");
   const [shown, setShown] = useState(true);
-  const { sucesso, aviso } = useToast();
 
   // Verificar se já foi mostrado
   useEffect(() => {
@@ -46,6 +44,19 @@ export function Onboarding({ alreadyShown }: OnboardingProps = {}) {
       setShown(false);
     }
   }, [alreadyShown]);
+
+  // Escape fecha o tour — acessibilidade por teclado.
+  useEffect(() => {
+    if (!shown) return;
+    function aoTeclar(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        localStorage.setItem("onboarding_shown", "true");
+        setShown(false);
+      }
+    }
+    window.addEventListener("keydown", aoTeclar);
+    return () => window.removeEventListener("keydown", aoTeclar);
+  }, [shown]);
 
   // Marcar como mostrado ao concluir
   const concluir = () => {
@@ -58,23 +69,28 @@ export function Onboarding({ alreadyShown }: OnboardingProps = {}) {
   }
 
   const nextEtapa = (etapaAtual: EtapaOnboarding): EtapaOnboarding => {
-    if (etapaAtual === "step4") {
-      concluir();
-      return "step1" as EtapaOnboarding;
-    }
     const keys = ["step1", "step2", "step3", "step4"] as const;
     const idx = keys.indexOf(etapaAtual);
-    return keys[idx + 1] as EtapaOnboarding;
+    return keys[Math.min(idx + 1, keys.length - 1)] as EtapaOnboarding;
   };
 
   const prox = () => {
-    setEtapa(nextEtapa);
+    if (etapa === "step4") {
+      concluir();
+      return;
+    }
+    setEtapa(nextEtapa(etapa));
   };
 
   const etapaAtual = ETAPAS[etapa];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Onboarding — ${etapaAtual.titulo}`}
+    >
       <div className="bg-texto-2/80 backdrop-blur-sm rounded-md w-full max-w-md border border-borda p-6">
         <Card className="p-6">
           <h3 className="text-accent text-[13px] uppercase tracking-widest mb-4">
