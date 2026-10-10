@@ -13,6 +13,7 @@ import { PainelVerificacao } from "@/components/verificacao/PainelVerificacao";
 import { Header } from "@/components/Header";
 import { LayoutComSidebar, type ResumoGeral } from "@/components/LayoutComSidebar";
 import { ToastViewport, useToast } from "@/components/Toast";
+import { AcoesExportacao } from "@/components/exportacao/AcoesExportacao";
 import type { Aba } from "@/components/Tabs";
 import type {
   AchadoEntrada,
@@ -585,7 +586,12 @@ export default function Home() {
               <p className="font-mono text-[11px] uppercase tracking-widest text-texto-2">
                 pré-visualização · o PDF oculta esta barra
               </p>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <AcoesExportacao
+                  relatorio={relatorio}
+                  jiraBaseUrl={process.env.NEXT_PUBLIC_JIRA_URL}
+                  githubRepoUrl={process.env.NEXT_PUBLIC_GITHUB_REPO_URL}
+                />
                 <Button variante="secundaria" onClick={salvar} disabled={salvando}>
                   {salvando ? "salvando..." : "salvar"}
                 </Button>
