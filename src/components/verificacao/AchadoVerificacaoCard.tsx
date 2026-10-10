@@ -1,6 +1,7 @@
 import { Button } from "@/components/Button";
 import { SeverityBadge } from "@/components/SeverityBadge";
 import { StatusBadge } from "@/components/StatusBadge";
+import { AcoesExportacaoAchado } from "@/components/verificacao/AcoesExportacaoAchado";
 import { ROTULO_RESULTADO } from "@/lib/verificacao";
 import type { AchadoVerificavel, StatusVerificacao } from "@/lib/tipos";
 
@@ -107,6 +108,7 @@ export function AchadoVerificacaoCard({ achado, onRegistrar, onVerDelta, onCopia
         </div>
 
         <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+          <AcoesExportacaoAchado achado={achado} onCopiar={onCopiar} />
           {reteste && (
             <Button
               variante="fantasma"
