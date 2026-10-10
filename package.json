@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "test": "vitest run --typecheck",
-    "test:watch": "vitest --typecheck"
+    "test:watch": "vitest --typecheck",
+    "limpar-banco": "node scripts/limpar-banco.ts --executar"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",
