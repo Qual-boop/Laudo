@@ -1,0 +1,43 @@
+{
+  "name": "Laudo — Relatórios de pentest",
+  "short_name": "Laudo",
+  "description": "Gere relatórios profissionais de teste de intrusão com IA",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f0f0f",
+  "theme_color": "#22c55e",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity", "security"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Novo Relatório",
+      "short_name": "Novo",
+      "description": "Criar novo relatório de pentest",
+      "url": "/?aba=novo",
+      "icons": [{ "src": "/icon.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Verificação",
+      "short_name": "Verificar",
+      "description": "Verificar correções de achados",
+      "url": "/?aba=verificacao",
+      "icons": [{ "src": "/icon.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Histórico",
+      "short_name": "Histórico",
+      "description": "Ver relatórios salvos",
+      "url": "/?aba=historico",
+      "icons": [{ "src": "/icon.svg", "sizes": "192x192" }]
+    }
+  ]
+}
