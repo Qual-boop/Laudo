@@ -16,6 +16,8 @@ GitHub e verificação de retestes.
 | Performance: lazy loading, sitemap, metadataBase | ✅ |
 | Acessibilidade e SEO completos (Fase 7) | ✅ |
 | Documentação + onboarding (Fase 8) | ✅ |
+| Export por achado na Verificação (Fase 1) | ✅ |
+| Multi-usuário JWT + API v1 (Fase 3) | ✅ |
 
 ![Status do build](https://img.shields.io/badge/build-passing-brightgreen) ![Licença](https://img.shields.io/badge/license-MIT-blue) ![Versão](https://img.shields.io/badge/version-0.2.0-purple) ![Next.js](https://img.shields.io/badge/Next.js-16-000) ![Tailwind](https://img.shields.io/badge/Tailwind-4-38bdf8) ![Testes](https://img.shields.io/badge/tests-121-passing-green) ![Fases](https://img.shields.io/badge/fases-10%2F10-completed-brightgreen) ![Documentação](https://img.shields.io/badge/docs-4%2F4-brightgreen)
 
@@ -64,6 +66,7 @@ cp .env.example .env
 
 | Variável | Obrigatória | Padrão | Descrição |
 | --- | --- | --- | --- |
+| `AUTH_SECRET` | sim (p/ login) | — | Segredo do JWT. Gere com `openssl rand -base64 32`. Sem ele, login e `/api/v1/*` falham. |
 | `OPENAI_API_KEY` | sim | — | Chave da API. Sem ela o app monta o relatório localmente, sem enriquecimento por IA. |
 | `OPENAI_BASE_URL` | não | `https://api.openai.com/v1` | Endpoint do provedor. Gemini: `https://generativelanguage.googleapis.com/v1beta/openai/` |
 | `LAUDO_MODELO` | não | `gemini-3.8-flash` | Modelo usado para gerar o relatório. |
@@ -81,9 +84,15 @@ npm run dev      # servidor de desenvolvimento em http://localhost:3000
 npm run build    # build de produção
 npm run start    # serve o build de produção
 npm test         # suíte de testes (Vitest)
+npm run limpar-banco  # APAGA TUDO do pentest.db (dev apenas)
 ```
 
 O banco `pentest.db` é criado automaticamente na primeira execução.
+
+> Sem conta? Abra http://localhost:3000 → redireciona para `/login` →
+> crie a conta em `/cadastro`. A API (`/api/v1/*`) exige JWT: web usa o
+> cookie de sessão, mobile/desktop usam `Authorization: Bearer` (ver
+> [docs/API.md](docs/API.md)).
 
 ### Testando com um túnel
 
@@ -98,17 +107,17 @@ cloudflared tunnel --url http://localhost:3000
 ```
 src/
 ├── app/
+│   ├── login/ + cadastro/        # Telas de acesso (Credentials + Google)
+│   ├── api/auth/[...nextauth]/   # NextAuth v5 (sessão JWT)
+│   ├── api/v1/                   # Backend de verdade (gerar, relatorios, verificacao, auth)
+│   ├── api/                      # Legado: só redirect 308 → /api/v1/*
 │   ├── layout.tsx            # Root layout: fontes, metadata + metadataBase, tema
 │   ├── globals.css           # Tokens de tema (@theme) + focus-visible + impressão
 │   ├── sitemap.ts            # Sitemap.xml gerado (/, /apresentacao)
 │   ├── robots.ts             # Robots.txt (libera /, bloqueia /api/)
 │   ├── icon.svg              # Favicon (escudo)
-│   ├── page.tsx              # Página principal: formulário + relatório
-│   └── api/
-│       ├── gerar/route.ts    # POST: chama a IA e devolve o relatório
-│       └── relatorios/
-│           ├── route.ts      # POST (salva) e GET (lista)
-│           └── [id]/route.ts # GET (recupera um relatório)
+│   └── page.tsx              # Página principal: formulário + relatório (exige login)
+├── middleware.ts             # Redirect / → /login; /login → / (logado)
 ├── components/
 │   ├── Button, Card, Badge, Field, Alert, Spinner
 │   ├── Onboarding.tsx        # Tour de 4 passos (lazy, dialog acessível)
@@ -126,18 +135,25 @@ src/
 │       ├── Secao.tsx         # Cabeçalho numerado + blocos reutilizáveis
 │       └── SeloCvss.tsx      # Badge de CVSS e de risco geral
 └── lib/
-    ├── db.ts                 # Conexão SQLite e schema
+    ├── db.ts                 # SQLite + schema multi-usuário (usuarios, sessoes)
+    ├── auth/usuarios         # lib/usuarios.ts: criar/buscar/senha (bcrypt)
+    ├── api-auth.ts           # exigirUsuario(): JWT via cookie ou Bearer
+    ├── validacao.ts          # Esquemas Zod de todos os payloads da v1
+    ├── ia.ts                 # Cadeia Gemini → Groq → fallback local
     ├── tipos.ts              # Tipos do relatório e da entrada do formulário
     └── relatorio.ts          # Prompt, normalizador e fallback local
-docs/                         # Arquitetura e guia de contribuição
+docs/                         # API, arquitetura, segurança, guias
+scripts/
+└── limpar-banco.ts           # Apaga tudo (dev apenas): npm run limpar-banco
 ```
 
 ### Camadas
 
 - **`app/`** — rotas. `page.tsx` é Client Component porque controla formulário e
   estado do relatório.
-- **`app/api/`** — Route Handlers. Validam a entrada, chamam a IA e devolvem
-  JSON já normalizado.
+- **`app/api/`** — Legado: só redirect 308 → `/api/v1/*`. As rotas v1
+  (`app/api/v1/`) são casca fina: auth (`exigirUsuario`), Zod e `Response.json`;
+  a regra de negócio mora em `lib/`.
 - **`lib/`** — lógica pura e testável, sem React. `relatorio.ts` concentra o
   prompt, o normalizador (que protege a UI de resposta malformada) e o fallback
   local que monta o relatório sem IA.
@@ -209,6 +225,19 @@ npm run dev
 
 Convenções: commits no padrão [Conventional Commits](https://www.conventionalcommits.org/pt-br/),
 componentes pequenos e tipados, nenhuma lógica de negócio em `components/`.
+
+## Roadmap (web → mobile → desktop)
+
+- [x] Web multi-usuário com JWT + API `/api/v1/*`
+- [x] Exportação por achado (Jira/GitHub/texto) na Verificação
+- [ ] Assinaturas (Pro R$ 19,90 · Team R$ 49,90) + limites por plano
+- [ ] Mobile (React Native + Expo) sobre a mesma `/api/v1/*` com Bearer
+- [ ] Desktop (Tauri) sobre a mesma `/api/v1/*` com Bearer
+- [ ] Trocar SQLite por Postgres/Turso + rate limiting no proxy
+
+Detalhes da API em [docs/API.md](docs/API.md), segurança em
+[docs/SEGURANCA.md](docs/SEGURANCA.md), arquitetura multi-cliente em
+[docs/ARQUITETURA.md](docs/ARQUITETURA.md) (§7).
 
 ## Licença
 

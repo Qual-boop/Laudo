@@ -350,6 +350,69 @@ npm run build   # TypeScript estrito
 | Cor, grid de fundo, CSS de impressão | `src/app/globals.css` |
 | Prompt e instruções de conteúdo | `montarPrompt()` em `lib/relatorio.ts` |
 | Schema do banco | `src/lib/db.ts` |
-| Cadeia de provedores | `cadeiaProvedores()` e `tentarProvedor()` em `app/api/gerar/route.ts` |
+| Cadeia de provedores | `cadeiaProvedores()` e `tentarProvedor()` em `lib/ia.ts` |
+| Validação de payloads | esquemas Zod em `lib/validacao.ts` |
+| Auth (quem é o usuário) | `exigirUsuario()` em `lib/api-auth.ts` |
+| Usuários (criar/buscar/senha) | `lib/usuarios.ts` |
 | Modelo e limite de tokens | env `LAUDO_MODELO`/`GROQ_MODELO`, `LAUDO_MAX_TOKENS`/`GROQ_MAX_TOKENS` |
 | Domínios liberados em dev | `next.config.ts` (`allowedDevOrigins`) |
+
+---
+
+## 7. Multi-cliente e multi-usuário (SaaS)
+
+A API é tratada como **backend de verdade**: os mesmos endpoints servem o
+web atual, o futuro mobile (React Native + Expo) e o futuro desktop (Tauri).
+
+```
+┌──────────────┐  cookie de sessão   ┌────────────────────────────┐
+│  Web (Next)  │ ──────────────────► │                            │
+└──────────────┘                     │  /api/v1/*  (JSON puro)    │
+┌──────────────┐  Authorization:     │                            │
+│  Mobile      │  Bearer <jwt> ────► │  exigirUsuario() → JWT      │
+└──────────────┘                     │  (cookie OU Bearer)        │
+┌──────────────┐  Authorization:     │       │                    │
+│  Desktop     │  Bearer <jwt> ────► │       ▼                    │
+└──────────────┘                     │  lib/* (regra de negócio)  │
+                                     │       │                    │
+                                     │       ▼                    │
+                                     │  SQLite (usuario_id em     │
+                                     │  tudo; sessoes p/ mobile)  │
+                                     └────────────────────────────┘
+```
+
+### Por que NextAuth v5 com sessão JWT
+
+- Um token só para os 3 clientes: o web usa o cookie httpOnly, mobile e
+  desktop usam o mesmo JWT via `Authorization: Bearer` (`getToken` lê os
+  dois — verificado no código do `@auth/core`).
+- Tokens mobile (`POST /api/v1/auth/token`) carregam `sid` e ficam
+  registrados em `sessoes`, permitindo **revogação** (`DELETE .../token`).
+- Login Google opcional (só aparece com `GOOGLE_CLIENT_ID` configurado);
+  Credentials com bcrypt sempre funciona.
+
+### Por que o middleware não usa `auth()`
+
+O `auth()` do NextAuth puxa a config inteira para o bundle Edge — e a
+config referencia `@/lib/usuarios` → `better-sqlite3` (nativo Node),
+quebrando o build. O `src/middleware.ts` usa `getToken` do `next-auth/jwt`
+(jose, Edge-safe) só para decidir redirects de **páginas**; a API responde
+401 JSON dentro de cada rota via `exigirUsuario()`.
+
+### Regras para novos endpoints
+
+1. Criar em `/api/v1/*`, nunca em `/api/*` (o legado é só redirect 308).
+2. Validar payload com Zod (`lib/validacao.ts`) → 400 `{ error, code: "VALIDACAO", detalhes }`.
+3. Chamar `exigirUsuario(request)` primeiro → 401 sozinho.
+4. Filtrar tudo por `usuario_id`; recurso alheio → 403 `{ code: "ACESSO_NEGADO" }`.
+5. Lógica em `lib/`; a rota é só casca HTTP (`Response.json`).
+6. Documentar em `docs/API.md` com exemplo curl.
+
+### Preparação para React Native e Tauri
+
+- Nada no backend depende de cookie: qualquer cliente autentica com
+  `POST /api/v1/auth/token` e usa Bearer em tudo.
+- Payloads e erros são JSON estável com `code` — o mobile pode trocar
+  mensagens sem quebrar parsing.
+- Quando o SQLite estourar (multi-dispositivo, concorrência), a troca é
+  só em `lib/db.ts` + driver; as queries já usam `usuario_id` e placeholders.
