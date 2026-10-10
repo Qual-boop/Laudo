@@ -27,6 +27,7 @@ const BASE =
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variante?: Variante;
   tamanho?: Tamanho;
+  ariaLabel?: string;
 };
 
 export function Button({
@@ -34,12 +35,16 @@ export function Button({
   tamanho = "md",
   className = "",
   type = "button",
+  ariaLabel,
   ...props
 }: ButtonProps) {
+  const ariaAttr = ariaLabel ? { "aria-label": ariaLabel } : {};
+
   return (
     <button
       type={type}
       className={`${BASE} ${VARIANTES[variante]} ${TAMANHOS[tamanho]} ${className}`}
+      {...ariaAttr}
       {...props}
     />
   );

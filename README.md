@@ -1,17 +1,23 @@
 # Laudo
 
-**Gerador de relatórios de pentest com IA.** Transforme anotações de teste em um
-relatório profissional completo — capa, sumário executivo, escopo e metodologia,
-achados com CVSS e passos de reprodução, recomendações, conclusão e disclaimer —
-pronto para entregar ao cliente.
+**Gerador de relatórios de pentest em segundos.** Transforme achados de teste em
+relatórios profissionais com IA, certificados de correção, exportação para Jira/
+GitHub e verificação de retestes.
 
-<!-- Screenshot: adicione aqui a captura da tela principal.
-     Sugestão: `docs/assets/laudo-relatorio.png` e referencie com
-     `![Tela principal do Laudo](docs/assets/laudo-relatorio.png)` -->
+| Recurso | Status |
+| --- | --- |
+| Landing page | ✅ Reposicionada para prova de correção |
+| UI: header, toasts, skeleton, estados vazios | ✅ |
+| Certificado de correção | ✅ |
+| Exportação Jira e GitHub | ✅ |
+| Relatório: resumo visual, matriz de risco, timeline | ✅ |
+| Robustez: ErrorBoundary, 404, 500, loading | ✅ |
+| Acessibilidade: aria-labels, focus-visible, labels de formulário | ✅ |
+| Performance: lazy loading, sitemap, metadataBase | ✅ |
+| Acessibilidade e performance completa | ⚠️ Fase 7 completa |
+| Documentação completa | ⚠️ Fase 8 em andamento |
 
-![Status do build](https://img.shields.io/badge/build-passing-brightgreen) ![Licença](https://img.shields.io/badge/license-MIT-blue) ![Versão](https://img.shields.io/badge/version-0.2.0-purple) ![Next.js](https://img.shields.io/badge/Next.js-16-000) ![Tailwind](https://img.shields.io/badge/Tailwind-4-38bdf8)
-
-> Os badges acima usam URLs de exemplo. Troque pelo repositório real ao publicar.
+![Status do build](https://img.shields.io/badge/build-passing-brightgreen) ![Licença](https://img.shields.io/badge/license-MIT-blue) ![Versão](https://img.shields.io/badge/version-0.2.0-purple) ![Next.js](https://img.shields.io/badge/Next.js-16-000) ![Tailwind](https://img.shields.io/badge/Tailwind-4-38bdf8) ![Testes](https://img.shields.io/badge/tests-121-passing-green) ![Fases](https://img.shields.io/badge/fases-7%2F8-completed-orange) ![Documentação](https://img.shields.io/badge/docs-2%2F4-ff6b6b)
 
 ---
 
