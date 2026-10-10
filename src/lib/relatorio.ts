@@ -1,6 +1,8 @@
+import { normalizarConfianca } from "@/lib/verificacao";
 import type {
   Achado,
   AchadoEntrada,
+  Confianca,
   Relatorio,
   RelatorioEntrada,
   RecomendacaoGeral,
@@ -80,6 +82,12 @@ function dataISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/** Só aceita YYYY-MM-DD; qualquer outra coisa vira null (campo opcional). */
+function dataOpcional(v: unknown): string | null {
+  const s = txt(v);
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
+}
+
 /* ============================================================
    Derivação de campos — fatos que não dependem da IA
    ============================================================ */
@@ -142,6 +150,9 @@ export function normalizarRelatorio(
           longoPrazo: txt(remediacao.longoPrazo),
           referencias: lista(remediacao.referencias),
         },
+        // Vêm do pentester; a IA pode omitir, mas nunca deve inventar.
+        confianca: normalizarConfianca(a.confianca),
+        dataRetesteSugerida: dataOpcional(a.dataRetesteSugerida),
       };
     });
 
@@ -236,6 +247,8 @@ export function relatorioFallback(
       longoPrazo: "Correção definitiva não definida — revisar manualmente.",
       referencias: a.cwe ? [`CWE-${a.cwe.replace(/^CWE-/i, "")}`] : [],
     },
+    confianca: normalizarConfianca(a.confianca),
+    dataRetesteSugerida: dataOpcional(a.dataRetesteSugerida),
   }));
 
   const resumoPorSeveridade = contarPorSeveridade(achados);
@@ -306,7 +319,9 @@ titulo: ${a.titulo || "(não informado)"}
 severidade informada pelo pentester: ${a.severidade}
 cwe informada: ${a.cwe || "(não informado)"}
 descrição: ${a.descricao || "(não informada)"}
-evidência: ${a.evidencia || "(não fornecida)"}`,
+evidência: ${a.evidencia || "(não fornecida)"}
+confiança do pentester: ${a.confianca || "Media"}
+data de reteste sugerida: ${a.dataRetesteSugerida || "(não informada)"}`,
     )
     .join("\n");
 
@@ -345,7 +360,9 @@ Gere UM relatório de teste de intrusão completo. Produza EXATAMENTE um objeto 
     "impactoNegocio": string,
     "evidencias": string,
     "passosReproducao": string[],
-    "remediacao": { "curtoPrazo": string, "longoPrazo": string, "referencias": string[] }
+    "remediacao": { "curtoPrazo": string, "longoPrazo": string, "referencias": string[] },
+    "confianca": "Alta" | "Media" | "Baixa",
+    "dataRetesteSugerida": "YYYY-MM-DD" | ""
   }],
   "recomendacoesGerais": [{ "prioridade": "Alta" | "Media" | "Baixa", "recomendacao": string, "justificativa": string }],
   "conclusao": string,
@@ -365,6 +382,7 @@ REGRAS
 10. "disclaimer": confidentialidade, autorização formal e obrigação de correção.
 11. Preencha "cliente" com "${entrada.cliente || "Não informado"}" e "data" no formato YYYY-MM-DD.
 12. Todo o texto deve ser pronto para entrega: nada de "aqui", "segue", "o modelo", "como exemplo", "sendo o caso".
+13. Copie "confianca" e "dataRetesteSugerida" exatamente como o pentester informou, sem recalcular. Se a data vier vazia, use "".
 
 Responda SOMENTE com o JSON.`;
 }

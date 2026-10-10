@@ -1,6 +1,7 @@
 import { Card } from "@/components/Card";
 import { SeverityBadge } from "@/components/SeverityBadge";
 import { CvssBadge } from "@/components/relatorio/SeloCvss";
+import { ROTULO_CONFIANCA } from "@/lib/verificacao";
 import type { Achado as DadosAchado } from "@/lib/tipos";
 
 function Bloco({ titulo, children }: { titulo: string; children: React.ReactNode }) {
@@ -61,6 +62,18 @@ export function RelatorioAchado({ achado }: { achado: DadosAchado }) {
               <span className="uppercase tracking-widest opacity-60">owasp: </span>
               {achado.owasp || "—"}
             </span>
+            <span>
+              <span className="uppercase tracking-widest opacity-60">confiança: </span>
+              {ROTULO_CONFIANCA[achado.confianca] ?? achado.confianca}
+            </span>
+            {achado.dataRetesteSugerida && (
+              <span>
+                <span className="uppercase tracking-widest opacity-60">
+                  reteste sugerido:{" "}
+                </span>
+                {achado.dataRetesteSugerida}
+              </span>
+            )}
           </div>
         </dl>
       </header>

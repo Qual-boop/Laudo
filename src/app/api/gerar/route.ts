@@ -4,6 +4,7 @@ import {
   normalizarRelatorio,
   relatorioFallback,
 } from "@/lib/relatorio";
+import { normalizarConfianca } from "@/lib/verificacao";
 import type { Relatorio, RelatorioEntrada } from "@/lib/tipos";
 
 /* ============================================================
@@ -240,6 +241,9 @@ function validarEntrada(bruto: unknown): RelatorioEntrada {
         cwe: typeof x.cwe === "string" ? x.cwe : "",
         descricao: typeof x.descricao === "string" ? x.descricao : "",
         evidencia: typeof x.evidencia === "string" ? x.evidencia : "",
+        confianca: normalizarConfianca(x.confianca),
+        dataRetesteSugerida:
+          typeof x.dataRetesteSugerida === "string" ? x.dataRetesteSugerida : "",
       };
     }),
   };

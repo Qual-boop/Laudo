@@ -10,14 +10,19 @@ import { SeverityBadge } from "@/components/SeverityBadge";
 import { Spinner } from "@/components/Spinner";
 import { RelatorioSkeleton } from "@/components/relatorio/RelatorioSkeleton";
 import { RelatorioView } from "@/components/relatorio/RelatorioView";
+import { PainelHistorico } from "@/components/historico/PainelHistorico";
+import { PainelVerificacao } from "@/components/verificacao/PainelVerificacao";
+import { Tabs, type Aba } from "@/components/Tabs";
 import type {
   AchadoEntrada,
+  Confianca,
   Relatorio,
   RelatorioEntrada,
   Severidade,
 } from "@/lib/tipos";
 
 const SEVERIDADES: Severidade[] = ["Critica", "Alta", "Media", "Baixa"];
+const CONFIANCAS: Confianca[] = ["Alta", "Media", "Baixa"];
 
 const ACHADO_VAZIO: AchadoEntrada = {
   titulo: "",
@@ -25,6 +30,8 @@ const ACHADO_VAZIO: AchadoEntrada = {
   cwe: "",
   descricao: "",
   evidencia: "",
+  confianca: "Media",
+  dataRetesteSugerida: "",
 };
 
 export default function Home() {
@@ -39,6 +46,7 @@ export default function Home() {
   const [achados, setAchados] = useState<AchadoEntrada[]>([{ ...ACHADO_VAZIO }]);
 
   const [relatorio, setRelatorio] = useState<Relatorio | null>(null);
+  const [aba, setAba] = useState<Aba>("novo");
   const [loading, setLoading] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -155,7 +163,9 @@ export default function Home() {
         return;
       }
 
-      setAviso(`Relatório salvo com ID #${corpo.id}.`);
+      setAviso(
+        `Relatório salvo com ID #${corpo.id}. Os achados já estão na aba Verificação.`,
+      );
     } catch {
       setErro("Não foi possível conectar ao servidor. Verifique sua conexão.");
     } finally {
@@ -180,8 +190,33 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6 sm:py-10">
-        <div className="no-print flex flex-col gap-5">
+      <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+        <Tabs
+          ativa={aba}
+          onChange={setAba}
+          contagem={relatorio ? { novo: relatorio.achados.length } : undefined}
+        />
+
+        {aba === "verificacao" && (
+          <div className="mt-6">
+            <PainelVerificacao />
+          </div>
+        )}
+
+        {aba === "historico" && (
+          <div className="mt-6">
+            <PainelHistorico
+              onAbrir={(r) => {
+                setRelatorio(r);
+                setAba("novo");
+              }}
+            />
+          </div>
+        )}
+
+        {aba === "novo" && (
+          <>
+        <div className="no-print mt-6 flex flex-col gap-5">
           {erro && <Alert tom="erro">{erro}</Alert>}
           {aviso && <Alert tom="sucesso">{aviso}</Alert>}
 
@@ -368,6 +403,49 @@ export default function Home() {
                       </Field>
                     </div>
 
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_12rem]">
+                      <Field
+                        label="Confiança"
+                        htmlFor={`achado-${i}-confianca`}
+                        dica="quão certo você está deste achado — usada no ciclo de verificação"
+                      >
+                        <Select
+                          id={`achado-${i}-confianca`}
+                          className="font-mono text-xs"
+                          value={achado.confianca}
+                          onChange={(e) =>
+                            atualizarAchado(i, {
+                              confianca: e.target.value as Confianca,
+                            })
+                          }
+                        >
+                          {CONFIANCAS.map((c) => (
+                            <option key={c} value={c}>
+                              {c.toLowerCase()}
+                            </option>
+                          ))}
+                        </Select>
+                      </Field>
+
+                      <Field
+                        label="Reteste sugerido"
+                        htmlFor={`achado-${i}-reteste`}
+                        dica="opcional"
+                      >
+                        <Input
+                          id={`achado-${i}-reteste`}
+                          type="date"
+                          className="font-mono text-xs"
+                          value={achado.dataRetesteSugerida}
+                          onChange={(e) =>
+                            atualizarAchado(i, {
+                              dataRetesteSugerida: e.target.value,
+                            })
+                          }
+                        />
+                      </Field>
+                    </div>
+
                     <Field
                       label="Descrição"
                       htmlFor={`achado-${i}-descricao`}
@@ -479,6 +557,8 @@ export default function Home() {
             <div className="mt-4">
               <RelatorioView relatorio={relatorio} />
             </div>
+          </>
+        )}
           </>
         )}
       </main>

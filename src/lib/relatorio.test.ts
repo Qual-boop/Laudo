@@ -117,6 +117,8 @@ describe("contarPorSeveridade e riscoGeralDe", () => {
     evidencias: "",
     passosReproducao: [],
     remediacao: { curtoPrazo: "", longoPrazo: "", referencias: [] },
+    confianca: "Media" as const,
+    dataRetesteSugerida: null,
   };
 
   it("conta por severidade e ordena o risco", () => {
@@ -160,6 +162,8 @@ const ENTRADA: RelatorioEntrada = {
       cwe: "CWE-89",
       descricao: "Input concatenado na query.",
       evidencia: "GET /login?user=admin' OR '1'='1",
+      confianca: "Alta",
+      dataRetesteSugerida: "2026-11-01",
     },
   ],
 };

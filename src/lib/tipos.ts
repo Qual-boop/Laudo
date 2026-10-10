@@ -1,6 +1,15 @@
 export type Severidade = "Critica" | "Alta" | "Media" | "Baixa";
 export type RiscoGeral = "Critico" | "Alto" | "Medio" | "Baixo";
 
+/** Confiança que o pentester tem no achado. */
+export type Confianca = "Alta" | "Media" | "Baixa";
+
+/** Estado do ciclo de verificação de correções. */
+export type StatusVerificacao = "pendente" | "verificado" | "nao-corrigido";
+
+/** Resultado registrado em um reteste. */
+export type ResultadoReteste = "corrigido" | "nao-corrigido" | "parcial";
+
 export type Capa = {
   titulo: string;
   cliente: string;
@@ -53,6 +62,10 @@ export type Achado = {
   evidencias: string;
   passosReproducao: string[];
   remediacao: Remediacao;
+  /** Confiança do pentester — vem do formulário, não da IA. */
+  confianca: Confianca;
+  /** Data sugerida para o reteste (YYYY-MM-DD), opcional. */
+  dataRetesteSugerida: string | null;
 };
 
 export type RecomendacaoGeral = {
@@ -79,6 +92,8 @@ export type AchadoEntrada = {
   cwe: string;
   descricao: string;
   evidencia: string;
+  confianca: Confianca;
+  dataRetesteSugerida: string;
 };
 
 export type RelatorioEntrada = {
@@ -102,4 +117,53 @@ export type ResumoRelatorio = {
   risco_geral: string;
   total_achados: number;
   criado_em: string;
+};
+
+/* ---------- Verificação de correções ---------- */
+
+export type Reteste = {
+  id: number;
+  achado_id: number;
+  data_reteste: string;
+  resultado: ResultadoReteste;
+  evidencia: string;
+  criado_em: string;
+};
+
+export type AchadoVerificavel = {
+  id: number;
+  relatorio_id: number | null;
+  cliente: string;
+  achado_ref: string;
+  titulo: string;
+  severidade: Severidade;
+  cwe: string;
+  confianca: Confianca;
+  data_reteste_sugerida: string | null;
+  status: StatusVerificacao;
+  criado_em: string;
+  /** Último reteste registrado, ou null se ainda pendente. */
+  ultimo_reteste: Reteste | null;
+  total_retestes: number;
+};
+
+/* ---------- Relatório de delta ---------- */
+
+export type DeltaRelatorio = {
+  achado: {
+    titulo: string;
+    severidade: Severidade;
+    achadoRef: string;
+    confianca: Confianca;
+    cliente: string;
+    dataOriginal: string;
+  };
+  reteste: {
+    data: string;
+    resultado: ResultadoReteste;
+    rotulo: string;
+    evidencia: string;
+  };
+  statusFinal: StatusVerificacao;
+  statusFinalRotulo: string;
 };
