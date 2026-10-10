@@ -14,6 +14,7 @@ import { Header } from "@/components/Header";
 import { LayoutComSidebar, type ResumoGeral } from "@/components/LayoutComSidebar";
 import { ToastViewport, useToast } from "@/components/Toast";
 import { AcoesExportacao } from "@/components/exportacao/AcoesExportacao";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import type { Aba } from "@/components/Tabs";
 import type {
   AchadoEntrada,
@@ -228,8 +229,9 @@ export default function Home() {
   const achadosSemTitulo = entrada.achados.filter((a) => !a.titulo.trim()).length;
 
   return (
-    <>
-      <Header
+    <ErrorBoundary>
+      <>
+        <Header
         aba={aba}
         onAba={setAba}
         contagem={relatorio ? { novo: relatorio.achados.length } : undefined}
@@ -616,6 +618,7 @@ export default function Home() {
           laudo v0.2 · conteúdo gerado por ia — revise antes de entregar ao cliente
         </div>
       </footer>
-    </>
+      </>
+    </ErrorBoundary>
   );
 }
