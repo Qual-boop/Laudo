@@ -19,7 +19,7 @@ const TAMANHOS: Record<Tamanho, string> = {
 };
 
 const BASE =
-  "inline-flex cursor-pointer items-center justify-center rounded-md border font-mono font-medium uppercase tracking-wider " +
+  "interativo inline-flex cursor-pointer items-center justify-center rounded-md border font-mono font-medium uppercase tracking-wider " +
   "transition-colors duration-200 " +
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-fundo " +
   "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent";

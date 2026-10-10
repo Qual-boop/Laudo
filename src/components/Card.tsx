@@ -5,6 +5,7 @@ type CardProps = {
   className?: string;
 };
 
+/** `classe="interativo"` dá a borda que acende no hover. */
 export function Card({ children, className = "" }: CardProps) {
   return (
     <div className={`print-card rounded-md border border-borda bg-superficie ${className}`}>

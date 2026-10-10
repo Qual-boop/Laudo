@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Alert } from "@/components/Alert";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { Field, Input, Select, Textarea } from "@/components/Field";
@@ -10,6 +9,7 @@ type Props = {
   achado: AchadoVerificavel;
   onCancelar: () => void;
   onSalvo: (achado: AchadoVerificavel) => void;
+  onAviso: (texto: string) => void;
 };
 
 const RESULTADOS: { valor: ResultadoReteste; rotulo: string }[] = [
@@ -22,24 +22,20 @@ function hoje(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function FormularioReteste({ achado, onCancelar, onSalvo }: Props) {
+export function FormularioReteste({ achado, onCancelar, onSalvo, onAviso }: Props) {
   const [dataReteste, setDataReteste] = useState(
     achado.data_reteste_sugerida || hoje(),
   );
   const [resultado, setResultado] = useState<ResultadoReteste>("corrigido");
   const [evidencia, setEvidencia] = useState("");
   const [enviando, setEnviando] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
 
   async function registrar() {
     if (!evidencia.trim()) {
-      setErro(
-        "Registre a evidência do reteste — é ela que comprova a correção.",
-      );
+      onAviso("Registre a evidência do reteste — é ela que comprova a correção.");
       return;
     }
 
-    setErro(null);
     setEnviando(true);
 
     try {
@@ -56,13 +52,13 @@ export function FormularioReteste({ achado, onCancelar, onSalvo }: Props) {
       const corpo = await res.json().catch(() => null);
 
       if (!res.ok) {
-        setErro(corpo?.error ?? "Não foi possível registrar o reteste.");
+        onAviso(corpo?.error ?? "Não foi possível registrar o reteste.");
         return;
       }
 
       onSalvo(corpo.achado as AchadoVerificavel);
     } catch {
-      setErro("Não foi possível conectar ao servidor. Verifique sua conexão.");
+      onAviso("Não foi possível conectar ao servidor. Verifique sua conexão.");
     } finally {
       setEnviando(false);
     }
@@ -81,7 +77,12 @@ export function FormularioReteste({ achado, onCancelar, onSalvo }: Props) {
       </header>
 
       <div className="flex flex-col gap-4 px-5 py-4">
-        {erro && <Alert tom="erro">{erro}</Alert>}
+        {resultado === "parcial" && (
+          <p className="flex items-start gap-2 rounded-md border border-media/40 bg-media/10 px-3 py-2 font-mono text-[11px] text-media">
+            <span aria-hidden="true">!</span>
+            parcial não marca como verificado — o achado continua em aberto
+          </p>
+        )}
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Data do reteste" htmlFor={`data-${achado.id}`}>
@@ -124,13 +125,6 @@ export function FormularioReteste({ achado, onCancelar, onSalvo }: Props) {
             onChange={(e) => setEvidencia(e.target.value)}
           />
         </Field>
-
-        {resultado === "parcial" && (
-          <Alert tom="erro">
-            Um reteste parcial não marca o achado como verificado — ele continua
-            em aberto.
-          </Alert>
-        )}
 
         <div className="flex flex-col gap-2 sm:flex-row">
           <Button

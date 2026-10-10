@@ -1,14 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Alert } from "@/components/Alert";
 import { Button } from "@/components/Button";
-import { Card } from "@/components/Card";
 import { Spinner } from "@/components/Spinner";
+import { EstadoVazio, ListaSkeleton } from "@/components/verificacao/PainelBase";
 import type { Relatorio, ResumoRelatorio } from "@/lib/tipos";
 
 type Props = {
   onAbrir: (relatorio: Relatorio) => void;
+  onAviso: (texto: string) => void;
+  onResumo: (relatorio: ResumoRelatorio[]) => void;
 };
 
 const RISCOS: Record<string, string> = {
@@ -18,10 +19,9 @@ const RISCOS: Record<string, string> = {
   Baixo: "text-baixa",
 };
 
-export function PainelHistorico({ onAbrir }: Props) {
+export function PainelHistorico({ onAbrir, onAviso, onResumo }: Props) {
   const [lista, setLista] = useState<ResumoRelatorio[]>([]);
   const [carregando, setCarregando] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
   const [abrindo, setAbrindo] = useState<number | null>(null);
 
   const carregar = useCallback(async () => {
@@ -29,14 +29,15 @@ export function PainelHistorico({ onAbrir }: Props) {
     try {
       const res = await fetch("/api/relatorios");
       if (!res.ok) throw new Error("falha");
-      setLista((await res.json()) as ResumoRelatorio[]);
-      setErro(null);
+      const dados = (await res.json()) as ResumoRelatorio[];
+      setLista(dados);
+      onResumo(dados);
     } catch {
-      setErro("Não foi possível carregar o histórico.");
+      onAviso("Não foi possível carregar o histórico.");
     } finally {
       setCarregando(false);
     }
-  }, []);
+  }, [onAviso, onResumo]);
 
   useEffect(() => {
     void carregar();
@@ -49,7 +50,7 @@ export function PainelHistorico({ onAbrir }: Props) {
       if (!res.ok) throw new Error("falha");
       onAbrir((await res.json()) as Relatorio);
     } catch {
-      setErro("Não foi possível abrir o relatório.");
+      onAviso("Não foi possível abrir o relatório.");
     } finally {
       setAbrindo(null);
     }
@@ -57,36 +58,33 @@ export function PainelHistorico({ onAbrir }: Props) {
 
   if (carregando) {
     return (
-      <div className="flex items-center justify-center gap-3 rounded-md border border-dashed border-borda px-6 py-16 font-mono text-xs text-texto-2">
-        <Spinner />
-        carregando histórico…
+      <div className="flex flex-col gap-5">
+        <div className="flex items-center gap-2 font-mono text-[11px] text-texto-2">
+          <Spinner />
+          carregando histórico…
+        </div>
+        <ListaSkeleton linhas={3} />
       </div>
     );
   }
 
   if (lista.length === 0) {
     return (
-      <Card className="px-6 py-14 text-center">
-        <p className="font-mono text-xs text-texto-2">
-          nenhum relatório salvo
-          <span className="animate-blink text-accent"> ▋</span>
-        </p>
-        <p className="mx-auto mt-2 max-w-md text-sm text-texto-2/70">
-          Gere um relatório na aba “Novo” e salve para guardar o histórico e
-          habilitar a verificação de correções.
-        </p>
-      </Card>
+      <EstadoVazio
+        icone="▤"
+        titulo="Nenhum relatório salvo ainda"
+        descricao="Crie o primeiro: gere o relatório na aba “Novo” e salve. Ele fica no histórico e libera a verificação de correções."
+        cta={{ rotulo: "criar relatório", href: "#" }}
+      />
     );
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      {erro && <Alert tom="erro">{erro}</Alert>}
-
+    <div className="flex flex-col gap-3">
       {lista.map((r) => (
         <article
           key={r.id}
-          className="flex flex-wrap items-center justify-between gap-4 rounded-md border border-borda bg-superficie px-5 py-4"
+          className="interativo flex flex-wrap items-center justify-between gap-4 rounded-md border border-borda bg-superficie px-5 py-4 hover:border-accent/40"
         >
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">

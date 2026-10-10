@@ -1,23 +1,25 @@
 "use client";
 
-import { useState } from "react";
-import { Alert } from "@/components/Alert";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/Button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/Card";
 import { Field, Input, Select, Textarea } from "@/components/Field";
-import { Logo } from "@/components/Logo";
 import { SeverityBadge } from "@/components/SeverityBadge";
 import { Spinner } from "@/components/Spinner";
 import { RelatorioSkeleton } from "@/components/relatorio/RelatorioSkeleton";
 import { RelatorioView } from "@/components/relatorio/RelatorioView";
 import { PainelHistorico } from "@/components/historico/PainelHistorico";
 import { PainelVerificacao } from "@/components/verificacao/PainelVerificacao";
-import { Tabs, type Aba } from "@/components/Tabs";
+import { Header } from "@/components/Header";
+import { LayoutComSidebar, type ResumoGeral } from "@/components/LayoutComSidebar";
+import { ToastViewport, useToast } from "@/components/Toast";
+import type { Aba } from "@/components/Tabs";
 import type {
   AchadoEntrada,
   Confianca,
   Relatorio,
   RelatorioEntrada,
+  ResumoRelatorio,
   Severidade,
 } from "@/lib/tipos";
 
@@ -46,11 +48,63 @@ export default function Home() {
   const [achados, setAchados] = useState<AchadoEntrada[]>([{ ...ACHADO_VAZIO }]);
 
   const [relatorio, setRelatorio] = useState<Relatorio | null>(null);
-  const [aba, setAba] = useState<Aba>("novo");
+  const [aba, setAba] = useState<Aba>("verificacao");
   const [loading, setLoading] = useState(false);
   const [salvando, setSalvando] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
-  const [aviso, setAviso] = useState<string | null>(null);
+  const [resumo, setResumo] = useState<ResumoGeral | null>(null);
+
+  const toast = useToast();
+  const { sucesso, erro: toastErro } = toast;
+
+  /** Copia texto e avisa — funciona em contexto http e https. */
+  async function copiar(texto: string, rotulo: string) {
+    try {
+      await navigator.clipboard.writeText(texto);
+      sucesso(rotulo);
+    } catch {
+      // clipboard API exige contexto seguro; cai para a seleção manual.
+      toast.aviso("Não foi possível copiar automaticamente. Selecione o texto.");
+    }
+  }
+
+  // A sidebar precisa da contagem de relatórios em qualquer aba, e o painel
+  // Histórico só monta quando está visível. Busca uma vez no mount.
+  useEffect(() => {
+    let ativo = true;
+    (async () => {
+      try {
+        const res = await fetch("/api/relatorios");
+        if (!res.ok || !ativo) return;
+        const dados = (await res.json()) as ResumoRelatorio[];
+        setResumo((atual) => ({
+          relatorios: atual?.relatorios ?? dados.length,
+          pendentes: atual?.pendentes ?? 0,
+          verificados: atual?.verificados ?? 0,
+          naoCorrigidos: atual?.naoCorrigidos ?? 0,
+        }));
+      } catch {
+        // silencioso: a sidebar mostra "—" e o painel da aba avisa
+      }
+    })();
+    return () => {
+      ativo = false;
+    };
+  }, []);
+
+  /** O painel manda a contagem completa — nada é derivado aqui. */
+  function atualizarResumo(parcial: Partial<ResumoGeral>) {
+    setResumo((atual) => ({
+      relatorios: atual?.relatorios ?? 0,
+      pendentes: atual?.pendentes ?? 0,
+      verificados: atual?.verificados ?? 0,
+      naoCorrigidos: atual?.naoCorrigidos ?? 0,
+      ...parcial,
+    }));
+  }
+
+  function atualizarResumoDeRelatorios(lista: ResumoRelatorio[]) {
+    atualizarResumo({ relatorios: lista.length });
+  }
 
   function adicionarAchado() {
     setAchados((atuais) => [...atuais, { ...ACHADO_VAZIO }]);
@@ -96,7 +150,7 @@ export default function Home() {
     const entrada = montarEntrada();
 
     if (entrada.achados.length === 0) {
-      setErro(
+      toastErro(
         "Nenhum achado tem título. Preencha o título de pelo menos um achado antes de gerar o relatório.",
       );
       return;
@@ -105,7 +159,7 @@ export default function Home() {
     const semTitulo = entrada.achados.filter((a) => !a.titulo.trim()).length;
 
     if (semTitulo > 0) {
-      setErro(
+      toastErro(
         semTitulo === 1
           ? "1 achado está sem título. O relatório usa o título como identificação (FINDING-001). Preencha-o ou remova o achado."
           : `${semTitulo} achados estão sem título. Preencha o título de cada um ou remova os que estão vazios.`,
@@ -113,8 +167,6 @@ export default function Home() {
       return;
     }
 
-    setErro(null);
-    setAviso(null);
     setLoading(true);
 
     try {
@@ -126,18 +178,18 @@ export default function Home() {
       const corpo = await res.json().catch(() => null);
 
       if (!res.ok) {
-        setErro(corpo?.error ?? "A geração falhou. Tente novamente.");
+        toastErro(corpo?.error ?? "A geração falhou. Tente novamente.");
         return;
       }
 
       if (!corpo?.achados?.length) {
-        setErro("A geração voltou sem achados. Revise os dados e tente de novo.");
+        toastErro("A geração voltou sem achados. Revise os dados e tente de novo.");
         return;
       }
 
       setRelatorio(corpo as Relatorio);
     } catch {
-      setErro("Não foi possível conectar ao servidor. Verifique sua conexão.");
+      toastErro("Não foi possível conectar ao servidor. Verifique sua conexão.");
     } finally {
       setLoading(false);
     }
@@ -146,8 +198,6 @@ export default function Home() {
   async function salvar() {
     if (!relatorio) return;
 
-    setErro(null);
-    setAviso(null);
     setSalvando(true);
 
     try {
@@ -159,15 +209,15 @@ export default function Home() {
       const corpo = await res.json().catch(() => null);
 
       if (!res.ok) {
-        setErro(corpo?.error ?? "Não foi possível salvar o relatório.");
+        toastErro(corpo?.error ?? "Não foi possível salvar o relatório.");
         return;
       }
 
-      setAviso(
+      sucesso(
         `Relatório salvo com ID #${corpo.id}. Os achados já estão na aba Verificação.`,
       );
     } catch {
-      setErro("Não foi possível conectar ao servidor. Verifique sua conexão.");
+      toastErro("Não foi possível conectar ao servidor. Verifique sua conexão.");
     } finally {
       setSalvando(false);
     }
@@ -178,48 +228,39 @@ export default function Home() {
 
   return (
     <>
-      <header className="no-print sticky top-0 z-10 border-b border-borda bg-fundo/85 backdrop-blur-md">
-        <div className="mx-auto flex max-w-4xl items-center gap-4 px-4 py-6 sm:px-6">
-          <Logo className="h-10 w-10 shrink-0 text-accent" />
-          <div className="min-w-0">
-            <h1 className="text-xl font-bold tracking-tight text-texto">Laudo</h1>
-            <p className="mt-0.5 font-mono text-[10px] uppercase tracking-widest text-texto-2">
-              gerador de relatório de pentest
-            </p>
-          </div>
-        </div>
-      </header>
+      <Header
+        aba={aba}
+        onAba={setAba}
+        contagem={relatorio ? { novo: relatorio.achados.length } : undefined}
+        pendentes={resumo?.pendentes}
+      />
 
-      <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
-        <Tabs
-          ativa={aba}
-          onChange={setAba}
-          contagem={relatorio ? { novo: relatorio.achados.length } : undefined}
-        />
+      <ToastViewport toasts={toast.toasts} onDisparar={toast.remover} />
 
+      <main className="flex-1">
+        <LayoutComSidebar resumo={resumo}>
         {aba === "verificacao" && (
-          <div className="mt-6">
-            <PainelVerificacao />
-          </div>
+          <PainelVerificacao
+            onCopiar={copiar}
+            onAviso={toast.erro}
+            onResumo={atualizarResumo}
+          />
         )}
 
         {aba === "historico" && (
-          <div className="mt-6">
-            <PainelHistorico
-              onAbrir={(r) => {
-                setRelatorio(r);
-                setAba("novo");
-              }}
-            />
-          </div>
+          <PainelHistorico
+            onAviso={toast.erro}
+            onResumo={atualizarResumoDeRelatorios}
+            onAbrir={(r) => {
+              setRelatorio(r);
+              setAba("novo");
+            }}
+          />
         )}
 
         {aba === "novo" && (
           <>
-        <div className="no-print mt-6 flex flex-col gap-5">
-          {erro && <Alert tom="erro">{erro}</Alert>}
-          {aviso && <Alert tom="sucesso">{aviso}</Alert>}
-
+        <div className="no-print flex flex-col gap-5">
           <Card>
             <CardHeader>
               <CardTitle>Dados do engagement</CardTitle>
@@ -561,6 +602,7 @@ export default function Home() {
         )}
           </>
         )}
+        </LayoutComSidebar>
       </main>
 
       <footer className="no-print border-t border-borda">

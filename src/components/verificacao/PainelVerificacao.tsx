@@ -1,13 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Alert } from "@/components/Alert";
-import { Card } from "@/components/Card";
 import { Spinner } from "@/components/Spinner";
 import { AchadoVerificacaoCard } from "@/components/verificacao/AchadoVerificacaoCard";
 import { DeltaRelatorio } from "@/components/verificacao/DeltaRelatorio";
 import { FormularioReteste } from "@/components/verificacao/FormularioReteste";
-import { BarraProgresso } from "@/components/verificacao/PainelBase";
+import {
+  BarraProgresso,
+  EstadoVazio,
+  ListaSkeleton,
+} from "@/components/verificacao/PainelBase";
 import { montarDelta } from "@/lib/verificacao";
 import type { AchadoVerificavel, DeltaRelatorio as DadosDelta } from "@/lib/tipos";
 
@@ -20,92 +22,123 @@ const FILTROS: { id: Filtro; rotulo: string }[] = [
   { id: "nao-corrigido", rotulo: "não corrigidos" },
 ];
 
-export function PainelVerificacao() {
+type Props = {
+  onCopiar: (texto: string, rotulo: string) => void;
+  onAviso: (texto: string) => void;
+  onResumo: (resumo: {
+    pendentes: number;
+    verificados: number;
+    naoCorrigidos: number;
+  }) => void;
+};
+
+export function PainelVerificacao({ onCopiar, onAviso, onResumo }: Props) {
   const [achados, setAchados] = useState<AchadoVerificavel[]>([]);
   const [carregando, setCarregando] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
   const [editando, setEditando] = useState<number | null>(null);
   const [deltaDe, setDeltaDe] = useState<DadosDelta | null>(null);
   const [filtro, setFiltro] = useState<Filtro>("todos");
 
-  const carregar = useCallback(async () => {
-    setCarregando(true);
-    try {
-      const res = await fetch("/api/verificacao");
-      if (!res.ok) throw new Error("falha");
-      setAchados((await res.json()) as AchadoVerificavel[]);
-      setErro(null);
-    } catch {
-      setErro("Não foi possível carregar os achados verificáveis.");
-    } finally {
-      setCarregando(false);
-    }
-  }, []);
+  const carregar = useCallback(
+    async (silencioso = false) => {
+      if (!silencioso) setCarregando(true);
+      try {
+        const res = await fetch("/api/verificacao");
+        if (!res.ok) throw new Error("falha");
+        const dados = (await res.json()) as AchadoVerificavel[];
+        setAchados(dados);
+        contar(dados);
+      } catch {
+        onAviso("Não foi possível carregar os achados verificáveis.");
+      } finally {
+        setCarregando(false);
+      }
+    },
+    [onAviso, onResumo],
+  );
 
   useEffect(() => {
     void carregar();
   }, [carregar]);
 
-  function aoSalvar(atualizado: AchadoVerificavel) {
-    setAchados((atuais) => atuais.map((a) => (a.id === atualizado.id ? atualizado : a)));
-    setEditando(null);
+  function contar(lista: AchadoVerificavel[]) {
+    onResumo({
+      pendentes: lista.filter((a) => a.status === "pendente").length,
+      verificados: lista.filter((a) => a.status === "verificado").length,
+      naoCorrigidos: lista.filter((a) => a.status === "nao-corrigido").length,
+    });
+  }
 
+  function aoSalvar(atualizado: AchadoVerificavel) {
+    const proxima = achados.map((a) =>
+      a.id === atualizado.id ? atualizado : a,
+    );
+    setAchados(proxima);
+    contar(proxima);
+    setEditando(null);
     const delta = montarDelta(atualizado);
     if (delta) setDeltaDe(delta);
   }
 
   const total = achados.length;
   const verificados = achados.filter((a) => a.status === "verificado").length;
-  const visiveis = filtro === "todos" ? achados : achados.filter((a) => a.status === filtro);
+  const visiveis =
+    filtro === "todos" ? achados : achados.filter((a) => a.status === filtro);
 
   if (carregando) {
     return (
-      <div className="flex items-center justify-center gap-3 rounded-md border border-dashed border-borda px-6 py-16 font-mono text-xs text-texto-2">
-        <Spinner />
-        carregando achados…
+      <div className="flex flex-col gap-5">
+        <div className="flex items-center gap-2 font-mono text-[11px] text-texto-2">
+          <Spinner />
+          verificando achados…
+        </div>
+        <BarraProgresso verificados={0} total={0} />
+        <ListaSkeleton linhas={3} />
       </div>
     );
   }
 
   if (total === 0) {
     return (
-      <Card className="px-6 py-14 text-center">
-        <p className="font-mono text-xs text-texto-2">
-          nenhum achado para verificar
-          <span className="animate-blink text-accent"> ▋</span>
-        </p>
-        <p className="mx-auto mt-2 max-w-md text-sm text-texto-2/70">
-          Os achados entram no painel assim que um relatório é salvo. Vá para a
-          aba “Novo”, gere o relatório e clique em “salvar relatório”.
-        </p>
-      </Card>
+      <EstadoVazio
+        icone="◷"
+        titulo="Nenhum achado para verificar"
+        descricao="Os achados entram no painel assim que um relatório é salvo. Gere o relatório na aba “Novo” e clique em “salvar relatório”."
+        cta={{ rotulo: "ir para novo", href: "#", onClick: undefined }}
+      />
     );
   }
 
   return (
     <div className="flex flex-col gap-5">
-      {erro && <Alert tom="erro">{erro}</Alert>}
-
       <BarraProgresso verificados={verificados} total={total} />
 
-      <div className="no-print flex flex-wrap items-center gap-2">
-        <span className="font-mono text-[10px] uppercase tracking-widest text-texto-2">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="mr-1 font-mono text-[10px] uppercase tracking-widest text-texto-2">
           filtro
         </span>
-        {FILTROS.map((f) => (
-          <button
-            key={f.id}
-            type="button"
-            onClick={() => setFiltro(f.id)}
-            className={`cursor-pointer rounded-sm border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors duration-200 ${
-              filtro === f.id
-                ? "border-accent text-accent"
-                : "border-borda text-texto-2 hover:border-texto-2/50 hover:text-texto"
-            }`}
-          >
-            {f.rotulo}
-          </button>
-        ))}
+        {FILTROS.map((f) => {
+          const n =
+            f.id === "todos" ? total : achados.filter((a) => a.status === f.id).length;
+          const ativo = filtro === f.id;
+
+          return (
+            <button
+              key={f.id}
+              type="button"
+              onClick={() => setFiltro(f.id)}
+              aria-pressed={ativo}
+              className={`interativo cursor-pointer rounded-sm border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider ${
+                ativo
+                  ? "border-accent text-accent"
+                  : "border-borda text-texto-2 hover:border-texto-2/50 hover:text-texto"
+              }`}
+            >
+              {f.rotulo}
+              <span className="ml-1.5 opacity-60">{n}</span>
+            </button>
+          );
+        })}
       </div>
 
       {deltaDe && (
@@ -113,9 +146,11 @@ export function PainelVerificacao() {
       )}
 
       {visiveis.length === 0 ? (
-        <Card className="px-6 py-10 text-center text-sm text-texto-2">
-          Nenhum achado com esse status.
-        </Card>
+        <EstadoVazio
+          icone="⌕"
+          titulo="Nada com esse filtro"
+          descricao="Nenhum achado está neste estado no momento."
+        />
       ) : (
         visiveis.map((achado) =>
           editando === achado.id ? (
@@ -124,11 +159,13 @@ export function PainelVerificacao() {
               achado={achado}
               onCancelar={() => setEditando(null)}
               onSalvo={aoSalvar}
+              onAviso={onAviso}
             />
           ) : (
             <AchadoVerificacaoCard
               key={achado.id}
               achado={achado}
+              onCopiar={onCopiar}
               onRegistrar={(a) => {
                 setDeltaDe(null);
                 setEditando(a.id);

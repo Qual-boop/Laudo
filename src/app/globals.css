@@ -30,6 +30,8 @@
 
   /* Animações */
   --animate-blink: blink 1.05s step-end infinite;
+  --animate-toast-in: toast-in 180ms ease-out;
+  --animate-ping-suave: ping-suave 2s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
 @keyframes blink {
@@ -39,6 +41,29 @@
   }
   50% {
     opacity: 0;
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes ping-suave {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-accent) 60%, transparent);
+  }
+  50% {
+    opacity: 0.75;
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-accent) 0%, transparent);
   }
 }
 
@@ -76,6 +101,42 @@ select option {
 input::placeholder,
 textarea::placeholder {
   color: color-mix(in oklab, var(--color-texto-2) 50%, transparent);
+}
+
+/* Micro-interações: leve elevação nos botões, acendo de borda nos cards.
+   180ms em tudo, para o toque parecer imediato sem ser abrupto. */
+.interativo {
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+.interativo:hover {
+  transform: scale(1.02);
+}
+
+.interativo:active {
+  transform: scale(0.99);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .interativo,
+  .interativo:hover,
+  .interativo:active {
+    transform: none;
+    transition: none;
+  }
+
+  .animate-toast-in,
+  .animate-ping-suave,
+  .animate-blink,
+  .animate-spin,
+  .animate-pulse {
+    animation: none !important;
+  }
 }
 
 * {

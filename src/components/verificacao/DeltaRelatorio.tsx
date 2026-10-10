@@ -1,6 +1,6 @@
 import { Card } from "@/components/Card";
 import { SeverityBadge } from "@/components/SeverityBadge";
-import { StatusBadge } from "@/components/verificacao/PainelBase";
+import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/Button";
 import { ROTULO_CONFIANCA } from "@/lib/verificacao";
 import type { DeltaRelatorio as DadosDelta } from "@/lib/tipos";
