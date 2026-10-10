@@ -110,11 +110,24 @@ export function useToast() {
     };
   }, []);
 
+  const sucesso = useCallback(
+    (texto: string) => disparar("sucesso", texto),
+    [disparar],
+  );
+  const erro = useCallback(
+    (texto: string) => disparar("erro", texto),
+    [disparar],
+  );
+  const aviso = useCallback(
+    (texto: string) => disparar("aviso", texto),
+    [disparar],
+  );
+
   return {
     toasts,
     remover,
-    sucesso: (texto: string) => disparar("sucesso", texto),
-    erro: (texto: string) => disparar("erro", texto),
-    aviso: (texto: string) => disparar("aviso", texto),
+    sucesso,
+    erro,
+    aviso,
   };
 }

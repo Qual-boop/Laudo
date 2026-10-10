@@ -24,23 +24,31 @@ export function PainelHistorico({ onAbrir, onAviso, onResumo }: Props) {
   const [carregando, setCarregando] = useState(true);
   const [abrindo, setAbrindo] = useState<number | null>(null);
 
-  const carregar = useCallback(async () => {
-    setCarregando(true);
-    try {
-      const res = await fetch("/api/relatorios");
-      if (!res.ok) throw new Error("falha");
-      const dados = (await res.json()) as ResumoRelatorio[];
-      setLista(dados);
-      onResumo(dados);
-    } catch {
-      onAviso("Não foi possível carregar o histórico.");
-    } finally {
-      setCarregando(false);
-    }
-  }, [onAviso, onResumo]);
+  const carregar = useCallback(
+    async (signal?: AbortSignal) => {
+      setCarregando(true);
+      try {
+        const res = await fetch("/api/relatorios", { signal });
+        if (!res.ok) throw new Error("falha");
+        const dados = (await res.json()) as ResumoRelatorio[];
+        if (signal?.aborted) return;
+        setLista(dados);
+        onResumo(dados);
+      } catch (e) {
+        // Abort no cleanup (troca de aba / desmontagem) não é erro.
+        if (e instanceof DOMException && e.name === "AbortError") return;
+        onAviso("Não foi possível carregar o histórico.");
+      } finally {
+        if (!signal?.aborted) setCarregando(false);
+      }
+    },
+    [onAviso, onResumo],
+  );
 
   useEffect(() => {
-    void carregar();
+    const controlador = new AbortController();
+    void carregar(controlador.signal);
+    return () => controlador.abort();
   }, [carregar]);
 
   async function abrir(id: number) {

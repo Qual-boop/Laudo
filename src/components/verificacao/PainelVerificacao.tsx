@@ -40,25 +40,30 @@ export function PainelVerificacao({ onCopiar, onAviso, onResumo }: Props) {
   const [filtro, setFiltro] = useState<Filtro>("todos");
 
   const carregar = useCallback(
-    async (silencioso = false) => {
+    async (signal?: AbortSignal, silencioso = false) => {
       if (!silencioso) setCarregando(true);
       try {
-        const res = await fetch("/api/verificacao");
+        const res = await fetch("/api/verificacao", { signal });
         if (!res.ok) throw new Error("falha");
         const dados = (await res.json()) as AchadoVerificavel[];
+        if (signal?.aborted) return;
         setAchados(dados);
         contar(dados);
-      } catch {
+      } catch (e) {
+        // Abort no cleanup (troca de aba / desmontagem) não é erro.
+        if (e instanceof DOMException && e.name === "AbortError") return;
         onAviso("Não foi possível carregar os achados verificáveis.");
       } finally {
-        setCarregando(false);
+        if (!signal?.aborted) setCarregando(false);
       }
     },
     [onAviso, onResumo],
   );
 
   useEffect(() => {
-    void carregar();
+    const controlador = new AbortController();
+    void carregar(controlador.signal);
+    return () => controlador.abort();
   }, [carregar]);
 
   function contar(lista: AchadoVerificavel[]) {

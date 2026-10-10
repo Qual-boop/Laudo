@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useCallback, useEffect, useState, Suspense } from "react";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/Button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/Card";
@@ -102,18 +102,21 @@ export default function Home() {
   const [resumo, setResumo] = useState<ResumoGeral | null>(null);
 
   const toast = useToast();
-  const { sucesso, erro: toastErro } = toast;
+  const { sucesso, erro: toastErro, aviso: toastAviso } = toast;
 
   /** Copia texto e avisa — funciona em contexto http e https. */
-  async function copiar(texto: string, rotulo: string) {
-    try {
-      await navigator.clipboard.writeText(texto);
-      sucesso(rotulo);
-    } catch {
-      // clipboard API exige contexto seguro; cai para a seleção manual.
-      toast.aviso("Não foi possível copiar automaticamente. Selecione o texto.");
-    }
-  }
+  const copiar = useCallback(
+    async (texto: string, rotulo: string) => {
+      try {
+        await navigator.clipboard.writeText(texto);
+        sucesso(rotulo);
+      } catch {
+        // clipboard API exige contexto seguro; cai para a seleção manual.
+        toastAviso("Não foi possível copiar automaticamente. Selecione o texto.");
+      }
+    },
+    [sucesso, toastAviso],
+  );
 
   // A sidebar precisa da contagem de relatórios em qualquer aba, e o painel
   // Histórico só monta quando está visível. Busca uma vez no mount.
@@ -140,7 +143,7 @@ export default function Home() {
   }, []);
 
   /** O painel manda a contagem completa — nada é derivado aqui. */
-  function atualizarResumo(parcial: Partial<ResumoGeral>) {
+  const atualizarResumo = useCallback((parcial: Partial<ResumoGeral>) => {
     setResumo((atual) => ({
       relatorios: atual?.relatorios ?? 0,
       pendentes: atual?.pendentes ?? 0,
@@ -148,11 +151,20 @@ export default function Home() {
       naoCorrigidos: atual?.naoCorrigidos ?? 0,
       ...parcial,
     }));
-  }
+  }, []);
 
-  function atualizarResumoDeRelatorios(lista: ResumoRelatorio[]) {
-    atualizarResumo({ relatorios: lista.length });
-  }
+  const atualizarResumoDeRelatorios = useCallback(
+    (lista: ResumoRelatorio[]) => {
+      atualizarResumo({ relatorios: lista.length });
+    },
+    [atualizarResumo],
+  );
+
+  /** Abre um relatório do histórico na aba "novo". */
+  const abrirRelatorio = useCallback((r: Relatorio) => {
+    setRelatorio(r);
+    setAba("novo");
+  }, []);
 
   function adicionarAchado() {
     setAchados((atuais) => [...atuais, { ...ACHADO_VAZIO }]);
@@ -299,7 +311,7 @@ export default function Home() {
           >
             <PainelVerificacao
               onCopiar={copiar}
-              onAviso={toast.erro}
+              onAviso={toastErro}
               onResumo={atualizarResumo}
             />
           </Suspense>
@@ -314,12 +326,9 @@ export default function Home() {
             }
           >
             <PainelHistorico
-              onAviso={toast.erro}
+              onAviso={toastErro}
               onResumo={atualizarResumoDeRelatorios}
-              onAbrir={(r) => {
-                setRelatorio(r);
-                setAba("novo");
-              }}
+              onAbrir={abrirRelatorio}
             />
           </Suspense>
         )}
