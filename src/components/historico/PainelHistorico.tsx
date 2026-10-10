@@ -106,14 +106,23 @@ export function PainelHistorico({ onAbrir, onAviso, onResumo }: Props) {
             </p>
           </div>
 
-          <Button
-            variante="secundaria"
-            tamanho="sm"
-            onClick={() => abrir(r.id)}
-            disabled={abrindo === r.id}
-          >
-            {abrindo === r.id ? "abrindo..." : "abrir"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <a
+              href={`/certificado/${r.id}`}
+              aria-label={`Certificado de correção do relatório ${r.titulo}`}
+              className="interativo inline-flex items-center justify-center rounded-md border border-borda px-3 py-1.5 font-mono text-[10px] font-medium uppercase tracking-wider text-texto-2 hover:border-accent hover:text-accent"
+            >
+              certificado
+            </a>
+            <Button
+              variante="secundaria"
+              tamanho="sm"
+              onClick={() => abrir(r.id)}
+              disabled={abrindo === r.id}
+            >
+              {abrindo === r.id ? "abrindo..." : "abrir"}
+            </Button>
+          </div>
         </article>
       ))}
     </div>

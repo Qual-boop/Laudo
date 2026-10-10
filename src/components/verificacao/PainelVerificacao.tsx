@@ -84,6 +84,13 @@ export function PainelVerificacao({ onCopiar, onAviso, onResumo }: Props) {
   const verificados = achados.filter((a) => a.status === "verificado").length;
   const visiveis =
     filtro === "todos" ? achados : achados.filter((a) => a.status === filtro);
+  const certificados = [
+    ...new Set(
+      achados
+        .map((a) => a.relatorio_id)
+        .filter((id): id is number => typeof id === "number"),
+    ),
+  ].sort((a, b) => b - a);
 
   if (carregando) {
     return (
@@ -112,6 +119,27 @@ export function PainelVerificacao({ onCopiar, onAviso, onResumo }: Props) {
   return (
     <div className="flex flex-col gap-5">
       <BarraProgresso verificados={verificados} total={total} />
+
+      {total > 0 && verificados === total && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-accent/40 bg-accent/10 px-5 py-4">
+          <p className="text-sm text-texto">
+            Ciclo concluído — todos os achados foram verificados. Emita o
+            certificado de correção.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {certificados.map((id) => (
+              <a
+                key={id}
+                href={`/certificado/${id}`}
+                aria-label={`Abrir certificado de correção do relatório ${id}`}
+                className="interativo inline-flex items-center justify-center rounded-md border border-accent px-3 py-1.5 font-mono text-[10px] font-medium uppercase tracking-wider text-accent hover:bg-accent hover:text-fundo"
+              >
+                certificado #{id}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="mr-1 font-mono text-[10px] uppercase tracking-widest text-texto-2">
