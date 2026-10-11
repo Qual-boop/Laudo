@@ -56,7 +56,45 @@ curl -X DELETE http://localhost:3000/api/v1/auth/token \
 ## Endpoints
 
 Todos exigem auth (exceto os de `/api/v1/auth/*`). Multi-tenant: cada query
-filtra por `usuario_id` do JWT.
+filtra por `usuario_id` do JWT. Planos: `free` (3 relatórios/mês, 5 achados,
+10 retestes, sem Jira/GitHub nem certificado), `pro` e `team` ilimitados.
+Limite atingido → **402** `{ error, code: "LIMITE_PLANO", recurso, usados, limite }`.
+
+### `GET /api/v1/uso` — plano + consumo do mês
+
+```bash
+curl http://localhost:3000/api/v1/uso -H 'Authorization: Bearer eyJ...'
+# 200 {"plano":"free","mes":"2026-10","relatorios":{"usados":2,"limite":3},...}
+```
+
+### `GET /api/v1/assinatura` — plano efetivo (+ trial/expiração)
+
+```bash
+curl http://localhost:3000/api/v1/assinatura -H 'Authorization: Bearer eyJ...'
+# 200 {"plano":"pro","expiraEm":null,"subscriptionId":"sub_...","trial":false}
+```
+
+### `POST /api/v1/assinatura/testar-pro` — trial Pro 30 dias, sem cartão
+
+Uma vez por conta free. `201 {"plano":"pro","expiraEm":"...","trial":true}`.
+
+### `POST /api/v1/checkout` — sessão do Stripe Checkout
+
+```bash
+curl -X POST http://localhost:3000/api/v1/checkout \
+  -H 'Authorization: Bearer eyJ...' -H 'Content-Type: application/json' \
+  -d '{"plano":"pro","periodo":"mensal"}'
+# 200 {"url":"https://checkout.stripe.com/..."}
+```
+
+### `POST /api/v1/portal` — Stripe Customer Portal (faturas, cartão)
+
+`200 {"url":"https://billing.stripe.com/..."}`. Sem assinatura → 409.
+
+### `POST /api/v1/webhook/stripe` — webhook (HMAC `STRIPE_WEBHOOK_SECRET`)
+
+Eventos: `checkout.session.completed` (vira pro/team),
+`customer.subscription.updated/deleted` (renova expira ou volta p/ free).
 
 ### `POST /api/v1/gerar` — gerar relatório via IA
 
