@@ -412,11 +412,11 @@ function CertificadoSkeleton() {
       aria-label="Carregando certificado"
       className="flex flex-col gap-4 rounded-md border border-borda bg-superficie p-6 sm:p-10"
     >
-      <div className="h-3 w-40 animate-pulse rounded-sm bg-borda" />
-      <div className="h-7 w-2/3 animate-pulse rounded-sm bg-borda" />
-      <div className="h-3 w-1/2 animate-pulse rounded-sm bg-borda/60" />
-      <div className="mt-4 h-32 w-full animate-pulse rounded-md bg-borda/50" />
-      <div className="h-16 w-full animate-pulse rounded-md bg-borda/40" />
+      <div className="h-3 w-40 shimmer rounded-sm bg-borda" />
+      <div className="h-7 w-2/3 shimmer rounded-sm bg-borda" />
+      <div className="h-3 w-1/2 shimmer rounded-sm bg-borda/60" />
+      <div className="mt-4 h-32 w-full shimmer rounded-md bg-borda/50" />
+      <div className="h-16 w-full shimmer rounded-md bg-borda/40" />
     </div>
   );
 }

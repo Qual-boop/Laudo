@@ -86,12 +86,12 @@ export function Onboarding({ alreadyShown }: OnboardingProps = {}) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-fundo/80 p-4 backdrop-blur-md"
       role="dialog"
       aria-modal="true"
       aria-label={`Onboarding — ${etapaAtual.titulo}`}
     >
-      <div className="bg-texto-2/80 backdrop-blur-sm rounded-md w-full max-w-md border border-borda p-6">
+      <div className="glass w-full max-w-md rounded-xl p-6 shadow-[0_8px_60px_-12px_var(--color-accent)]">
         <Card className="p-6">
           <h3 className="text-accent text-[13px] uppercase tracking-widest mb-4">
             {etapaAtual.titulo}

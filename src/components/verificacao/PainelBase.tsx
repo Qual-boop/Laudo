@@ -68,7 +68,7 @@ export function ListaSkeleton({ linhas = 3 }: { linhas?: number }) {
       {Array.from({ length: linhas }).map((_, i) => (
         <div
           key={i}
-          className="animate-pulse rounded-md border border-borda bg-superficie p-4"
+          className="shimmer rounded-md border border-borda bg-superficie p-4"
         >
           <div className="flex items-center gap-2">
             <div className="h-3 w-4 rounded-sm bg-borda" />

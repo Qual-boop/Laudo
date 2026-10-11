@@ -64,7 +64,7 @@ export function AchadoVerificacaoCard({ achado, onRegistrar, onVerDelta, onCopia
       : null;
 
   return (
-    <article className="interativo rounded-md border border-borda bg-superficie hover:border-texto-2/40">
+    <article className="interativo brilho-hover rounded-xl border border-borda bg-superficie">
       <div className="flex flex-wrap items-start justify-between gap-3 px-5 py-4">
         <div className="flex min-w-0 flex-1 items-start gap-3">
           <span

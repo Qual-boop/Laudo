@@ -16,7 +16,8 @@ export function Tabs({ ativa, onChange, contagem }: Props) {
   return (
     <div
       role="tablist"
-      className="no-print flex flex-col gap-1 border-b border-borda sm:flex-row sm:gap-2"
+      aria-label="Seções do painel"
+      className="no-print flex flex-col gap-1 rounded-xl border border-borda bg-superficie/60 p-1 backdrop-blur-sm sm:flex-row sm:gap-1"
     >
       {ABAS.map((aba) => {
         const selecionada = ativa === aba.id;
@@ -30,10 +31,10 @@ export function Tabs({ ativa, onChange, contagem }: Props) {
             aria-selected={selecionada}
             title={aba.dica}
             onClick={() => onChange(aba.id)}
-            className={`-mb-px flex cursor-pointer items-center gap-2 border-b-2 px-4 py-2.5 font-mono text-[11px] uppercase tracking-wider transition-colors duration-200 ${
+            className={`flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 font-mono text-[11px] uppercase tracking-wider transition-all duration-200 active:scale-[0.98] ${
               selecionada
-                ? "border-accent text-accent"
-                : "border-transparent text-texto-2 hover:border-borda hover:text-texto"
+                ? "bg-accent/15 text-accent shadow-[inset_0_0_0_1px_var(--color-accent)]"
+                : "text-texto-2 hover:bg-superficie-2 hover:text-texto"
             }`}
           >
             {aba.rotulo}

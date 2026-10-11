@@ -92,7 +92,7 @@ export function PainelHistorico({ onAbrir, onAviso, onResumo }: Props) {
       {lista.map((r) => (
         <article
           key={r.id}
-          className="interativo flex flex-wrap items-center justify-between gap-4 rounded-md border border-borda bg-superficie px-5 py-4 hover:border-accent/40"
+          className="interativo brilho-hover flex flex-wrap items-center justify-between gap-4 rounded-xl border border-borda bg-superficie px-5 py-4"
         >
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">

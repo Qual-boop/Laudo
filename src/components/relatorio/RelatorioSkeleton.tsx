@@ -32,11 +32,11 @@ export function RelatorioSkeleton() {
         </ul>
 
         <div className="flex flex-col gap-2.5 pt-2">
-          <div className="h-3 w-full animate-pulse rounded-sm bg-borda" />
-          <div className="h-3 w-11/12 animate-pulse rounded-sm bg-borda" />
-          <div className="h-3 w-4/5 animate-pulse rounded-sm bg-borda" />
-          <div className="mt-4 h-24 w-full animate-pulse rounded-md bg-borda/60" />
-          <div className="h-3 w-2/3 animate-pulse rounded-sm bg-borda" />
+          <div className="h-3 w-full shimmer rounded-sm bg-borda" />
+          <div className="h-3 w-11/12 shimmer rounded-sm bg-borda" />
+          <div className="h-3 w-4/5 shimmer rounded-sm bg-borda" />
+          <div className="mt-4 h-24 w-full shimmer rounded-md bg-borda/60" />
+          <div className="h-3 w-2/3 shimmer rounded-sm bg-borda" />
         </div>
 
         <p className="font-mono text-[11px] text-texto-2/60">

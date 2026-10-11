@@ -24,7 +24,7 @@ export function Header({ aba, onAba, contagem, pendentes }: Props) {
           </span>
         </div>
 
-        <div className="order-3 -mb-3.5 w-full border-b border-borda sm:order-none sm:mb-0 sm:w-auto sm:border-0">
+        <div className="order-3 w-full sm:order-none sm:w-auto">
           <Tabs ativa={aba} onChange={onAba} contagem={contagem} />
         </div>
 
@@ -36,7 +36,7 @@ export function Header({ aba, onAba, contagem, pendentes }: Props) {
           )}
           {sessao?.user?.name && (
             <span
-              className="hidden max-w-32 truncate text-xs text-texto-2 sm:inline"
+              className="hidden max-w-32 truncate rounded-full border border-borda bg-superficie px-3 py-1 text-xs text-texto-2 sm:inline"
               title={sessao.user.email ?? undefined}
             >
               {sessao.user.name}
