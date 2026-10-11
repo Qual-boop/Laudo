@@ -371,7 +371,7 @@ function CertificadoPendente({ certificado }: { certificado: Certificado }) {
 
         <div className="flex flex-wrap items-center gap-3">
           <a
-            href="/"
+            href="/painel"
             className="interativo inline-flex cursor-pointer items-center justify-center rounded-md border border-accent px-4 py-2 font-mono text-[11px] uppercase tracking-wider text-accent hover:bg-accent hover:text-fundo"
           >
             concluir a verificação
@@ -396,7 +396,7 @@ function Pendencia({ titulo, children }: { titulo: string; children: ReactNode }
         {children}
       </p>
       <a
-        href="/"
+        href="/painel"
         className="interativo mt-6 inline-flex cursor-pointer items-center justify-center rounded-md border border-accent px-4 py-2 font-mono text-[11px] uppercase tracking-wider text-accent hover:bg-accent hover:text-fundo"
       >
         voltar

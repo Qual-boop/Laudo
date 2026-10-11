@@ -10,11 +10,14 @@ import { getToken } from "next-auth/jwt";
  * JWT do cookie — jose é Edge-safe.
  */
 
-/** Prefixos públicos (sem login). Todo o resto exige sessão válida. */
+/** Prefixos/páginas públicas (sem login). O painel exige sessão válida. */
 const PUBLICO = [
+  "/",
   "/login",
   "/cadastro",
   "/apresentacao",
+  "/termos",
+  "/privacidade",
   "/api/auth",
   "/api/v1/auth",
   "/icon.svg",
@@ -73,7 +76,12 @@ export async function middleware(req: NextRequest) {
   }
 
   // API responde 401 JSON dentro da rota (via exigirUsuario) — aqui só páginas.
-  if (!logado && (pathname === "/" || pathname.startsWith("/certificado"))) {
+  if (
+    !logado &&
+    (pathname === "/painel" ||
+      pathname.startsWith("/painel/") ||
+      pathname.startsWith("/certificado"))
+  ) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
@@ -81,7 +89,7 @@ export async function middleware(req: NextRequest) {
 
   if (logado && (pathname === "/login" || pathname === "/cadastro")) {
     const url = req.nextUrl.clone();
-    url.pathname = "/";
+    url.pathname = "/painel";
     return NextResponse.redirect(url);
   }
 

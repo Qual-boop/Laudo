@@ -47,7 +47,7 @@ export default function PaginaCadastro() {
         roteador.push("/login");
         return;
       }
-      roteador.push("/");
+      roteador.push("/painel");
       roteador.refresh();
     } catch {
       setErro("Não foi possível conectar ao servidor.");

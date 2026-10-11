@@ -1,702 +1,561 @@
-"use client";
+import type { Metadata } from "next";
+import { Logo } from "@/components/Logo";
+import { TerminalBar } from "@/components/TerminalBar";
 
-import { useCallback, useEffect, useState, Suspense } from "react";
-import dynamic from "next/dynamic";
-import { Button } from "@/components/Button";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/Card";
-import { Field, Input, Select, Textarea } from "@/components/Field";
-import { SeverityBadge } from "@/components/SeverityBadge";
-import { Spinner } from "@/components/Spinner";
-import { RelatorioSkeleton } from "@/components/relatorio/RelatorioSkeleton";
-import { Header } from "@/components/Header";
-import { LayoutComSidebar, type ResumoGeral } from "@/components/LayoutComSidebar";
-import { ToastViewport, useToast } from "@/components/Toast";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
-
-// Componentes pesados carregados sob demanda (code splitting).
-// `ssr: false` porque todos dependem de APIs do browser ou de estado
-// interativo que só faz sentido no cliente.
-const Onboarding = dynamic(
-  () => import("@/components/Onboarding").then((mod) => mod.Onboarding),
-  { ssr: false },
-);
-const PainelHistorico = dynamic(
-  () =>
-    import("@/components/historico/PainelHistorico").then(
-      (mod) => mod.PainelHistorico,
-    ),
-  {
-    ssr: false,
-    loading: () => (
-      <p className="font-mono text-xs text-texto-2">carregando histórico…</p>
-    ),
-  },
-);
-const PainelVerificacao = dynamic(
-  () =>
-    import("@/components/verificacao/PainelVerificacao").then(
-      (mod) => mod.PainelVerificacao,
-    ),
-  {
-    ssr: false,
-    loading: () => (
-      <p className="font-mono text-xs text-texto-2">carregando verificação…</p>
-    ),
-  },
-);
-const AcoesExportacao = dynamic(
-  () =>
-    import("@/components/exportacao/AcoesExportacao").then(
-      (mod) => mod.AcoesExportacao,
-    ),
-  { ssr: false },
-);
-const RelatorioView = dynamic(
-  () =>
-    import("@/components/relatorio/RelatorioView").then(
-      (mod) => mod.RelatorioView,
-    ),
-  {
-    ssr: false,
-    loading: () => <RelatorioSkeleton />,
-  },
-);
-import type { Aba } from "@/components/Tabs";
-import type {
-  AchadoEntrada,
-  Confianca,
-  Relatorio,
-  RelatorioEntrada,
-  ResumoRelatorio,
-  Severidade,
-} from "@/lib/tipos";
-
-const SEVERIDADES: Severidade[] = ["Critica", "Alta", "Media", "Baixa"];
-const CONFIANCAS: Confianca[] = ["Alta", "Media", "Baixa"];
-
-const ACHADO_VAZIO: AchadoEntrada = {
-  titulo: "",
-  severidade: "Media",
-  cwe: "",
-  descricao: "",
-  evidencia: "",
-  confianca: "Media",
-  dataRetesteSugerida: "",
+export const metadata: Metadata = {
+  title: "Laudo — Prove que as correções funcionaram",
+  description:
+    "Plataforma de assurance que fecha o ciclo do pentest: gera o relatório, acompanha o reteste e entrega o certificado de que as falhas foram corrigidas.",
 };
 
-export default function Home() {
-  const [eng, setEng] = useState({
-    cliente: "",
-    titulo: "Relatório de Teste de Intrusão",
-    escopo: "",
-    periodo: "",
-    limitacoes: "",
-    ferramentas: "",
-  });
-  const [achados, setAchados] = useState<AchadoEntrada[]>([{ ...ACHADO_VAZIO }]);
+const PASSOS = [
+  {
+    numero: "01",
+    titulo: "Cadastre o engagement e os achados",
+    texto:
+      "Cliente, escopo, período, ferramentas e limitações. Cada achado entra com severidade, CWE, evidência e o quanto você confia nele.",
+  },
+  {
+    numero: "02",
+    titulo: "Gere o relatório completo com IA",
+    texto:
+      "Sete seções: capa, sumário executivo, escopo, achados com CVSS e OWASP, recomendações, conclusão e disclaimer.",
+  },
+  {
+    numero: "03",
+    titulo: "Registre o reteste com evidência",
+    texto:
+      "Data, resultado (corrigido, não corrigido ou parcial) e a evidência que comprova. O histórico de cada reteste fica guardado.",
+  },
+  {
+    numero: "04",
+    titulo: "Entregue o Delta e o Certificado",
+    texto:
+      "Relatório de delta antes vs depois e, com 100% dos achados verificados, o certificado de correção com hash de verificação.",
+  },
+];
 
-  const [relatorio, setRelatorio] = useState<Relatorio | null>(null);
-  const [aba, setAba] = useState<Aba>("verificacao");
-  const [loading, setLoading] = useState(false);
-  const [salvando, setSalvando] = useState(false);
-  const [resumo, setResumo] = useState<ResumoGeral | null>(null);
+const RECURSOS = [
+  {
+    icone: "▤",
+    titulo: "Relatório de 7 seções",
+    texto: "Capa, sumário, escopo, achados, recomendações, conclusão e disclaimer.",
+  },
+  {
+    icone: "▲",
+    titulo: "Achados com CVSS, OWASP e CWE",
+    texto: "Vetor de ataque, passos de reprodução e remediação em curto e longo prazo.",
+  },
+  {
+    icone: "◷",
+    titulo: "Motor de verificação",
+    texto: "Status por achado: pendente, verificado ou não corrigido. Com filtro e progresso.",
+  },
+  {
+    icone: "⇄",
+    titulo: "Relatório de delta",
+    texto: "O que mudou entre o achado original e o reteste, com a evidência de cada um.",
+  },
+  {
+    icone: "⎙",
+    titulo: "Exportação em PDF, Jira e GitHub",
+    texto: "Paginação A4, capa isolada e exportação por achado em 3 formatos.",
+  },
+  {
+    icone: "⇌",
+    titulo: "Fallback entre provedores de IA",
+    texto: "Gemini, depois Groq, depois relatório local. Nunca fica sem resposta.",
+  },
+];
 
-  const toast = useToast();
-  const { sucesso, erro: toastErro, aviso: toastAviso } = toast;
+const PUBLICO = [
+  {
+    titulo: "Pentesters freelancers",
+    texto: "Feche o ciclo do engagement sem maintainers nem cobros extras.",
+  },
+  {
+    titulo: "Consultorias pequenas",
+    texto: "Até 10 pessoas padronizam a entrega e provam a correção sem planilha.",
+  },
+  {
+    titulo: "Times internos ofensivos",
+    texto: "O time de dev recebe achado rastreável e o status fecha o ticket.",
+  },
+];
 
-  /** Copia texto e avisa — funciona em contexto http e https. */
-  const copiar = useCallback(
-    async (texto: string, rotulo: string) => {
-      try {
-        await navigator.clipboard.writeText(texto);
-        sucesso(rotulo);
-      } catch {
-        // clipboard API exige contexto seguro; cai para a seleção manual.
-        toastAviso("Não foi possível copiar automaticamente. Selecione o texto.");
-      }
-    },
-    [sucesso, toastAviso],
-  );
+const DOR = [
+  {
+    titulo: "Você entrega o relatório. O cliente paga. E depois?",
+    texto:
+      "O engagement acaba no PDF. Ninguém tem o que mostrar na reunião de acompanhamento.",
+  },
+  {
+    titulo: "Ninguém sabe se as vulnerabilidades foram corrigidas de verdade.",
+    texto:
+      "O time de dev diz que arrumou. Sem reteste com evidência, é só uma afirmação sem prova.",
+  },
+  {
+    titulo: "Sem prova de correção, o pentest vira só mais um PDF na gaveta.",
+    texto:
+      "O mesmo teste do ano passado vira a mesma pergunta: quais continuam abertas?",
+  },
+];
 
-  // A sidebar precisa da contagem de relatórios em qualquer aba, e o painel
-  // Histórico só monta quando está visível. Busca uma vez no mount.
-  useEffect(() => {
-    let ativo = true;
-    (async () => {
-      try {
-        const res = await fetch("/api/v1/relatorios");
-        if (!res.ok || !ativo) return;
-        const dados = (await res.json()) as ResumoRelatorio[];
-        setResumo((atual) => ({
-          relatorios: atual?.relatorios ?? dados.length,
-          pendentes: atual?.pendentes ?? 0,
-          verificados: atual?.verificados ?? 0,
-          naoCorrigidos: atual?.naoCorrigidos ?? 0,
-        }));
-      } catch {
-        // silencioso: a sidebar mostra "—" e o painel da aba avisa
-      }
-    })();
-    return () => {
-      ativo = false;
-    };
-  }, []);
+const DIFERENCIAL = [
+  {
+    titulo: "Outras ferramentas param quando você clica em “exportar”.",
+    texto:
+      "Geram documento bonito e devolvem o controle. A garantia continua sendo uma promessa sua.",
+  },
+  {
+    titulo: "O Laudo continua até você ter prova de que a correção foi aplicada.",
+    texto:
+      "O achado não some depois do PDF. Ele ganha status, histórico de reteste e evidência.",
+  },
+  {
+    titulo: "Seu cliente não compra um relatório. Ele compra a garantia de que o problema sumiu.",
+    texto:
+      "O certificado de correção é o entregável que fecha o ciclo — com hash de verificação e data de emissão.",
+  },
+];
 
-  /** O painel manda a contagem completa — nada é derivado aqui. */
-  const atualizarResumo = useCallback((parcial: Partial<ResumoGeral>) => {
-    setResumo((atual) => ({
-      relatorios: atual?.relatorios ?? 0,
-      pendentes: atual?.pendentes ?? 0,
-      verificados: atual?.verificados ?? 0,
-      naoCorrigidos: atual?.naoCorrigidos ?? 0,
-      ...parcial,
-    }));
-  }, []);
+/* Comparação honesta: o que cada categoria entrega. */
+const COMPARACAO: { recurso: string; laudo: boolean; pdf: boolean; enterprise: boolean }[] = [
+  { recurso: "Relatório com IA (CVSS, OWASP)", laudo: true, pdf: false, enterprise: true },
+  { recurso: "Reteste com evidência", laudo: true, pdf: false, enterprise: true },
+  { recurso: "Certificado de correção com hash", laudo: true, pdf: false, enterprise: false },
+  { recurso: "Exportação Jira / GitHub por achado", laudo: true, pdf: false, enterprise: true },
+  { recurso: "Preço de freelancer (a partir de R$ 19,90)", laudo: true, pdf: true, enterprise: false },
+  { recurso: "Auto-hospedável e leve", laudo: true, pdf: true, enterprise: false },
+];
 
-  const atualizarResumoDeRelatorios = useCallback(
-    (lista: ResumoRelatorio[]) => {
-      atualizarResumo({ relatorios: lista.length });
-    },
-    [atualizarResumo],
-  );
+/* ------------------------------------------------------------------ *
+ * Mockup estático do painel de verificação — deixa o hero mostrar o
+ * produto em vez de descrever o produto.
+ * ------------------------------------------------------------------ */
 
-  /** Abre um relatório do histórico na aba "novo". */
-  const abrirRelatorio = useCallback((r: Relatorio) => {
-    setRelatorio(r);
-    setAba("novo");
-  }, []);
+const MOCK = [
+  {
+    ref: "FINDING-001",
+    titulo: "SQL Injection no formulário de login",
+    severidade: "Crítica",
+    cor: "critica",
+    status: "Verificado",
+    statusCor: "accent",
+    icone: "✓",
+    progresso: "w-full",
+    tempo: "há 2 dias",
+  },
+  {
+    ref: "FINDING-002",
+    titulo: "IDOR no endpoint de faturas",
+    severidade: "Alta",
+    cor: "alta",
+    status: "Não corrigido",
+    statusCor: "critica",
+    icone: "✗",
+    progresso: "w-1/3",
+    tempo: "há 9 dias",
+  },
+  {
+    ref: "FINDING-003",
+    titulo: "Cookie de sessão sem HttpOnly",
+    severidade: "Média",
+    cor: "media",
+    status: "Pendente",
+    statusCor: "media",
+    icone: "○",
+    progresso: "w-0",
+    tempo: "aguardando reteste",
+  },
+];
 
-  function adicionarAchado() {
-    setAchados((atuais) => [...atuais, { ...ACHADO_VAZIO }]);
-  }
+const BOTAO = (extra = "") =>
+  `inline-flex items-center justify-center rounded-md border px-4 py-2 font-mono text-[10px] uppercase tracking-wider transition-colors duration-200 ${extra}`;
 
-  function duplicarAchado(indice: number) {
-    setAchados((atuais) => {
-      const copia = [...atuais];
-      copia.splice(indice + 1, 0, { ...copia[indice], titulo: `${copia[indice].titulo} (cópia)` });
-      return copia;
-    });
-  }
-
-  function confirmarRemoverAchado(indice: number) {
-    const achado = achados[indice];
-    const rotulo = achado.titulo.trim()
-      ? `"${achado.titulo.trim()}"`
-      : `o achado ${indice + 1}`;
-
-    if (window.confirm(`Remover ${rotulo}? Esta ação não pode ser desfeita.`)) {
-      removerAchado(indice);
-    }
-  }
-
-  function removerAchado(indice: number) {
-    setAchados((atuais) => atuais.filter((_, i) => i !== indice));
-  }
-
-  function atualizarAchado(indice: number, mudanca: Partial<AchadoEntrada>) {
-    setAchados((atuais) =>
-      atuais.map((a, i) => (i === indice ? { ...a, ...mudanca } : a)),
-    );
-  }
-
-  function montarEntrada(): RelatorioEntrada {
-    return {
-      ...eng,
-      achados: achados.filter((a) => a.titulo.trim() || a.descricao.trim()),
-    };
-  }
-
-  async function gerar() {
-    const entrada = montarEntrada();
-
-    if (entrada.achados.length === 0) {
-      toastErro(
-        "Nenhum achado tem título. Preencha o título de pelo menos um achado antes de gerar o relatório.",
-      );
-      return;
-    }
-
-    const semTitulo = entrada.achados.filter((a) => !a.titulo.trim()).length;
-
-    if (semTitulo > 0) {
-      toastErro(
-        semTitulo === 1
-          ? "1 achado está sem título. O relatório usa o título como identificação (FINDING-001). Preencha-o ou remova o achado."
-          : `${semTitulo} achados estão sem título. Preencha o título de cada um ou remova os que estão vazios.`,
-      );
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const res = await fetch("/api/v1/gerar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(entrada),
-      });
-      const corpo = await res.json().catch(() => null);
-
-      if (!res.ok) {
-        toastErro(corpo?.error ?? "A geração falhou. Tente novamente.");
-        return;
-      }
-
-      if (!corpo?.achados?.length) {
-        toastErro("A geração voltou sem achados. Revise os dados e tente de novo.");
-        return;
-      }
-
-      setRelatorio(corpo as Relatorio);
-    } catch {
-      toastErro("Não foi possível conectar ao servidor. Verifique sua conexão.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function salvar() {
-    if (!relatorio) return;
-
-    setSalvando(true);
-
-    try {
-      const res = await fetch("/api/v1/relatorios", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(relatorio),
-      });
-      const corpo = await res.json().catch(() => null);
-
-      if (!res.ok) {
-        toastErro(corpo?.error ?? "Não foi possível salvar o relatório.");
-        return;
-      }
-
-      sucesso(
-        `Relatório salvo com ID #${corpo.id}. Os achados já estão na aba Verificação.`,
-      );
-    } catch {
-      toastErro("Não foi possível conectar ao servidor. Verifique sua conexão.");
-    } finally {
-      setSalvando(false);
-    }
-  }
-
-  const entrada = montarEntrada();
-  const achadosSemTitulo = entrada.achados.filter((a) => !a.titulo.trim()).length;
-
+function Celula({ sim }: { sim: boolean }) {
   return (
-    <ErrorBoundary>
-      <Onboarding />
-      <>
-        <Header
-        aba={aba}
-        onAba={setAba}
-        contagem={relatorio ? { novo: relatorio.achados.length } : undefined}
-        pendentes={resumo?.pendentes}
-      />
+    <span
+      aria-label={sim ? "Incluso" : "Não incluso"}
+      className={`font-mono text-sm ${sim ? "text-accent" : "text-texto-2/40"}`}
+    >
+      {sim ? "✓" : "—"}
+    </span>
+  );
+}
 
-      <ToastViewport toasts={toast.toasts} onDisparar={toast.remover} />
+export default function Landing() {
+  return (
+    <>
+      <header className="no-print sticky top-0 z-10 border-b border-borda bg-fundo/85 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-5 sm:px-6">
+          <Logo className="h-9 w-9 shrink-0 text-accent" />
+          <span className="text-lg font-bold tracking-tight text-texto">Laudo</span>
+          <nav className="ml-auto flex items-center gap-2">
+            <a
+              href="#como-funciona"
+              className={`${BOTAO("border-transparent text-texto-2 hover:border-borda hover:text-texto")} hidden sm:inline-flex`}
+            >
+              Como funciona
+            </a>
+            <a
+              href="/login"
+              className={`${BOTAO("border-borda text-texto-2 hover:border-accent hover:text-accent")}`}
+            >
+              Entrar
+            </a>
+            <a
+              href="/cadastro"
+              className={`${BOTAO("border-accent text-accent hover:bg-accent hover:text-fundo")}`}
+            >
+              Criar conta
+            </a>
+          </nav>
+        </div>
+      </header>
 
       <main className="flex-1">
-        <LayoutComSidebar resumo={resumo}>
-        {aba === "verificacao" && (
-          <Suspense
-            fallback={
-              <p className="font-mono text-xs text-texto-2">
-                carregando verificação…
+        {/* ------------------------------------------------ Hero */}
+        <section className="border-b border-borda">
+          <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:py-24">
+            <div>
+              <p className="font-mono text-[11px] uppercase tracking-widest text-accent">
+                plataforma de assurance
               </p>
-            }
-          >
-            <PainelVerificacao
-              onCopiar={copiar}
-              onAviso={toastErro}
-              onResumo={atualizarResumo}
-            />
-          </Suspense>
-        )}
-
-        {aba === "historico" && (
-          <Suspense
-            fallback={
-              <p className="font-mono text-xs text-texto-2">
-                carregando histórico…
+              <h1 className="mt-4 text-4xl font-bold leading-[1.1] tracking-tight text-texto sm:text-5xl">
+                Prove que as correções funcionaram
+              </h1>
+              <p className="mt-6 max-w-xl text-base leading-relaxed text-texto-2">
+                O Laudo fecha o ciclo do pentest: gera o relatório, acompanha o
+                reteste e entrega o certificado de que as falhas foram
+                corrigidas.
               </p>
-            }
-          >
-            <PainelHistorico
-              onAviso={toastErro}
-              onResumo={atualizarResumoDeRelatorios}
-              onAbrir={abrirRelatorio}
-            />
-          </Suspense>
-        )}
-
-        {aba === "novo" && (
-          <>
-        <div className="no-print flex flex-col gap-5">
-          <Card>
-            <CardHeader>
-              <CardTitle>Dados do engagement</CardTitle>
-              <CardDescription>
-                Preencha o que você sabe. O que ficar em branco aparece como “não
-                informado” no relatório.
-              </CardDescription>
-            </CardHeader>
-
-            <div className="flex flex-col gap-5 p-5 sm:p-6">
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                <Field label="Cliente" htmlFor="cliente">
-                  <Input
-                    id="cliente"
-                    placeholder="Acme Corp"
-                    value={eng.cliente}
-                    onChange={(e) => setEng({ ...eng, cliente: e.target.value })}
-                  />
-                </Field>
-
-                <Field label="Título do relatório" htmlFor="titulo-relatorio">
-                  <Input
-                    id="titulo-relatorio"
-                    placeholder="Relatório de Teste de Intrusão"
-                    value={eng.titulo}
-                    onChange={(e) => setEng({ ...eng, titulo: e.target.value })}
-                  />
-                </Field>
-              </div>
-
-              <Field
-                label="Escopo"
-                htmlFor="escopo"
-                dica="o que foi testado — ex.: aplicação web, API REST, infraestrutura"
-              >
-                <Textarea
-                  id="escopo"
-                  rows={2}
-                  placeholder="Aplicação web https://app.acme.com e API https://api.acme.com/v2"
-                  value={eng.escopo}
-                  onChange={(e) => setEng({ ...eng, escopo: e.target.value })}
-                />
-              </Field>
-
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                <Field label="Período do teste" htmlFor="periodo">
-                  <Input
-                    id="periodo"
-                    className="font-mono text-xs"
-                    placeholder="01/10/2026 a 09/10/2026"
-                    value={eng.periodo}
-                    onChange={(e) => setEng({ ...eng, periodo: e.target.value })}
-                  />
-                </Field>
-
-                <Field
-                  label="Ferramentas"
-                  htmlFor="ferramentas"
-                  dica="separadas por vírgula"
+              <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+                <a
+                  href="/cadastro"
+                  className={`${BOTAO("border-accent bg-accent px-6 py-3 text-xs text-fundo hover:bg-transparent hover:text-accent")} cursor-pointer`}
                 >
-                  <Input
-                    id="ferramentas"
-                    className="font-mono text-xs"
-                    placeholder="Burp Suite, Nmap, SQLmap"
-                    value={eng.ferramentas}
-                    onChange={(e) => setEng({ ...eng, ferramentas: e.target.value })}
-                  />
-                </Field>
+                  Criar conta grátis
+                </a>
+                <a
+                  href="#como-funciona"
+                  className={`${BOTAO("border-borda px-6 py-3 text-xs text-texto-2 hover:border-accent hover:text-accent")} cursor-pointer`}
+                >
+                  Ver como funciona
+                </a>
               </div>
-
-              <Field
-                label="Limitações"
-                htmlFor="limitacoes"
-                dica="o que ficou fora do escopo ou não pôde ser testado"
-              >
-                <Textarea
-                  id="limitacoes"
-                  rows={2}
-                  placeholder="Testes não autenticados; sem acesso ao ambiente de homologação."
-                  value={eng.limitacoes}
-                  onChange={(e) => setEng({ ...eng, limitacoes: e.target.value })}
-                />
-              </Field>
+              <p className="mt-5 font-mono text-[11px] text-texto-2">
+                grátis para começar · sem cartão
+              </p>
             </div>
-          </Card>
 
-          <Card>
-            <CardHeader className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <CardTitle>Achados</CardTitle>
-                <CardDescription>
-                  A IA calcula CVSS, OWASP, impacto, passos de reprodução e
-                  remediação a partir do que você escreve aqui.
-                </CardDescription>
-              </div>
-              <span className="font-mono text-[11px] text-texto-2">
-                {achados.length} achado{achados.length === 1 ? "" : "s"}
-                {achadosSemTitulo > 0 && (
-                  <span className="ml-2 text-media">
-                    · {achadosSemTitulo} sem título
-                  </span>
-                )}
-              </span>
-            </CardHeader>
+            {/* Mockup do painel de verificação */}
+            <div className="relative">
+              <div className="rounded-lg border border-borda bg-superficie shadow-lg">
+                <TerminalBar aoVivo>
+                  laudo@pentest:~/verificacao
+                </TerminalBar>
 
-            <div className="flex flex-col gap-5 p-5 sm:p-6">
-              {achados.map((achado, i) => (
-                <div
-                  key={i}
-                  className="rounded-md border border-borda bg-superficie-2 p-4 sm:p-5"
-                >
-                  <div className="mb-4 flex items-center justify-between gap-3">
-                    <span className="font-mono text-[10px] font-medium tracking-widest text-accent">
-                      ACHADO {String(i + 1).padStart(2, "0")}
+                <div className="flex flex-col gap-4 p-4 sm:p-5">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-xs font-medium text-texto">
+                      1 de 3 achados verificados
                     </span>
-                    <div className="flex items-center gap-2">
-                      <SeverityBadge severidade={achado.severidade} />
-                      <button
-                        type="button"
-                        onClick={() => duplicarAchado(i)}
-                        aria-label="Duplicar achado"
-                        title="Duplicar este achado"
-                        className="cursor-pointer rounded-sm border border-borda px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-texto-2 transition-colors duration-200 hover:border-accent hover:text-accent"
-                      >
-                        duplicar
-                      </button>
-                      {achados.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => confirmarRemoverAchado(i)}
-                          aria-label="Remover achado"
-                          title="Remover este achado"
-                          className="cursor-pointer rounded-sm border border-borda px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-texto-2 transition-colors duration-200 hover:border-critica/50 hover:text-critica"
-                        >
-                          remover
-                        </button>
-                      )}
-                    </div>
+                    <span className="font-mono text-[10px] text-texto-2">
+                      33%
+                    </span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-sm bg-borda">
+                    <div className="h-full w-1/3 bg-media" />
                   </div>
 
-                  <div className="flex flex-col gap-4">
-                    <Field label="Título" htmlFor={`achado-${i}-titulo`}>
-                      <Input
-                        id={`achado-${i}-titulo`}
-                        placeholder="SQL Injection no formulário de login"
-                        value={achado.titulo}
-                        onChange={(e) =>
-                          atualizarAchado(i, { titulo: e.target.value })
-                        }
-                      />
-                    </Field>
-
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_12rem]">
-                      <Field label="Severidade" htmlFor={`achado-${i}-severidade`}>
-                        <Select
-                          id={`achado-${i}-severidade`}
-                          className="font-mono text-xs"
-                          value={achado.severidade}
-                          onChange={(e) =>
-                            atualizarAchado(i, {
-                              severidade: e.target.value as Severidade,
-                            })
-                          }
-                        >
-                          {SEVERIDADES.map((s) => (
-                            <option key={s} value={s}>
-                              {s.toLowerCase()}
-                            </option>
-                          ))}
-                        </Select>
-                      </Field>
-
-                      <Field label="CWE" htmlFor={`achado-${i}-cwe`}>
-                        <Input
-                          id={`achado-${i}-cwe`}
-                          className="font-mono text-xs"
-                          placeholder="CWE-89"
-                          value={achado.cwe}
-                          onChange={(e) =>
-                            atualizarAchado(i, { cwe: e.target.value })
-                          }
-                        />
-                      </Field>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_12rem]">
-                      <Field
-                        label="Confiança"
-                        htmlFor={`achado-${i}-confianca`}
-                        dica="quão certo você está deste achado — usada no ciclo de verificação"
-                      >
-                        <Select
-                          id={`achado-${i}-confianca`}
-                          className="font-mono text-xs"
-                          value={achado.confianca}
-                          onChange={(e) =>
-                            atualizarAchado(i, {
-                              confianca: e.target.value as Confianca,
-                            })
-                          }
-                        >
-                          {CONFIANCAS.map((c) => (
-                            <option key={c} value={c}>
-                              {c.toLowerCase()}
-                            </option>
-                          ))}
-                        </Select>
-                      </Field>
-
-                      <Field
-                        label="Reteste sugerido"
-                        htmlFor={`achado-${i}-reteste`}
-                        dica="opcional"
-                      >
-                        <Input
-                          id={`achado-${i}-reteste`}
-                          type="date"
-                          className="font-mono text-xs"
-                          value={achado.dataRetesteSugerida}
-                          onChange={(e) =>
-                            atualizarAchado(i, {
-                              dataRetesteSugerida: e.target.value,
-                            })
-                          }
-                        />
-                      </Field>
-                    </div>
-
-                    <Field
-                      label="Descrição"
-                      htmlFor={`achado-${i}-descricao`}
-                      dica="contexto, causa raiz observada e o que o atacante consegue fazer"
+                  {MOCK.map((m) => (
+                    <div
+                      key={m.ref}
+                      className="rounded-md border border-borda bg-superficie-2 p-3"
                     >
-                      <Textarea
-                        id={`achado-${i}-descricao`}
-                        rows={3}
-                        placeholder="O campo de usuário concatena o input diretamente na query SQL..."
-                        value={achado.descricao}
-                        onChange={(e) =>
-                          atualizarAchado(i, { descricao: e.target.value })
-                        }
-                      />
-                    </Field>
-
-                    <Field
-                      label="Evidência"
-                      htmlFor={`achado-${i}-evidencia`}
-                      dica="requisição, resposta, payload — entra no relatório como está"
-                    >
-                      <Textarea
-                        id={`achado-${i}-evidencia`}
-                        rows={3}
-                        className="font-mono text-xs leading-relaxed"
-                        placeholder="GET /login?user=admin' OR '1'='1  →  HTTP/1.1 200 OK"
-                        value={achado.evidencia}
-                        onChange={(e) =>
-                          atualizarAchado(i, { evidencia: e.target.value })
-                        }
-                      />
-                    </Field>
-                  </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className={`inline-flex h-4 w-4 items-center justify-center rounded-sm text-[10px] ${
+                            m.statusCor === "accent"
+                              ? "bg-accent/15 text-accent"
+                              : m.statusCor === "critica"
+                                ? "bg-critica/15 text-critica"
+                                : "bg-media/15 text-media"
+                          }`}
+                        >
+                          {m.icone}
+                        </span>
+                        <span className="font-mono text-[9px] tracking-wider text-accent">
+                          {m.ref}
+                        </span>
+                        <span
+                          className={`font-mono text-[9px] uppercase tracking-wider ${
+                            m.cor === "critica"
+                              ? "text-critica"
+                              : m.cor === "alta"
+                                ? "text-alta"
+                                : "text-media"
+                          }`}
+                        >
+                          {m.severidade}
+                        </span>
+                        <span
+                          className={`ml-auto font-mono text-[9px] uppercase tracking-wider ${
+                            m.statusCor === "accent"
+                              ? "text-accent"
+                              : m.statusCor === "critica"
+                                ? "text-critica"
+                                : "text-media"
+                          }`}
+                        >
+                          {m.status}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-xs leading-snug text-texto">
+                        {m.titulo}
+                      </p>
+                      <div className="mt-2.5 flex items-center gap-2">
+                        <div className="h-0.5 flex-1 overflow-hidden rounded-sm bg-borda">
+                          <div
+                            className={`h-full ${
+                              m.statusCor === "accent"
+                                ? "bg-accent"
+                                : m.statusCor === "critica"
+                                  ? "bg-critica"
+                                  : "bg-borda"
+                            } ${m.progresso}`}
+                          />
+                        </div>
+                        <span className="font-mono text-[9px] text-texto-2">
+                          {m.tempo}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-
-              <Button variante="secundaria" onClick={adicionarAchado} className="self-start">
-                + adicionar achado
-              </Button>
-
-              <div className="flex flex-col gap-3 border-t border-borda pt-5 sm:flex-row">
-                <Button
-                  variante="primaria"
-                  tamanho="lg"
-                  onClick={gerar}
-                  disabled={loading}
-                  className="sm:flex-1"
-                >
-                  {loading ? (
-                    <>
-                      <Spinner />
-                      gerando relatório...
-                    </>
-                  ) : (
-                    "gerar relatório"
-                  )}
-                </Button>
-                <Button
-                  variante="secundaria"
-                  tamanho="lg"
-                  onClick={salvar}
-                  disabled={!relatorio || salvando}
-                >
-                  {salvando ? (
-                    <>
-                      <Spinner />
-                      salvando...
-                    </>
-                  ) : (
-                    "salvar relatório"
-                  )}
-                </Button>
               </div>
+
+              <p className="mt-3 text-center font-mono text-[10px] text-texto-2">
+                painel de verificação · ciclo de correção
+              </p>
             </div>
-          </Card>
-        </div>
+          </div>
+        </section>
 
-        {loading && <RelatorioSkeleton />}
+        {/* ------------------------------------------ O problema */}
+        <section className="border-b border-borda">
+          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+            <h2 className="text-2xl font-semibold tracking-tight text-texto sm:text-3xl">
+              O problema
+            </h2>
+            <ul className="mt-10 grid grid-cols-1 gap-4 lg:grid-cols-3">
+              {DOR.map((item) => (
+                <li
+                  key={item.titulo}
+                  className="rounded-lg border border-borda bg-superficie p-5 transition-colors duration-200 hover:border-critica/40"
+                >
+                  <span aria-hidden="true" className="font-mono text-xs text-critica">
+                    ✗
+                  </span>
+                  <h3 className="mt-3 text-sm font-semibold leading-snug text-texto">
+                    {item.titulo}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-texto-2">
+                    {item.texto}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
 
-        {!loading && !relatorio && (
-          <div className="mt-8 rounded-md border border-dashed border-borda px-6 py-12 text-center">
-            <p className="font-mono text-xs text-texto-2">
-              nenhum relatório gerado
-              <span className="animate-blink text-accent"> ▋</span>
+        {/* --------------------------------------- Como funciona */}
+        <section id="como-funciona" className="scroll-mt-20 border-b border-borda">
+          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+            <h2 className="text-2xl font-semibold tracking-tight text-texto sm:text-3xl">
+              Como funciona
+            </h2>
+            <ol className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {PASSOS.map((p) => (
+                <li
+                  key={p.numero}
+                  className="rounded-lg border border-borda bg-superficie p-5 transition-colors duration-200 hover:border-accent/40"
+                >
+                  <span className="font-mono text-xs text-accent">{p.numero}</span>
+                  <h3 className="mt-3 text-sm font-semibold leading-snug text-texto">
+                    {p.titulo}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-texto-2">
+                    {p.texto}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        {/* -------------------------------------- O que inclui */}
+        <section className="border-b border-borda">
+          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+            <h2 className="text-2xl font-semibold tracking-tight text-texto sm:text-3xl">
+              O que está incluso
+            </h2>
+            <ul className="mt-10 grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-borda bg-borda sm:grid-cols-2 lg:grid-cols-3">
+              {RECURSOS.map((r) => (
+                <li
+                  key={r.titulo}
+                  className="bg-superficie p-5 transition-colors duration-200 hover:bg-superficie-2"
+                >
+                  <span aria-hidden="true" className="font-mono text-sm text-accent">
+                    {r.icone}
+                  </span>
+                  <h3 className="mt-3 text-sm font-semibold text-texto">
+                    {r.titulo}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-texto-2">
+                    {r.texto}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        {/* ---------------------------------------- Para quem é */}
+        <section className="border-b border-borda">
+          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+            <h2 className="text-2xl font-semibold tracking-tight text-texto sm:text-3xl">
+              Para quem é
+            </h2>
+            <ul className="mt-10 grid grid-cols-1 gap-4 lg:grid-cols-3">
+              {PUBLICO.map((p) => (
+                <li
+                  key={p.titulo}
+                  className="rounded-lg border border-borda bg-superficie p-5"
+                >
+                  <h3 className="text-sm font-semibold text-texto">{p.titulo}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-texto-2">
+                    {p.texto}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        {/* ------------------------------------- Diferencial */}
+        <section className="border-b border-borda">
+          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+            <h2 className="text-2xl font-semibold tracking-tight text-texto sm:text-3xl">
+              Por que não somos mais um gerador de PDF
+            </h2>
+            <ul className="mt-10 flex flex-col gap-4">
+              {DIFERENCIAL.map((d) => (
+                <li
+                  key={d.titulo}
+                  className="flex flex-col gap-3 rounded-lg border border-accent/25 bg-accent/[0.04] p-5 sm:flex-row sm:gap-4"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="shrink-0 font-mono text-sm text-accent"
+                  >
+                    ✓
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-semibold leading-snug text-texto">
+                      {d.titulo}
+                    </h3>
+                    <p className="mt-1.5 text-sm leading-relaxed text-texto-2">
+                      {d.texto}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        {/* ------------------------------------- Comparação */}
+        <section className="border-b border-borda">
+          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+            <h2 className="text-2xl font-semibold tracking-tight text-texto sm:text-3xl">
+              Comparação
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-texto-2">
+              Geradores de PDF param no documento. Plataformas enterprise
+              cobrem o ciclo todo, mas custam como enterprise. O Laudo fecha
+              o ciclo por preço de freelancer.
             </p>
-            <p className="mx-auto mt-2 max-w-sm text-sm text-texto-2/70">
-              Preencha os achados acima e execute “gerar relatório” para produzir
-              o documento completo.
+            <div className="mt-10 overflow-x-auto rounded-lg border border-borda">
+              <table className="w-full min-w-[560px] border-collapse bg-superficie text-left text-sm">
+                <thead>
+                  <tr className="border-b border-borda font-mono text-[11px] uppercase tracking-wider text-texto-2">
+                    <th scope="col" className="px-5 py-4 font-medium">Recurso</th>
+                    <th scope="col" className="px-5 py-4 font-medium text-accent">Laudo</th>
+                    <th scope="col" className="px-5 py-4 font-medium">Gerador de PDF</th>
+                    <th scope="col" className="px-5 py-4 font-medium">Enterprise</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {COMPARACAO.map((c) => (
+                    <tr key={c.recurso} className="border-b border-borda last:border-0">
+                      <th scope="row" className="px-5 py-3.5 text-sm font-normal text-texto">
+                        {c.recurso}
+                      </th>
+                      <td className="px-5 py-3.5"><Celula sim={c.laudo} /></td>
+                      <td className="px-5 py-3.5"><Celula sim={c.pdf} /></td>
+                      <td className="px-5 py-3.5"><Celula sim={c.enterprise} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        {/* ------------------------------------------- CTA */}
+        <section>
+          <div className="mx-auto max-w-6xl px-4 py-20 text-center sm:px-6 sm:py-28">
+            <h2 className="mx-auto max-w-3xl text-3xl font-bold tracking-tight text-texto sm:text-4xl">
+              O relatório já foi entregue. Agora prove que acabou.
+            </h2>
+            <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-texto-2">
+              Crie sua conta, gere o relatório e comece a acompanhar as
+              correções hoje.
+            </p>
+            <a
+              href="/cadastro"
+              className={`${BOTAO("mt-10 cursor-pointer border-accent bg-accent px-8 py-3.5 text-xs text-fundo hover:bg-transparent hover:text-accent")}`}
+            >
+              Criar conta grátis
+            </a>
+            <p className="mt-6 font-mono text-[11px] text-texto-2/70">
+              Pro R$ 19,90/mês · Team R$ 49,90/mês quando sair do beta.
             </p>
           </div>
-        )}
-
-{!loading && relatorio && (
-          <>
-            <div className="no-print mt-8 flex flex-wrap items-center justify-between gap-3">
-              <p className="font-mono text-[11px] uppercase tracking-widest text-texto-2">
-                pré-visualização · o PDF oculta esta barra
-              </p>
-              <div className="flex flex-wrap items-center gap-2">
-                <Suspense fallback={null}>
-                  <AcoesExportacao
-                    relatorio={relatorio}
-                    jiraBaseUrl={process.env.NEXT_PUBLIC_JIRA_URL}
-                    githubRepoUrl={process.env.NEXT_PUBLIC_GITHUB_REPO_URL}
-                  />
-                </Suspense>
-                <Button variante="secundaria" onClick={salvar} disabled={salvando}>
-                  {salvando ? "salvando..." : "salvar"}
-                </Button>
-                <Button variante="sucesso" onClick={() => window.print()}>
-                  exportar pdf
-                </Button>
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <Suspense fallback={<RelatorioSkeleton />}>
-                <RelatorioView relatorio={relatorio} />
-              </Suspense>
-            </div>
-          </>
-        )}
-          </>
-        )}
-        </LayoutComSidebar>
+        </section>
       </main>
 
-      <footer className="no-print border-t border-borda">
-        <div className="mx-auto max-w-4xl px-4 py-6 text-center font-mono text-[11px] text-texto-2/60 sm:px-6">
-          laudo v0.2 · conteúdo gerado por ia — revise antes de entregar ao cliente
+      <footer className="border-t border-borda">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 py-8 font-mono text-[11px] text-texto-2/60 sm:flex-row sm:px-6">
+          <span>Laudo · plataforma de assurance para pentest</span>
+          <nav className="flex items-center gap-5" aria-label="Links legais">
+            <a href="/termos" className="transition-colors hover:text-accent">
+              Termos
+            </a>
+            <a href="/privacidade" className="transition-colors hover:text-accent">
+              Privacidade
+            </a>
+            <a
+              href="mailto:contato@laudo.app"
+              className="transition-colors hover:text-accent"
+            >
+              Contato
+            </a>
+          </nav>
         </div>
       </footer>
-      </>
-    </ErrorBoundary>
+    </>
   );
 }

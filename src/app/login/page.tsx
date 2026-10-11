@@ -43,7 +43,7 @@ export default function PaginaLogin() {
         setErro("E-mail ou senha inválidos.");
         return;
       }
-      roteador.push("/");
+      roteador.push("/painel");
       roteador.refresh();
     } catch {
       setErro("Serviço de login indisponível. Tente de novo em instantes.");
@@ -105,7 +105,7 @@ export default function PaginaLogin() {
               variante="secundaria"
               tamanho="lg"
               type="button"
-              onClick={() => signIn("google", { callbackUrl: "/" })}
+              onClick={() => signIn("google", { callbackUrl: "/painel" })}
             >
               entrar com Google
             </Button>

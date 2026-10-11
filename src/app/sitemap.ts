@@ -12,10 +12,28 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1,
     },
     {
-      url: `${base}/apresentacao`,
+      url: `${base}/login`,
       lastModified: agora,
-      changeFrequency: "monthly",
-      priority: 0.8,
+      changeFrequency: "yearly",
+      priority: 0.3,
+    },
+    {
+      url: `${base}/cadastro`,
+      lastModified: agora,
+      changeFrequency: "yearly",
+      priority: 0.3,
+    },
+    {
+      url: `${base}/termos`,
+      lastModified: agora,
+      changeFrequency: "yearly",
+      priority: 0.2,
+    },
+    {
+      url: `${base}/privacidade`,
+      lastModified: agora,
+      changeFrequency: "yearly",
+      priority: 0.2,
     },
   ];
 }
