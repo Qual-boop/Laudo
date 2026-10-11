@@ -115,6 +115,17 @@ if (!colunasUsuarios.some((c) => c.name === "plano")) {
   db.exec("ALTER TABLE usuarios ADD COLUMN plano TEXT NOT NULL DEFAULT 'free'");
 }
 
+// Migração leve: billing Stripe (Fase 5).
+for (const [coluna, tipo] of [
+  ["stripe_customer_id", "TEXT"],
+  ["stripe_subscription_id", "TEXT"],
+  ["plano_expira_em", "TEXT"],
+] as const) {
+  if (!colunasUsuarios.some((c) => c.name === coluna)) {
+    db.exec(`ALTER TABLE usuarios ADD COLUMN ${coluna} ${tipo}`);
+  }
+}
+
 // Índices das consultas mais frequentes da aba Verificação.
 db.exec(`
   CREATE INDEX IF NOT EXISTS idx_achados_status ON achados_verificacao(status);

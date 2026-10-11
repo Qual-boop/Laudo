@@ -77,12 +77,8 @@ export async function middleware(req: NextRequest) {
   }
 
   // API responde 401 JSON dentro da rota (via exigirUsuario) — aqui só páginas.
-  if (
-    !logado &&
-    (pathname === "/painel" ||
-      pathname.startsWith("/painel/") ||
-      pathname.startsWith("/certificado"))
-  ) {
+  // Páginas: padrão é exigir login (allowlist acima); só a API passa solta.
+  if (!logado && !pathname.startsWith("/api/")) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

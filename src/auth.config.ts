@@ -54,25 +54,25 @@ export const authConfig: NextAuthConfig = {
     async jwt({ token, user }) {
       if (user?.id) {
         const { buscarUsuarioPorId } = await import("@/lib/usuarios");
-        const { normalizarPlano } = await import("@/lib/planos");
+        const { assinaturaDe } = await import("@/lib/assinatura");
         const u = buscarUsuarioPorId(Number(user.id));
         if (u) {
           token.usuarioId = u.id;
           token.name = u.nome;
           token.email = u.email;
-          token.plano = normalizarPlano(u.plano);
+          token.plano = assinaturaDe(u).plano;
         }
       }
       // Sessões que só têm `sub`: resolve o usuarioId na hora.
       if (token.usuarioId === undefined && token.sub) {
         const { buscarUsuarioPorId } = await import("@/lib/usuarios");
-        const { normalizarPlano } = await import("@/lib/planos");
+        const { assinaturaDe } = await import("@/lib/assinatura");
         const u = buscarUsuarioPorId(Number(token.sub));
         if (u) {
           token.usuarioId = u.id;
           token.name = u.nome;
           token.email = u.email;
-          token.plano = normalizarPlano(u.plano);
+          token.plano = assinaturaDe(u).plano;
         }
       }
       return token;

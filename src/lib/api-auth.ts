@@ -2,7 +2,8 @@ import { createHash } from "node:crypto";
 import { getToken } from "next-auth/jwt";
 import db from "@/lib/db";
 import { buscarUsuarioPorId, type Usuario } from "@/lib/usuarios";
-import { normalizarPlano, type Plano } from "@/lib/planos";
+import { assinaturaDe } from "@/lib/assinatura";
+import type { Plano } from "@/lib/planos";
 
 /**
  * Guarda das rotas /api/v1/* (exceto auth).
@@ -139,7 +140,7 @@ export async function exigirUsuario(
       id: usuario.id,
       nome: usuario.nome,
       email: usuario.email,
-      plano: normalizarPlano(usuario.plano),
+      plano: assinaturaDe(usuario).plano,
     },
   };
 }

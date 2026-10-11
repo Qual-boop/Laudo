@@ -7,6 +7,9 @@ export type Usuario = {
   email: string;
   senha_hash: string | null;
   plano: string;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  plano_expira_em: string | null;
   criado_em: string;
   atualizado_em: string;
 };
