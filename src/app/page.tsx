@@ -216,14 +216,15 @@ export default function Landing() {
 
       <main className="flex-1">
         {/* ------------------------------------------------ Hero */}
-        <section className="border-b border-borda">
-          <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:py-24">
-            <div>
+        <section className="relative overflow-hidden border-b border-borda">
+          <div aria-hidden="true" className="fundo-hero pointer-events-none absolute inset-0" />
+          <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:py-24">
+            <div className="revelar">
               <p className="font-mono text-[11px] uppercase tracking-widest text-accent">
                 plataforma de assurance
               </p>
-              <h1 className="mt-4 text-4xl font-bold leading-[1.1] tracking-tight text-texto sm:text-5xl">
-                Prove que as correções funcionaram
+              <h1 className="mt-4 text-5xl font-bold leading-[1.05] tracking-tight text-texto sm:text-6xl">
+                Prove que as <span className="texto-gradiente">correções funcionaram</span>
               </h1>
               <p className="mt-6 max-w-xl text-base leading-relaxed text-texto-2">
                 O Laudo fecha o ciclo do pentest: gera o relatório, acompanha o
@@ -250,8 +251,8 @@ export default function Landing() {
             </div>
 
             {/* Mockup do painel de verificação */}
-            <div className="relative">
-              <div className="rounded-lg border border-borda bg-superficie shadow-lg">
+            <div className="revelar relative" style={{ animationDelay: "150ms" }}>
+              <div className="glass rounded-xl shadow-[0_8px_60px_-12px_var(--color-accent)]">
                 <TerminalBar aoVivo>
                   laudo@pentest:~/verificacao
                 </TerminalBar>
@@ -345,7 +346,7 @@ export default function Landing() {
 
         {/* ------------------------------------------ O problema */}
         <section className="border-b border-borda">
-          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+          <div className="revelar mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
             <h2 className="text-2xl font-semibold tracking-tight text-texto sm:text-3xl">
               O problema
             </h2>
@@ -372,17 +373,18 @@ export default function Landing() {
 
         {/* --------------------------------------- Como funciona */}
         <section id="como-funciona" className="scroll-mt-20 border-b border-borda">
-          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+          <div className="revelar mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
             <h2 className="text-2xl font-semibold tracking-tight text-texto sm:text-3xl">
               Como funciona
             </h2>
             <ol className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {PASSOS.map((p) => (
+              {PASSOS.map((p, i) => (
                 <li
                   key={p.numero}
-                  className="rounded-lg border border-borda bg-superficie p-5 transition-colors duration-200 hover:border-accent/40"
+                  className="revelar rounded-xl border border-borda bg-superficie p-5 transition-colors duration-200 hover:border-accent/40"
+                  style={{ animationDelay: `${i * 90}ms` }}
                 >
-                  <span className="font-mono text-xs text-accent">{p.numero}</span>
+                  <span className="font-mono text-3xl font-bold text-accent/90">{p.numero}</span>
                   <h3 className="mt-3 text-sm font-semibold leading-snug text-texto">
                     {p.titulo}
                   </h3>
@@ -397,15 +399,16 @@ export default function Landing() {
 
         {/* -------------------------------------- O que inclui */}
         <section className="border-b border-borda">
-          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+          <div className="revelar mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
             <h2 className="text-2xl font-semibold tracking-tight text-texto sm:text-3xl">
               O que está incluso
             </h2>
-            <ul className="mt-10 grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-borda bg-borda sm:grid-cols-2 lg:grid-cols-3">
-              {RECURSOS.map((r) => (
+            <ul className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {RECURSOS.map((r, i) => (
                 <li
                   key={r.titulo}
-                  className="bg-superficie p-5 transition-colors duration-200 hover:bg-superficie-2"
+                  className="revelar glass brilho-hover rounded-xl p-5"
+                  style={{ animationDelay: `${i * 70}ms` }}
                 >
                   <span aria-hidden="true" className="font-mono text-sm text-accent">
                     {r.icone}
@@ -424,7 +427,7 @@ export default function Landing() {
 
         {/* ---------------------------------------- Para quem é */}
         <section className="border-b border-borda">
-          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+          <div className="revelar mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
             <h2 className="text-2xl font-semibold tracking-tight text-texto sm:text-3xl">
               Para quem é
             </h2>
@@ -446,7 +449,7 @@ export default function Landing() {
 
         {/* ------------------------------------- Diferencial */}
         <section className="border-b border-borda">
-          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+          <div className="revelar mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
             <h2 className="text-2xl font-semibold tracking-tight text-texto sm:text-3xl">
               Por que não somos mais um gerador de PDF
             </h2>
@@ -478,7 +481,7 @@ export default function Landing() {
 
         {/* ------------------------------------- Comparação */}
         <section className="border-b border-borda">
-          <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+          <div className="revelar mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
             <h2 className="text-2xl font-semibold tracking-tight text-texto sm:text-3xl">
               Comparação
             </h2>
@@ -526,7 +529,7 @@ export default function Landing() {
             </p>
             <a
               href="/cadastro"
-              className={`${BOTAO("mt-10 cursor-pointer border-accent bg-accent px-8 py-3.5 text-xs text-fundo hover:bg-transparent hover:text-accent")}`}
+              className={`${BOTAO("mt-10 cursor-pointer border-accent bg-accent px-8 py-3.5 text-xs text-fundo shadow-[0_0_36px_-8px_var(--color-accent)] hover:bg-transparent hover:text-accent hover:shadow-[0_0_48px_-6px_var(--color-accent)]")}`}
             >
               Criar conta grátis
             </a>
