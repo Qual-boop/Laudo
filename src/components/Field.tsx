@@ -36,10 +36,11 @@ export function Field({
 }
 
 const CONTROLE =
-  "w-full rounded-md border border-borda bg-fundo px-3 py-2.5 text-sm text-texto " +
-  "placeholder:text-texto-2/50 transition-colors duration-200 " +
+  "w-full rounded-lg border border-borda bg-fundo px-3 py-2.5 text-sm leading-relaxed text-texto " +
+  "placeholder:text-texto-2/50 transition-all duration-200 " +
   "hover:border-texto-2/40 " +
-  "focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/30 " +
+  "focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25 focus:shadow-[0_0_16px_-4px_var(--color-accent)] " +
+  "aria-[invalid=true]:border-critica aria-[invalid=true]:focus:ring-critica/25 " +
   "disabled:cursor-not-allowed disabled:opacity-50";
 
 export function Input({ className = "", ...props }: InputHTMLAttributes<HTMLInputElement>) {
