@@ -45,6 +45,8 @@ export default function PaginaLogin() {
       }
       roteador.push("/");
       roteador.refresh();
+    } catch {
+      setErro("Serviço de login indisponível. Tente de novo em instantes.");
     } finally {
       setEnviando(false);
     }

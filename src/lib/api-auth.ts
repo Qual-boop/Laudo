@@ -37,6 +37,33 @@ export function nomeCookieSessao(): string {
     : "authjs.session-token";
 }
 
+/**
+ * Os dois nomes possíveis, principal primeiro. O Auth.js escolhe o prefixo
+ * `__Secure-` pelo protocolo efetivo do request (http direto → sem prefixo,
+ * mesmo com NODE_ENV=production), então tentamos os dois para nunca perder
+ * uma sessão válida por divergência de nome.
+ */
+export function nomesCookieSessao(): [string, string] {
+  const principal = nomeCookieSessao();
+  const alternativo = principal.startsWith("__Secure-")
+    ? "authjs.session-token"
+    : "__Secure-authjs.session-token";
+  return [principal, alternativo];
+}
+
+/** Lê o JWT do cookie ou do Bearer, testando os dois nomes de cookie. */
+export async function lerToken(req: Request): Promise<Record<string, unknown> | null> {
+  for (const cookieName of nomesCookieSessao()) {
+    const token = await getToken({
+      req: req as unknown as Parameters<typeof getToken>[0]["req"],
+      secret: segredo(),
+      cookieName,
+    }).catch(() => null);
+    if (token) return token as unknown as Record<string, unknown>;
+  }
+  return null;
+}
+
 /** Validade padrão dos tokens mobile (30 dias, igual à sessão web). */
 export const TOKEN_MAX_AGE_SEG = 30 * 24 * 60 * 60;
 
@@ -59,11 +86,7 @@ export async function exigirUsuario(
     };
   }
 
-  const token = await getToken({
-    req: req as unknown as Parameters<typeof getToken>[0]["req"],
-    secret: segredo(),
-    secureCookie: cookieSeguro(),
-  }).catch(() => null);
+  const token = await lerToken(req);
 
   if (!token) {
     return {
@@ -72,9 +95,7 @@ export async function exigirUsuario(
     };
   }
 
-  const usuarioId = Number(
-    (token as Record<string, unknown>).usuarioId ?? token.sub,
-  );
+  const usuarioId = Number(token.usuarioId ?? token.sub);
   if (!Number.isInteger(usuarioId)) {
     return {
       ok: false,
@@ -84,7 +105,7 @@ export async function exigirUsuario(
 
   // Bearer de mobile/desktop: confere revogação e expiração em `sessoes`.
   // (Claim próprio `sid`: o `jti` é sobrescrito pelo encode com UUID.)
-  const sid = (token as Record<string, unknown>).sid;
+  const sid = token.sid;
   if (typeof sid === "number" || (typeof sid === "string" && sid)) {
     const sessao = db
       .prepare("SELECT usuario_id, expira_em FROM sessoes WHERE id = ?")

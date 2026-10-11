@@ -24,10 +24,35 @@ const PUBLICO = [
   "/favicon.ico",
 ];
 
-function nomeCookie(): string {
-  return process.env.NODE_ENV === "production"
-    ? "__Secure-authjs.session-token"
-    : "authjs.session-token";
+function nomesCookie(): [string, string] {
+  // Mesmo par de nomes de lib/api-auth.ts (duplicado aqui porque o
+  // middleware é Edge e não pode importar a lib, que puxa better-sqlite3).
+  // O Auth.js escolhe o prefixo __Secure- pelo protocolo efetivo, então
+  // testamos os dois para nunca perder sessão válida por divergência.
+  const principal =
+    process.env.NODE_ENV === "production"
+      ? "__Secure-authjs.session-token"
+      : "authjs.session-token";
+  const alternativo = principal.startsWith("__Secure-")
+    ? "authjs.session-token"
+    : "__Secure-authjs.session-token";
+  return [principal, alternativo];
+}
+
+async function temSessao(req: NextRequest): Promise<boolean> {
+  for (const cookieName of nomesCookie()) {
+    try {
+      const token = await getToken({
+        req,
+        secret: process.env.AUTH_SECRET,
+        cookieName,
+      });
+      if (token) return true;
+    } catch {
+      // tenta o próximo nome
+    }
+  }
+  return false;
 }
 
 export async function middleware(req: NextRequest) {
@@ -42,12 +67,7 @@ export async function middleware(req: NextRequest) {
 
   let logado = false;
   try {
-    const token = await getToken({
-      req,
-      secret: process.env.AUTH_SECRET,
-      cookieName: nomeCookie(),
-    });
-    logado = !!token;
+    logado = await temSessao(req);
   } catch {
     logado = false;
   }

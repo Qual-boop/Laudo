@@ -13,9 +13,11 @@ import { esquemaLogin } from "@/lib/validacao";
  * dos callbacks — que só executam no Node.
  */
 export const authConfig: NextAuthConfig = {
-  // Dev atrás de túnel (Cloudflare) precisa confiar no host. Em produção,
-  // use AUTH_TRUST_HOST=true ou NEXTAUTH_URL com o domínio final.
-  trustHost: process.env.NODE_ENV !== "production",
+  // O host vem do request (dev, túnel Cloudflare, produção atrás de proxy).
+  // Sem confiar no host, toda rota /api/auth/* devolve 500 UntrustedHost em
+  // produção e o login trava (foi o bug: cadastro ok, login impossível).
+  // Em produção, defina AUTH_URL com o domínio final (ver .env.example).
+  trustHost: true,
   session: { strategy: "jwt" },
   providers: [
     Credentials({
