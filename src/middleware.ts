@@ -15,6 +15,7 @@ const PUBLICO = [
   "/",
   "/login",
   "/cadastro",
+  "/precos",
   "/apresentacao",
   "/termos",
   "/privacidade",

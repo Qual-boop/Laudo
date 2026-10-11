@@ -199,6 +199,12 @@ export default function Landing() {
               Como funciona
             </a>
             <a
+              href="/precos"
+              className={`${BOTAO("border-transparent text-texto-2 hover:border-borda hover:text-texto")} hidden sm:inline-flex`}
+            >
+              Preços
+            </a>
+            <a
               href="/login"
               className={`${BOTAO("border-borda text-texto-2 hover:border-accent hover:text-accent")}`}
             >

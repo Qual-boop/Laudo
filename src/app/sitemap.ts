@@ -24,6 +24,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.3,
     },
     {
+      url: `${base}/precos`,
+      lastModified: agora,
+      changeFrequency: "monthly",
+      priority: 0.6,
+    },
+    {
       url: `${base}/termos`,
       lastModified: agora,
       changeFrequency: "yearly",
