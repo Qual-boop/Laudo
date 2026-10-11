@@ -36,12 +36,13 @@ export function Header({ aba, onAba, contagem, pendentes }: Props) {
             </span>
           )}
           {sessao?.user?.name && (
-            <span
-              className="hidden max-w-32 truncate rounded-full border border-borda bg-superficie px-3 py-1 text-xs text-texto-2 sm:inline"
+            <a
+              href="/perfil"
+              className="hidden max-w-32 truncate rounded-full border border-borda bg-superficie px-3 py-1 text-xs text-texto-2 transition-colors hover:border-accent hover:text-accent sm:inline"
               title={sessao.user.email ?? undefined}
             >
               {sessao.user.name}
-            </span>
+            </a>
           )}
           {sessao && (
             <span

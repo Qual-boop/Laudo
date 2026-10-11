@@ -114,6 +114,10 @@ export default function Home() {
   const paywall = usePaywall();
   const [avisoUso, setAvisoUso] = useState<string | null>(null);
   const [avisoFechado, setAvisoFechado] = useState(false);
+  const [uso, setUso] = useState<{
+    relatorios: { usados: number; limite: number | null };
+    retestes: { usados: number; limite: number | null };
+  } | null>(null);
 
   /** Copia texto e avisa — funciona em contexto http e https. */
   const copiar = useCallback(
@@ -153,10 +157,8 @@ export default function Home() {
     };
   }, []);
 
-  // Soft warning de plano: a 80% de qualquer limite finito do Free,
-  // mostra um banner sutil com link para /precos (dispensável).
+  // Uso do mês (sidebar) + soft warning a 80% (só no free).
   useEffect(() => {
-    if (plano !== "free") return;
     const controlador = new AbortController();
     (async () => {
       try {
@@ -166,6 +168,9 @@ export default function Home() {
           relatorios: { usados: number; limite: number | null };
           retestes: { usados: number; limite: number | null };
         };
+        if (controlador.signal.aborted) return;
+        setUso({ relatorios: u.relatorios, retestes: u.retestes });
+        if (plano !== "free") return;
         const cheios = [
           { rotulo: "relatórios", ...u.relatorios },
           { rotulo: "retestes", ...u.retestes },
@@ -389,7 +394,20 @@ export default function Home() {
       )}
 
       <main className="flex-1">
-        <LayoutComSidebar resumo={resumo}>
+        <LayoutComSidebar
+          resumo={resumo}
+          uso={
+            uso
+              ? {
+                  plano,
+                  relatoriosUsados: uso.relatorios.usados,
+                  relatoriosLimite: uso.relatorios.limite,
+                  retestesUsados: uso.retestes.usados,
+                  retestesLimite: uso.retestes.limite,
+                }
+              : null
+          }
+        >
         {aba === "verificacao" && (
           <Suspense
             fallback={
