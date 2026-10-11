@@ -13,6 +13,11 @@ import { Header } from "@/components/Header";
 import { LayoutComSidebar, type ResumoGeral } from "@/components/LayoutComSidebar";
 import { ToastViewport, useToast } from "@/components/Toast";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import {
+  PaywallModal,
+  dispararPaywall,
+  usePaywall,
+} from "@/components/PaywallModal";
 
 // Componentes pesados carregados sob demanda (code splitting).
 // `ssr: false` porque todos dependem de APIs do browser ou de estado
@@ -106,6 +111,9 @@ export default function Home() {
   const { sucesso, erro: toastErro, aviso: toastAviso } = toast;
   const { data: sessao } = useSession();
   const plano = sessao?.user?.plano ?? "free";
+  const paywall = usePaywall();
+  const [avisoUso, setAvisoUso] = useState<string | null>(null);
+  const [avisoFechado, setAvisoFechado] = useState(false);
 
   /** Copia texto e avisa — funciona em contexto http e https. */
   const copiar = useCallback(
@@ -144,6 +152,39 @@ export default function Home() {
       ativo = false;
     };
   }, []);
+
+  // Soft warning de plano: a 80% de qualquer limite finito do Free,
+  // mostra um banner sutil com link para /precos (dispensável).
+  useEffect(() => {
+    if (plano !== "free") return;
+    const controlador = new AbortController();
+    (async () => {
+      try {
+        const res = await fetch("/api/v1/uso", { signal: controlador.signal });
+        if (!res.ok) return;
+        const u = (await res.json()) as {
+          relatorios: { usados: number; limite: number | null };
+          retestes: { usados: number; limite: number | null };
+        };
+        const cheios = [
+          { rotulo: "relatórios", ...u.relatorios },
+          { rotulo: "retestes", ...u.retestes },
+        ].filter(
+          (r) =>
+            typeof r.limite === "number" &&
+            r.limite > 0 &&
+            r.usados / r.limite >= 0.8,
+        );
+        if (cheios.length > 0 && !controlador.signal.aborted) {
+          const partes = cheios.map((r) => `${r.usados}/${r.limite} ${r.rotulo}`);
+          setAvisoUso(`Você usou ${partes.join(" e ")} este mês.`);
+        }
+      } catch {
+        // silencioso: sem banner, sem problema
+      }
+    })();
+    return () => controlador.abort();
+  }, [plano]);
 
   /** O painel manda a contagem completa — nada é derivado aqui. */
   const atualizarResumo = useCallback((parcial: Partial<ResumoGeral>) => {
@@ -272,6 +313,21 @@ export default function Home() {
       const corpo = await res.json().catch(() => null);
 
       if (!res.ok) {
+        // 402 = limite do plano: abre o paywall em vez do toast.
+        if (
+          res.status === 402 &&
+          corpo &&
+          typeof corpo.recurso === "string" &&
+          typeof corpo.usados === "number" &&
+          typeof corpo.limite === "number"
+        ) {
+          dispararPaywall({
+            recurso: corpo.recurso,
+            usados: corpo.usados,
+            limite: corpo.limite,
+          });
+          return;
+        }
         toastErro(corpo?.error ?? "Não foi possível salvar o relatório.");
         return;
       }
@@ -292,6 +348,9 @@ export default function Home() {
   return (
     <ErrorBoundary>
       <Onboarding />
+      {paywall.info && (
+        <PaywallModal info={paywall.info} onFechar={paywall.fechar} />
+      )}
       <>
         <Header
         aba={aba}
@@ -301,6 +360,33 @@ export default function Home() {
       />
 
       <ToastViewport toasts={toast.toasts} onDisparar={toast.remover} />
+
+      {avisoUso && !avisoFechado && (
+        <div className="no-print border-b border-media/30 bg-media/10">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 sm:px-6">
+            <span aria-hidden="true" className="font-mono text-xs text-media">
+              !
+            </span>
+            <p className="flex-1 font-mono text-[11px] text-media">
+              {avisoUso} Considere fazer upgrade.
+            </p>
+            <a
+              href="/precos"
+              className="font-mono text-[11px] uppercase tracking-wider text-media underline underline-offset-2 hover:text-texto"
+            >
+              ver planos
+            </a>
+            <button
+              type="button"
+              aria-label="Fechar aviso"
+              onClick={() => setAvisoFechado(true)}
+              className="cursor-pointer font-mono text-xs text-media/70 hover:text-media"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
 
       <main className="flex-1">
         <LayoutComSidebar resumo={resumo}>

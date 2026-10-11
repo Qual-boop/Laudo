@@ -3,6 +3,7 @@ import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { Field, Input, Select, Textarea } from "@/components/Field";
 import { Spinner } from "@/components/Spinner";
+import { dispararPaywall } from "@/components/PaywallModal";
 import type { AchadoVerificavel, ResultadoReteste } from "@/lib/tipos";
 
 type Props = {
@@ -52,6 +53,21 @@ export function FormularioReteste({ achado, onCancelar, onSalvo, onAviso }: Prop
       const corpo = await res.json().catch(() => null);
 
       if (!res.ok) {
+        // 402 = limite do plano: abre o paywall em vez do toast.
+        if (
+          res.status === 402 &&
+          corpo &&
+          typeof corpo.recurso === "string" &&
+          typeof corpo.usados === "number" &&
+          typeof corpo.limite === "number"
+        ) {
+          dispararPaywall({
+            recurso: corpo.recurso,
+            usados: corpo.usados,
+            limite: corpo.limite,
+          });
+          return;
+        }
         onAviso(corpo?.error ?? "Não foi possível registrar o reteste.");
         return;
       }
