@@ -20,8 +20,20 @@ db.exec(`
     nome TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
     senha_hash TEXT,
+    plano TEXT NOT NULL DEFAULT 'free',
     criado_em TEXT DEFAULT CURRENT_TIMESTAMP,
     atualizado_em TEXT DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
+// Uso mensal por plano (free: 3 relatórios + 10 retestes; reseta no mês).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS uso_mensal (
+    usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    mes_ano TEXT NOT NULL,
+    relatorios_criados INTEGER NOT NULL DEFAULT 0,
+    retestes_registrados INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (usuario_id, mes_ano)
   )
 `);
 
@@ -93,6 +105,14 @@ const colunasRelatorios = db
   .all() as { name: string }[];
 if (!colunasRelatorios.some((c) => c.name === "usuario_id")) {
   db.exec("ALTER TABLE relatorios ADD COLUMN usuario_id INTEGER REFERENCES usuarios(id) ON DELETE CASCADE");
+}
+
+// Migração leve: plano default 'free' para contas anteriores aos limites.
+const colunasUsuarios = db
+  .prepare("PRAGMA table_info(usuarios)")
+  .all() as { name: string }[];
+if (!colunasUsuarios.some((c) => c.name === "plano")) {
+  db.exec("ALTER TABLE usuarios ADD COLUMN plano TEXT NOT NULL DEFAULT 'free'");
 }
 
 // Índices das consultas mais frequentes da aba Verificação.

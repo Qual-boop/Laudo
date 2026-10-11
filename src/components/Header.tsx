@@ -13,6 +13,7 @@ type Props = {
 
 export function Header({ aba, onAba, contagem, pendentes }: Props) {
   const { data: sessao } = useSession();
+  const plano = sessao?.user?.plano ?? "free";
 
   return (
     <header className="no-print sticky top-0 z-30 border-b border-borda bg-fundo/85 backdrop-blur-md">
@@ -40,6 +41,25 @@ export function Header({ aba, onAba, contagem, pendentes }: Props) {
               title={sessao.user.email ?? undefined}
             >
               {sessao.user.name}
+            </span>
+          )}
+          {sessao && (
+            <span
+              aria-label={`Plano ${plano}`}
+              title={
+                plano === "free"
+                  ? "Plano Free — ver planos em /precos"
+                  : `Plano ${plano.toUpperCase()}`
+              }
+              className={`font-mono text-[10px] font-bold uppercase tracking-widest rounded-sm px-1.5 py-0.5 ${
+                plano === "pro"
+                  ? "bg-accent/15 text-accent"
+                  : plano === "team"
+                    ? "bg-violeta/15 text-violeta"
+                    : "bg-borda/40 text-texto-2"
+              }`}
+            >
+              {plano}
             </span>
           )}
           {sessao && (

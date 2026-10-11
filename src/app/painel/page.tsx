@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, Suspense } from "react";
 import dynamic from "next/dynamic";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/Button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/Card";
 import { Field, Input, Select, Textarea } from "@/components/Field";
@@ -103,6 +104,8 @@ export default function Home() {
 
   const toast = useToast();
   const { sucesso, erro: toastErro, aviso: toastAviso } = toast;
+  const { data: sessao } = useSession();
+  const plano = sessao?.user?.plano ?? "free";
 
   /** Copia texto e avisa — funciona em contexto http e https. */
   const copiar = useCallback(
@@ -313,6 +316,7 @@ export default function Home() {
               onCopiar={copiar}
               onAviso={toastErro}
               onResumo={atualizarResumo}
+              plano={plano}
             />
           </Suspense>
         )}
@@ -668,6 +672,7 @@ export default function Home() {
                     relatorio={relatorio}
                     jiraBaseUrl={process.env.NEXT_PUBLIC_JIRA_URL}
                     githubRepoUrl={process.env.NEXT_PUBLIC_GITHUB_REPO_URL}
+                    plano={plano}
                   />
                 </Suspense>
                 <Button variante="secundaria" onClick={salvar} disabled={salvando}>
@@ -681,7 +686,7 @@ export default function Home() {
 
             <div className="mt-4">
               <Suspense fallback={<RelatorioSkeleton />}>
-                <RelatorioView relatorio={relatorio} />
+                <RelatorioView relatorio={relatorio} marcaDagua={plano === "free"} />
               </Suspense>
             </div>
           </>

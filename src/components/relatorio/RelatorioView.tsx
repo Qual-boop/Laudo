@@ -12,11 +12,26 @@ import { TimelineAchados } from "@/components/relatorio/TimelineAchados";
 import { Secao } from "@/components/relatorio/Secao";
 import type { Relatorio as DadosRelatorio } from "@/lib/tipos";
 
-export function RelatorioView({ relatorio }: { relatorio: DadosRelatorio }) {
+export function RelatorioView({
+  relatorio,
+  marcaDagua = false,
+}: {
+  relatorio: DadosRelatorio;
+  /** Plano free: imprime "Gerado com Laudo Free" no documento. */
+  marcaDagua?: boolean;
+}) {
   const { capa, sumarioExecutivo, escopoMetodologia, achados, recomendacoesGerais, conclusao } = relatorio;
 
   return (
     <article className="flex flex-col gap-10">
+      {marcaDagua && (
+        <p
+          aria-hidden="true"
+          className="rounded-md border border-dashed border-media/50 bg-media/10 px-4 py-2 text-center font-mono text-[11px] uppercase tracking-widest text-media print:border-media print:text-media"
+        >
+          Gerado com Laudo Free — assine o Pro para remover
+        </p>
+      )}
       <div className="print-cabecalho border-b border-borda pb-1.5 text-[9px] tracking-wide text-texto-2/70">
         <div className="flex items-baseline justify-between gap-4">
           <span className="font-semibold uppercase tracking-widest">

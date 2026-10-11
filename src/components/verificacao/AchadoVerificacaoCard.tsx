@@ -2,6 +2,7 @@ import { Button } from "@/components/Button";
 import { SeverityBadge } from "@/components/SeverityBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { AcoesExportacaoAchado } from "@/components/verificacao/AcoesExportacaoAchado";
+import type { Plano } from "@/lib/planos";
 import { ROTULO_RESULTADO } from "@/lib/verificacao";
 import type { AchadoVerificavel, StatusVerificacao } from "@/lib/tipos";
 
@@ -10,6 +11,7 @@ type Props = {
   onRegistrar: (achado: AchadoVerificavel) => void;
   onVerDelta: (achado: AchadoVerificavel) => void;
   onCopiar: (texto: string, rotulo: string) => void;
+  plano?: Plano;
 };
 
 /* ---------------------------------------------------------------
@@ -53,7 +55,7 @@ export function tempoRelativo(iso: string | null, agora = new Date()): string | 
   return meses === 1 ? "há 1 mês" : `há ${meses} meses`;
 }
 
-export function AchadoVerificacaoCard({ achado, onRegistrar, onVerDelta, onCopiar }: Props) {
+export function AchadoVerificacaoCard({ achado, onRegistrar, onVerDelta, onCopiar, plano = "free" }: Props) {
   const reteste = achado.ultimo_reteste;
   const icone = ICONE[achado.status];
 
@@ -108,7 +110,7 @@ export function AchadoVerificacaoCard({ achado, onRegistrar, onVerDelta, onCopia
         </div>
 
         <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
-          <AcoesExportacaoAchado achado={achado} onCopiar={onCopiar} />
+          <AcoesExportacaoAchado achado={achado} onCopiar={onCopiar} plano={plano} />
           {reteste && (
             <Button
               variante="fantasma"

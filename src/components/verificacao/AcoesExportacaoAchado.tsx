@@ -7,11 +7,13 @@ import {
   formatarMarkdown,
   formatarTextoSimples,
 } from "@/lib/exportacaoAchado";
+import { LIMITES, type Plano } from "@/lib/planos";
 import type { AchadoVerificavel } from "@/lib/tipos";
 
 type Props = {
   achado: AchadoVerificavel;
   onCopiar: (texto: string, rotulo: string) => void;
+  plano?: Plano;
 };
 
 const OPCOES = [
@@ -36,9 +38,10 @@ const OPCOES = [
 ] as const;
 
 /** Botão "Exportar para…" com dropdown nos cards da aba Verificação. */
-export function AcoesExportacaoAchado({ achado, onCopiar }: Props) {
+export function AcoesExportacaoAchado({ achado, onCopiar, plano = "free" }: Props) {
   const [aberto, setAberto] = useState(false);
   const caixa = useRef<HTMLDivElement>(null);
+  const avancado = LIMITES[plano].exportacaoAvancada;
 
   // Fecha no Escape e no clique fora.
   useEffect(() => {
@@ -78,20 +81,30 @@ export function AcoesExportacaoAchado({ achado, onCopiar }: Props) {
           aria-label="Formatos de exportação"
           className="absolute right-0 z-40 mt-1 w-64 rounded-md border border-borda bg-superficie p-1 shadow-lg"
         >
-          {OPCOES.map((op) => (
-            <button
-              key={op.id}
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                onCopiar(op.formatar(achado), `${op.aviso} — ${achado.achado_ref}`);
-                setAberto(false);
-              }}
-              className="interativo block w-full cursor-pointer rounded-sm px-3 py-2 text-left font-mono text-[11px] text-texto-2 hover:bg-superficie-2 hover:text-accent"
-            >
-              {op.rotulo}
-            </button>
-          ))}
+          {OPCOES.map((op) => {
+            const bloqueado = op.id !== "texto" && !avancado;
+            return (
+              <button
+                key={op.id}
+                type="button"
+                role="menuitem"
+                disabled={bloqueado}
+                title={bloqueado ? "Disponível nos planos Pro e Team" : undefined}
+                onClick={() => {
+                  onCopiar(op.formatar(achado), `${op.aviso} — ${achado.achado_ref}`);
+                  setAberto(false);
+                }}
+                className={`interativo block w-full rounded-sm px-3 py-2 text-left font-mono text-[11px] ${
+                  bloqueado
+                    ? "cursor-not-allowed opacity-40"
+                    : "cursor-pointer text-texto-2 hover:bg-superficie-2 hover:text-accent"
+                }`}
+              >
+                {op.rotulo}
+                {bloqueado && <span className="ml-2 text-media">🔒 PRO</span>}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

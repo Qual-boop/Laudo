@@ -6,6 +6,7 @@ export type Usuario = {
   nome: string;
   email: string;
   senha_hash: string | null;
+  plano: string;
   criado_em: string;
   atualizado_em: string;
 };
@@ -41,6 +42,17 @@ export function buscarUsuarioPorId(id: number): Usuario | null {
     .prepare("SELECT * FROM usuarios WHERE id = ?")
     .get(id) as Usuario | undefined;
   return linha ?? null;
+}
+
+/** Troca o plano (checkout Stripe, admin). Retorna false se inválido. */
+export function definirPlano(id: number, plano: string): boolean {
+  if (plano !== "free" && plano !== "pro" && plano !== "team") return false;
+  const info = db
+    .prepare(
+      "UPDATE usuarios SET plano = ?, atualizado_em = CURRENT_TIMESTAMP WHERE id = ?",
+    )
+    .run(plano, id);
+  return info.changes > 0;
 }
 
 /** Cria usuário com senha (cadastro). Retorna null se o e-mail já existe. */

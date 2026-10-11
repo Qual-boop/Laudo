@@ -4,6 +4,8 @@ import { Suspense, cache } from "react";
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import db from "@/lib/db";
+import { auth } from "@/auth";
+import { normalizarPlano } from "@/lib/planos";
 import {
   formatarHash,
   hashCertificado,
@@ -162,6 +164,23 @@ async function CorpoCertificado({ params }: { params: Params }) {
   const { relatorioId } = await params;
   const id = Number(relatorioId);
   if (!Number.isInteger(id) || id <= 0) notFound();
+
+  // Certificado é recurso Pro/Team: free vê o bloqueio com upgrade.
+  const sessao = await auth();
+  const plano = normalizarPlano(
+    (sessao?.user as { plano?: unknown } | undefined)?.plano,
+  );
+  if (plano === "free") {
+    return (
+      <Pendencia
+        titulo="Certificado disponível nos planos Pro e Team"
+        cta={{ rotulo: "ver planos", href: "/precos" }}
+      >
+        O certificado de correção com hash de verificação é um recurso pago.
+        Faça upgrade para emitir certificados dos seus relatórios.
+      </Pendencia>
+    );
+  }
 
   const certificado = await carregarCertificado(id);
   if (!certificado) notFound();
@@ -385,9 +404,17 @@ function CertificadoPendente({ certificado }: { certificado: Certificado }) {
   );
 }
 
-function Pendencia({ titulo, children }: { titulo: string; children: ReactNode }) {
+function Pendencia({
+  titulo,
+  children,
+  cta = { rotulo: "voltar", href: "/painel" },
+}: {
+  titulo: string;
+  children: ReactNode;
+  cta?: { rotulo: string; href: string };
+}) {
   return (
-    <article className="rounded-md border border-dashed border-borda bg-superficie/60 px-6 py-12 text-center">
+    <article className="rounded-lg border border-dashed border-borda bg-superficie/60 px-6 py-14 text-center">
       <span aria-hidden="true" className="font-mono text-2xl text-texto-2">
         ◇
       </span>
@@ -396,10 +423,10 @@ function Pendencia({ titulo, children }: { titulo: string; children: ReactNode }
         {children}
       </p>
       <a
-        href="/painel"
-        className="interativo mt-6 inline-flex cursor-pointer items-center justify-center rounded-md border border-accent px-4 py-2 font-mono text-[11px] uppercase tracking-wider text-accent hover:bg-accent hover:text-fundo"
+        href={cta.href}
+        className="interativo mt-6 inline-flex cursor-pointer items-center justify-center rounded-lg border border-accent px-4 py-2 font-mono text-[11px] uppercase tracking-wider text-accent hover:bg-accent hover:text-fundo"
       >
-        voltar
+        {cta.rotulo}
       </a>
     </article>
   );

@@ -1,5 +1,11 @@
 import db from "@/lib/db";
 import { exigirUsuario, erroApi } from "@/lib/api-auth";
+import {
+  incrementarUso,
+  LIMITES,
+  obterUso,
+  verificarLimite,
+} from "@/lib/limites";
 import { normalizarConfianca } from "@/lib/verificacao";
 import {
   esquemaPaginacao,
@@ -23,6 +29,37 @@ export async function POST(request: Request) {
   if (!v.ok) return v.resposta;
 
   const { capa, achados } = v.dados;
+  const limites = LIMITES[auth.usuario.plano];
+
+  // Plano free: no máximo 5 achados por relatório.
+  if (achados.length > limites.achadosPorRelatorio) {
+    return Response.json(
+      {
+        error: `Seu plano ${auth.usuario.plano} permite até ${limites.achadosPorRelatorio} achados por relatório. Faça upgrade para ilimitado.`,
+        code: "LIMITE_PLANO",
+        recurso: "achados",
+        usados: achados.length,
+        limite: limites.achadosPorRelatorio,
+      },
+      { status: 402 },
+    );
+  }
+
+  // Plano free: no máximo 3 relatórios por mês.
+  const uso = obterUso(auth.usuario.id);
+  const veredito = verificarLimite(auth.usuario.plano, uso, "relatorios");
+  if (!veredito.permitido) {
+    return Response.json(
+      {
+        error: `Você usou ${veredito.usados}/${veredito.limite} relatórios este mês. Faça upgrade para continuar.`,
+        code: "LIMITE_PLANO",
+        recurso: "relatorios",
+        usados: veredito.usados,
+        limite: veredito.limite,
+      },
+      { status: 402 },
+    );
+  }
   const riscoGeral = v.dados.sumarioExecutivo?.riscoGeral || "Medio";
 
   const inserirRelatorio = db.prepare(
@@ -68,6 +105,7 @@ export async function POST(request: Request) {
   });
 
   const relatorioId = salvar();
+  incrementarUso(auth.usuario.id, "relatorios_criados");
 
   return Response.json(
     { id: relatorioId, achados: achados.length },
@@ -90,12 +128,18 @@ export async function GET(request: Request) {
     ? pag.dados
     : { limit: 50, page: 1 };
 
+  // Plano free: histórico limitado aos últimos 30 dias.
+  const filtroDias =
+    LIMITES[auth.usuario.plano].historicoDias === Infinity
+      ? ""
+      : "AND r.criado_em >= datetime('now', '-30 days')";
+
   const relatorios = db
     .prepare(
       `SELECT r.id, r.cliente, r.titulo, r.data, r.versao, r.risco_geral, r.total_achados, r.criado_em,
               (SELECT COUNT(*) FROM achados_verificacao a
                 WHERE a.relatorio_id = r.id AND a.status = 'verificado') AS achados_verificados
-       FROM relatorios r WHERE r.usuario_id = ? ORDER BY r.id DESC LIMIT ? OFFSET ?`,
+       FROM relatorios r WHERE r.usuario_id = ? ${filtroDias} ORDER BY r.id DESC LIMIT ? OFFSET ?`,
     )
     .all(auth.usuario.id, limit, (page - 1) * limit);
 

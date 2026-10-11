@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Spinner } from "@/components/Spinner";
 import { AchadoVerificacaoCard } from "@/components/verificacao/AchadoVerificacaoCard";
 import { DeltaRelatorio } from "@/components/verificacao/DeltaRelatorio";
+import type { Plano } from "@/lib/planos";
 import { FormularioReteste } from "@/components/verificacao/FormularioReteste";
 import {
   BarraProgresso,
@@ -30,9 +31,10 @@ type Props = {
     verificados: number;
     naoCorrigidos: number;
   }) => void;
+  plano?: Plano;
 };
 
-export function PainelVerificacao({ onCopiar, onAviso, onResumo }: Props) {
+export function PainelVerificacao({ onCopiar, onAviso, onResumo, plano = "free" }: Props) {
   const [achados, setAchados] = useState<AchadoVerificavel[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [editando, setEditando] = useState<number | null>(null);
@@ -199,6 +201,7 @@ export function PainelVerificacao({ onCopiar, onAviso, onResumo }: Props) {
               key={achado.id}
               achado={achado}
               onCopiar={onCopiar}
+              plano={plano}
               onRegistrar={(a) => {
                 setDeltaDe(null);
                 setEditando(a.id);

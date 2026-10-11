@@ -1,5 +1,6 @@
 import db from "@/lib/db";
 import { exigirUsuario, erroApi } from "@/lib/api-auth";
+import { incrementarUso, obterUso, verificarLimite } from "@/lib/limites";
 import { normalizarConfianca, statusParaResultado } from "@/lib/verificacao";
 import {
   esquemaAchadoIdQuery,
@@ -182,6 +183,25 @@ export async function POST(request: Request) {
     return erroApi("Acesso negado a este achado.", "ACESSO_NEGADO", 403);
   }
 
+  // Plano free: no máximo 10 retestes por mês.
+  const veredito = verificarLimite(
+    auth.usuario.plano,
+    obterUso(auth.usuario.id),
+    "retestes",
+  );
+  if (!veredito.permitido) {
+    return Response.json(
+      {
+        error: `Você usou ${veredito.usados}/${veredito.limite} retestes este mês. Faça upgrade para continuar.`,
+        code: "LIMITE_PLANO",
+        recurso: "retestes",
+        usados: veredito.usados,
+        limite: veredito.limite,
+      },
+      { status: 402 },
+    );
+  }
+
   const dataReteste =
     v.dados.dataReteste && /^\d{4}-\d{2}-\d{2}$/.test(v.dados.dataReteste)
       ? v.dados.dataReteste
@@ -207,6 +227,7 @@ export async function POST(request: Request) {
   });
 
   const retesteId = registrar();
+  incrementarUso(auth.usuario.id, "retestes_registrados");
 
   const [atualizado] = listarAchados(auth.usuario.id, achadoId);
 

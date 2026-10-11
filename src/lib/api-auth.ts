@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { getToken } from "next-auth/jwt";
 import db from "@/lib/db";
 import { buscarUsuarioPorId, type Usuario } from "@/lib/usuarios";
+import { normalizarPlano, type Plano } from "@/lib/planos";
 
 /**
  * Guarda das rotas /api/v1/* (exceto auth).
@@ -71,7 +72,9 @@ export function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
-export type UsuarioAutenticado = Pick<Usuario, "id" | "nome" | "email">;
+export type UsuarioAutenticado = Pick<Usuario, "id" | "nome" | "email"> & {
+  plano: Plano;
+};
 
 export async function exigirUsuario(
   req: Request,
@@ -130,5 +133,13 @@ export async function exigirUsuario(
     };
   }
 
-  return { ok: true, usuario: { id: usuario.id, nome: usuario.nome, email: usuario.email } };
+  return {
+    ok: true,
+    usuario: {
+      id: usuario.id,
+      nome: usuario.nome,
+      email: usuario.email,
+      plano: normalizarPlano(usuario.plano),
+    },
+  };
 }
