@@ -32,32 +32,21 @@ npm run stripe:setup
 O script reaproveita o que já existe (busca por nome + confere
 valor/intervalo/moeda) e imprime os Price IDs para colar no `.env`.
 
-## 3. Webhook local
-
-O webhook **precisa** do signing secret para validar o HMAC. Em dev, use
-a CLI (já instalada em `~/.local/bin/stripe`):
+## 3. Webhook local (automatizado)
 
 ```bash
-# 1. Login (só na primeira vez — abre o browser)
-stripe login
-
-# 2. Escutar e encaminhar (deixa rodando em outro terminal)
-sh scripts/stripe-webhook.sh
+npm run stripe:webhook:start   # sobe o listen, captura o whsec_ e grava no .env
+npm run stripe:webhook:stop    # para o listen
 ```
 
-Ao iniciar, a CLI imprime algo como:
+O script lê `STRIPE_SECRET_KEY` do `.env`, sobe
+`stripe listen --forward-to localhost:3000/api/v1/webhook/stripe` em
+background (PID em `/tmp/stripe-listen.pid`, log em
+`/tmp/stripe-listen.log`), extrai o `whsec_...` e atualiza o `.env`
+sozinho. **Reinicie o dev server** depois para carregar a variável.
 
-```text
-> Ready! Your webhook signing secret is whsec_abc123... (^C to quit)
-```
-
-Copie esse valor para o `.env`:
-
-```bash
-STRIPE_WEBHOOK_SECRET=whsec_...
-```
-
-E **reinicie o dev server** (`npm run dev`) para carregar a variável.
+Fluxo manual (se preferir): `stripe login` (abre o browser uma vez) e
+`sh scripts/stripe-webhook.sh`.
 
 ## 4. Testar o fluxo completo no browser
 

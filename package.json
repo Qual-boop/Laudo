@@ -9,7 +9,9 @@
     "test": "vitest run --typecheck",
     "test:watch": "vitest --typecheck",
     "limpar-banco": "node scripts/limpar-banco.ts --executar",
-    "stripe:setup": "node scripts/criar-produtos-stripe.ts"
+    "stripe:setup": "node scripts/criar-produtos-stripe.ts",
+    "stripe:webhook:start": "bash scripts/setup-webhook.sh",
+    "stripe:webhook:stop": "bash scripts/parar-webhook.sh"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

@@ -16,8 +16,11 @@ let usuarioId = 0;
 
 async function garantirUsuario(): Promise<number> {
   if (usuarioId) return usuarioId;
+  // Hermético contra linhas órfãs de runs interrompidos: recria do zero.
+  db.prepare("DELETE FROM usuarios WHERE email = ?").run(EMAIL);
   const u = (await criarUsuario("QA Limites", EMAIL, "senha-123456"))!;
   usuarioId = u.id;
+  db.prepare("DELETE FROM uso_mensal WHERE usuario_id = ?").run(usuarioId);
   return usuarioId;
 }
 
