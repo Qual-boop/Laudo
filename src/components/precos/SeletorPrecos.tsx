@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { Logo } from "@/components/Logo";
 
 type PlanoId = "free" | "pro" | "team";
@@ -124,6 +125,39 @@ function reais(v: number): string {
 /** Cards de planos + FAQ + depoimentos (client: toggle mensal/anual). */
 export function SeletorPrecos() {
   const [anual, setAnual] = useState(false);
+  const { status } = useSession();
+  const [erroCheckout, setErroCheckout] = useState<string | null>(null);
+  const [pagando, setPagando] = useState<PlanoId | null>(null);
+
+  // Logado: vai direto ao Stripe Checkout. Deslogado: cria conta primeiro.
+  async function assinar(plano: PlanoId, hrefCadastro: string) {
+    if (plano === "free" || status !== "authenticated") {
+      window.location.href = hrefCadastro;
+      return;
+    }
+    setErroCheckout(null);
+    setPagando(plano);
+    try {
+      const res = await fetch("/api/v1/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plano, periodo: anual ? "anual" : "mensal" }),
+      });
+      const corpo = (await res.json().catch(() => null)) as {
+        url?: string;
+        error?: string;
+      } | null;
+      if (!res.ok || !corpo?.url) {
+        setErroCheckout(corpo?.error ?? "Checkout indisponível no momento.");
+        return;
+      }
+      window.location.href = corpo.url;
+    } catch {
+      setErroCheckout("Não foi possível conectar ao servidor.");
+    } finally {
+      setPagando(null);
+    }
+  }
 
   return (
     <>
@@ -157,6 +191,11 @@ export function SeletorPrecos() {
       </div>
 
       {/* Cards */}
+      {erroCheckout && (
+        <p role="alert" className="mx-auto mt-6 max-w-xl text-center font-mono text-xs text-critica">
+          {erroCheckout}
+        </p>
+      )}
       <div className="mt-10 grid grid-cols-1 gap-5 lg:grid-cols-3">
         {PLANOS.map((p, i) => {
           const preco = anual ? p.anual : p.mensal;
@@ -200,16 +239,18 @@ export function SeletorPrecos() {
                   </li>
                 ))}
               </ul>
-              <a
-                href={p.href}
-                className={`mt-7 inline-flex items-center justify-center rounded-lg border px-4 py-3 font-mono text-xs uppercase tracking-wider transition-all duration-200 active:scale-[0.98] ${
+              <button
+                type="button"
+                onClick={() => assinar(p.id, p.href)}
+                disabled={pagando !== null}
+                className={`mt-7 inline-flex cursor-pointer items-center justify-center rounded-lg border px-4 py-3 font-mono text-xs uppercase tracking-wider transition-all duration-200 active:scale-[0.98] disabled:opacity-60 ${
                   p.destaque
                     ? "border-accent bg-gradient-to-b from-accent to-accent/70 text-fundo shadow-[0_0_20px_-6px_var(--color-accent)] hover:brightness-110"
                     : "border-borda text-texto-2 hover:border-accent hover:text-accent"
                 }`}
               >
-                {p.cta}
-              </a>
+                {pagando === p.id ? "abrindo checkout…" : p.cta}
+              </button>
             </article>
           );
         })}

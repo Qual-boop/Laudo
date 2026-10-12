@@ -19,7 +19,8 @@ export async function POST(request: Request) {
 
   const b = (corpo ?? {}) as Record<string, unknown>;
   const plano = b.plano as PlanoPago;
-  const periodo = (b.periodo ?? "mensal") as Periodo;
+  // Aceita `periodo` (canônico) ou `ciclo` (alias).
+  const periodo = ((b.periodo ?? b.ciclo) ?? "mensal") as Periodo;
 
   if (plano !== "pro" && plano !== "team") {
     return erroApi("plano deve ser pro ou team.", "VALIDACAO", 400);
