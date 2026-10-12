@@ -15,7 +15,8 @@ if [ -z "$KEY" ]; then
 fi
 
 # Evita duplicar: derruba listen anterior do mesmo destino.
-pkill -f "[s]tripe listen --forward-to localhost:3000/api/v1/webhook/stripe" 2>/dev/null
+# ([s] evita que o pkill mate o próprio shell — o padrão está na cmdline.)
+pkill -f "[s]tripe listen.*forward-to localhost:3000/api/v1/webhook/stripe" 2>/dev/null
 sleep 1
 
 rm -f "$LOG" "$PIDFILE"

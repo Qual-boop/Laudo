@@ -14,7 +14,7 @@ if [ -f "$PIDFILE" ]; then
 fi
 
 # Fallback: procura qualquer listen do Laudo.
-PIDS=$(pgrep -f "[s]tripe listen --forward-to localhost:3000/api/v1/webhook/stripe" || true)
+PIDS=$(pgrep -f "[s]tripe listen.*forward-to localhost:3000/api/v1/webhook/stripe" || true)
 if [ -n "$PIDS" ]; then
   # shellcheck disable=SC2086
   kill $PIDS && echo "stripe listen parado (PIDs: $PIDS)."

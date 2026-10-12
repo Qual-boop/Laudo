@@ -11,7 +11,15 @@
     "limpar-banco": "node scripts/limpar-banco.ts --executar",
     "stripe:setup": "node scripts/criar-produtos-stripe.ts",
     "stripe:webhook:start": "bash scripts/setup-webhook.sh",
-    "stripe:webhook:stop": "bash scripts/parar-webhook.sh"
+    "stripe:webhook:stop": "bash scripts/parar-webhook.sh",
+    "ambiente:iniciar": "bash scripts/iniciar-tudo.sh",
+    "ambiente:parar": "bash scripts/parar-tudo.sh",
+    "ambiente:status": "bash scripts/status-tudo.sh",
+    "servicos:instalar": "bash scripts/instalar-servicos.sh",
+    "servicos:status": "sudo systemctl status stripe-listen",
+    "servicos:logs": "sudo tail -f /var/log/stripe-listen.log",
+    "servicos:parar": "sudo systemctl stop stripe-listen",
+    "servicos:reiniciar": "sudo systemctl restart stripe-listen"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
