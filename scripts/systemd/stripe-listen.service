@@ -1,0 +1,18 @@
+[Unit]
+Description=Stripe CLI Listen (webhook forwarder do Laudo)
+After=network.target
+
+[Service]
+Type=simple
+User=kali
+WorkingDirectory=/home/kali/projetos/relatorio-pentest
+# Segredo via EnvironmentFile (NUNCA hardcoded aqui).
+EnvironmentFile=/etc/stripe-listen.env
+ExecStart=/home/kali/.local/bin/stripe listen --api-key ${STRIPE_SECRET_KEY} --forward-to localhost:3000/api/v1/webhook/stripe --skip-verify
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:/var/log/stripe-listen.log
+StandardError=append:/var/log/stripe-listen.log
+
+[Install]
+WantedBy=multi-user.target
