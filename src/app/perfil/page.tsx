@@ -79,16 +79,19 @@ export default function Perfil() {
     setErro("");
     setAguarde("portal");
     try {
-      const res = await fetch("/api/v1/portal", { method: "POST" });
+      // O Asaas não tem Customer Portal: o cancelamento é via API e as
+      // faturas ficam no painel do Asaas. Aqui, "gerenciar" = cancelar.
+      const res = await fetch("/api/v1/assinatura/cancelar", { method: "POST" });
       const corpo = (await res.json().catch(() => null)) as {
-        url?: string;
+        ok?: boolean;
         error?: string;
       } | null;
-      if (!res.ok || !corpo?.url) {
-        setErro(corpo?.error ?? "Portal indisponível no momento.");
+      if (!res.ok || !corpo?.ok) {
+        setErro(corpo?.error ?? "Cancelamento indisponível no momento.");
         return;
       }
-      window.location.href = corpo.url;
+      setOk("Assinatura cancelada. Você voltou para o Free.");
+      await carregar();
     } catch {
       setErro("Não foi possível conectar ao servidor.");
     } finally {
@@ -195,7 +198,7 @@ export default function Perfil() {
           <CardHeader>
             <CardTitle>Assinatura</CardTitle>
             <CardDescription>
-              Pro R$ 19,90/mês · Team R$ 49,90/mês por usuário. Faturas no portal.
+              Pro R$ 19,90/mês · Team R$ 49,90/mês por usuário. Pagamentos via Asaas.
             </CardDescription>
           </CardHeader>
           <div className="flex flex-col gap-2.5 px-5 py-4 sm:flex-row sm:px-6">
@@ -218,9 +221,9 @@ export default function Perfil() {
             <Button
               variante="fantasma"
               onClick={abrirPortal}
-              disabled={aguarde !== null || !assinatura?.subscriptionId}
+              disabled={aguarde !== null || (!assinatura?.subscriptionId && plano === "free")}
             >
-              {aguarde === "portal" ? "abrindo…" : "gerenciar"}
+              {aguarde === "portal" ? "cancelando…" : "cancelar assinatura"}
             </Button>
           </div>
         </Card>

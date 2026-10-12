@@ -129,7 +129,7 @@ export function SeletorPrecos() {
   const [erroCheckout, setErroCheckout] = useState<string | null>(null);
   const [pagando, setPagando] = useState<PlanoId | null>(null);
 
-  // Logado: vai direto ao Stripe Checkout. Deslogado: cria conta primeiro.
+  // Logado: vai direto ao checkout. Deslogado: cria conta primeiro.
   async function assinar(plano: PlanoId, hrefCadastro: string) {
     if (plano === "free" || status !== "authenticated") {
       window.location.href = hrefCadastro;
