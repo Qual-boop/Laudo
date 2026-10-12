@@ -42,3 +42,18 @@ bash scripts/parar-webhook.sh  # para o listen manual (modo sem systemd)
 - **npm run dev + cloudflared**: só quando você chama `ambiente:iniciar`.
 - O link do túnel muda a cada início — sempre copie o novo de
   `/tmp/laudo-tunnel-url.txt` (e atualize `AUTH_URL` se usar OAuth).
+
+## E2E (15 fluxos)
+
+```bash
+npm run build              # o e2e sobe o build de produção local
+npm run e2e                # todos os 15 fluxos (cadastro → públicas)
+npm run e2e:checkout       # só o fluxo 8
+npm run e2e:auth           # só login cookie (fluxo 2)
+bash scripts/e2e-completo.sh --apenas=limites  # qualquer fluxo pelo nome
+```
+
+O script sobe `next start` na porta 3456 (sem chaves de IA → fallback
+determinístico), usa emails únicos com timestamp e **apaga todos os
+usuários de teste no final** (trap). Fluxos com dependência (reteste,
+certificado) criam as próprias fixtures — `--apenas` funciona isolado.
