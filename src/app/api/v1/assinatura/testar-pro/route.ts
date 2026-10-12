@@ -11,15 +11,15 @@ export async function POST(request: Request) {
 
   const u = db
     .prepare(
-      "SELECT plano, plano_expira_em, stripe_subscription_id FROM usuarios WHERE id = ?",
+      "SELECT plano, plano_expira_em, asaas_subscription_id FROM usuarios WHERE id = ?",
     )
     .get(auth.usuario.id) as {
     plano: string;
     plano_expira_em: string | null;
-    stripe_subscription_id: string | null;
+    asaas_subscription_id: string | null;
   };
 
-  if (u.plano !== "free" || u.stripe_subscription_id) {
+  if (u.plano !== "free" || u.asaas_subscription_id) {
     return erroApi("Trial disponível só para contas free sem assinatura.", "TRIAL_INDISPONIVEL", 409);
   }
   // Trial já usado e expirado não renova: expira_em passado com plano free

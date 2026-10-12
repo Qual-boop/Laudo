@@ -1,36 +1,14 @@
-import Stripe from "stripe";
 import db from "@/lib/db";
 import { definirPlano } from "@/lib/usuarios";
 import type { Plano } from "@/lib/planos";
 
 /**
- * Billing Stripe (Checkout + Portal + webhook). Test-first: use chaves
- * `sk_test_` / `whsec_` até validar, só então troque pelas de produção.
+ * Assinaturas via Asaas (Checkout recorrente + webhook).
+ * Sem SDK — tudo passa por lib/asaas.ts (fetch puro).
  */
 
 export type PlanoPago = Exclude<Plano, "free">;
 export type Periodo = "mensal" | "anual";
-
-const PRECOS: Record<`${PlanoPago}_${Periodo}`, string | undefined> = {
-  pro_mensal: process.env.STRIPE_PRICE_PRO_MENSAL,
-  pro_anual: process.env.STRIPE_PRICE_PRO_ANUAL,
-  team_mensal: process.env.STRIPE_PRICE_TEAM_MENSAL,
-  team_anual: process.env.STRIPE_PRICE_TEAM_ANUAL,
-};
-
-export function precoPara(plano: PlanoPago, periodo: Periodo): string | null {
-  return PRECOS[`${plano}_${periodo}`] || null;
-}
-
-let stripeInstancia: Stripe | null = null;
-
-export function stripe(): Stripe | null {
-  if (!process.env.STRIPE_SECRET_KEY) return null;
-  if (!stripeInstancia) {
-    stripeInstancia = new Stripe(process.env.STRIPE_SECRET_KEY);
-  }
-  return stripeInstancia;
-}
 
 export type ItemAssinatura = {
   plano: Plano;
@@ -44,7 +22,7 @@ export function assinaturaDe(usuario: {
   id: number;
   plano: string;
   plano_expira_em: string | null;
-  stripe_subscription_id: string | null;
+  asaas_subscription_id: string | null;
 }): ItemAssinatura {
   const plano =
     usuario.plano === "pro" || usuario.plano === "team" ? usuario.plano : "free";
@@ -59,67 +37,157 @@ export function assinaturaDe(usuario: {
   return {
     plano,
     expiraEm: expira,
-    subscriptionId: usuario.stripe_subscription_id,
-    trial: plano !== "free" && !usuario.stripe_subscription_id,
+    subscriptionId: usuario.asaas_subscription_id,
+    trial: plano !== "free" && !usuario.asaas_subscription_id,
   };
 }
 
-/** Aplica eventos do webhook na conta (idempotente por natureza: set direto). */
-export function aplicarEventoWebhook(evento: {
-  type: string;
-  data: { object: Record<string, unknown> };
-}): { ok: boolean; motivo?: string } {
-  const obj = evento.data.object;
+export function precoPara(_plano: PlanoPago, _periodo: Periodo): null {
+  // Legado do Stripe (price IDs). No Asaas o valor vai no payload do
+  // checkout (ver VALORES em lib/asaas.ts) — nada a resolver aqui.
+  return null;
+}
 
-  if (evento.type === "checkout.session.completed") {
-    const usuarioId = Number(
-      (obj.metadata as Record<string, unknown> | undefined)?.usuarioId,
-    );
-    const plano = (obj.metadata as Record<string, unknown> | undefined)?.plano;
-    if (!Number.isInteger(usuarioId) || (plano !== "pro" && plano !== "team")) {
-      return { ok: false, motivo: "metadata sem usuarioId/plano" };
-    }
-    const customer = obj.customer;
-    const subscription = obj.subscription;
+type EventoAsaas = {
+  id: string;
+  event: string;
+  checkout?: { id?: string; customer?: string; externalReference?: string };
+  subscription?: { id?: string; customer?: string; cycle?: string };
+  payment?: { id?: string; subscription?: string };
+};
+
+function planoDaReferencia(ref: string | undefined): PlanoPago | null {
+  const parte = (ref ?? "").split(":")[1];
+  return parte === "pro" || parte === "team" ? parte : null;
+}
+
+function usuarioDaReferencia(ref: string | undefined): number | null {
+  const id = Number((ref ?? "").split(":")[0]);
+  return Number.isInteger(id) ? id : null;
+}
+
+function buscarPorCustomer(customer: string | undefined): number | null {
+  if (!customer) return null;
+  const linha = db
+    .prepare("SELECT id FROM usuarios WHERE asaas_customer_id = ?")
+    .get(customer) as { id: number } | undefined;
+  return linha ? linha.id : null;
+}
+
+function cicloDaReferencia(ref: string | undefined): "YEARLY" | "MONTHLY" {
+  return (ref ?? "").split(":")[2] === "anual" ? "YEARLY" : "MONTHLY";
+}
+
+function estenderExpira(usuarioId: number, ciclo: string | undefined): void {
+  const dias = ciclo === "YEARLY" ? 365 : 30;
+  const atual = db
+    .prepare("SELECT plano_expira_em FROM usuarios WHERE id = ?")
+    .get(usuarioId) as { plano_expira_em: string | null };
+  const base = Math.max(
+    Date.now(),
+    atual?.plano_expira_em ? new Date(atual.plano_expira_em).getTime() : 0,
+  );
+  const nova = new Date(base + dias * 24 * 60 * 60 * 1000).toISOString();
+  db.prepare(
+    "UPDATE usuarios SET plano_expira_em = ?, assinatura_status = 'ativa', atualizado_em = CURRENT_TIMESTAMP WHERE id = ?",
+  ).run(nova, usuarioId);
+}
+
+/**
+ * Aplica eventos do webhook com idempotência (tabela webhook_eventos).
+ * Retorna sempre para a rota responder 200 (o Asaas reenvia qualquer
+ * outro status). `aplicado=false` = ignorado por regra, não por erro.
+ */
+export function aplicarEventoAsaas(evento: EventoAsaas): {
+  ok: boolean;
+  aplicado: boolean;
+  motivo?: string;
+} {
+  if (!evento.id || !evento.event) {
+    return { ok: false, aplicado: false, motivo: "evento sem id/tipo" };
+  }
+
+  try {
     db.prepare(
-      `UPDATE usuarios SET plano = ?, stripe_customer_id = COALESCE(?, stripe_customer_id),
-        stripe_subscription_id = COALESCE(?, stripe_subscription_id),
-        plano_expira_em = NULL, atualizado_em = CURRENT_TIMESTAMP WHERE id = ?`,
-    ).run(
-      plano,
-      typeof customer === "string" ? customer : null,
-      typeof subscription === "string" ? subscription : null,
-      usuarioId,
-    );
-    return { ok: true };
+      "INSERT INTO webhook_eventos (id, evento, payload) VALUES (?, ?, ?)",
+    ).run(evento.id, evento.event, JSON.stringify(evento));
+  } catch {
+    return { ok: true, aplicado: false, motivo: "evento já processado" };
   }
 
-  if (
-    evento.type === "customer.subscription.updated" ||
-    evento.type === "customer.subscription.deleted"
-  ) {
-    const subscriptionId = typeof obj.id === "string" ? obj.id : null;
-    if (!subscriptionId) return { ok: false, motivo: "sem subscription id" };
-    const status = obj.status as string | undefined;
-    const ativa = status === "active" || status === "trialing";
-    const periodoFim = (obj as { current_period_end?: number }).current_period_end;
-    const expira = periodoFim
-      ? new Date(periodoFim * 1000).toISOString()
-      : null;
-    if (evento.type === "customer.subscription.deleted" || !ativa) {
-      db.prepare(
-        `UPDATE usuarios SET plano = 'free', stripe_subscription_id = NULL,
-          plano_expira_em = NULL, atualizado_em = CURRENT_TIMESTAMP
-         WHERE stripe_subscription_id = ?`,
-      ).run(subscriptionId);
-    } else {
-      db.prepare(
-        `UPDATE usuarios SET plano_expira_em = ?, atualizado_em = CURRENT_TIMESTAMP
-         WHERE stripe_subscription_id = ?`,
-      ).run(expira, subscriptionId);
+  const { event } = evento;
+
+  if (event === "CHECKOUT_PAID") {
+    const ref = evento.checkout?.externalReference;
+    const usuarioId =
+      usuarioDaReferencia(ref) ?? buscarPorCustomer(evento.checkout?.customer);
+    const plano = planoDaReferencia(ref);
+    if (!usuarioId || !plano) {
+      return { ok: true, aplicado: false, motivo: "sem usuario/plano na referência" };
     }
-    return { ok: true };
+    const ciclo = cicloDaReferencia(ref);
+    definirPlano(usuarioId, plano);
+    db.prepare(
+      `UPDATE usuarios SET assinatura_status = 'ativa', assinatura_ciclo = ?,
+        atualizado_em = CURRENT_TIMESTAMP WHERE id = ?`,
+    ).run(ciclo, usuarioId);
+    estenderExpira(usuarioId, ciclo);
+    return { ok: true, aplicado: true };
   }
 
-  return { ok: true, motivo: "evento ignorado" };
+  if (event === "SUBSCRIPTION_CREATED") {
+    const sub = evento.subscription;
+    const usuarioId = buscarPorCustomer(sub?.customer);
+    if (!usuarioId || !sub?.id) {
+      return { ok: true, aplicado: false, motivo: "sem usuario/subscription" };
+    }
+    db.prepare(
+      `UPDATE usuarios SET asaas_subscription_id = ?, assinatura_status = 'ativa',
+        atualizado_em = CURRENT_TIMESTAMP WHERE id = ?`,
+    ).run(sub.id, usuarioId);
+    return { ok: true, aplicado: true };
+  }
+
+  if (event === "PAYMENT_RECEIVED") {
+    const subId = evento.payment?.subscription;
+    if (!subId) {
+      return { ok: true, aplicado: false, motivo: "payment sem subscription" };
+    }
+    const linha = db
+      .prepare("SELECT id, assinatura_ciclo FROM usuarios WHERE asaas_subscription_id = ?")
+      .get(subId) as { id: number; assinatura_ciclo: string | null } | undefined;
+    if (!linha) {
+      return { ok: true, aplicado: false, motivo: "subscription desconhecida" };
+    }
+    // Ciclo gravado no CHECKOUT_PAID; padrão mensal se ausente.
+    estenderExpira(linha.id, linha.assinatura_ciclo ?? undefined);
+    return { ok: true, aplicado: true };
+  }
+
+  if (event === "PAYMENT_OVERDUE") {
+    const subId = evento.payment?.subscription ?? evento.subscription?.id;
+    if (subId) {
+      db.prepare(
+        `UPDATE usuarios SET assinatura_status = 'past_due',
+          atualizado_em = CURRENT_TIMESTAMP WHERE asaas_subscription_id = ?`,
+      ).run(subId);
+      return { ok: true, aplicado: true };
+    }
+    return { ok: true, aplicado: false, motivo: "overdue sem subscription" };
+  }
+
+  if (event === "SUBSCRIPTION_DELETED") {
+    const subId = evento.subscription?.id;
+    if (!subId) {
+      return { ok: true, aplicado: false, motivo: "sem subscription id" };
+    }
+    db.prepare(
+      `UPDATE usuarios SET plano = 'free', asaas_subscription_id = NULL,
+        plano_expira_em = NULL, assinatura_status = 'cancelada',
+        atualizado_em = CURRENT_TIMESTAMP WHERE asaas_subscription_id = ?`,
+    ).run(subId);
+    return { ok: true, aplicado: true };
+  }
+
+  return { ok: true, aplicado: false, motivo: "evento ignorado" };
 }

@@ -12,13 +12,13 @@ export async function GET(request: Request) {
 
   const u = db
     .prepare(
-      "SELECT id, plano, plano_expira_em, stripe_subscription_id FROM usuarios WHERE id = ?",
+      "SELECT id, plano, plano_expira_em, asaas_subscription_id FROM usuarios WHERE id = ?",
     )
     .get(auth.usuario.id) as {
     id: number;
     plano: string;
     plano_expira_em: string | null;
-    stripe_subscription_id: string | null;
+    asaas_subscription_id: string | null;
   };
 
   return Response.json(assinaturaDe(u));
