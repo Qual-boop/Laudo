@@ -15,6 +15,17 @@ export function Header({ aba, onAba, contagem, pendentes }: Props) {
   const { data: sessao } = useSession();
   const plano = sessao?.user?.plano ?? "free";
 
+  async function sair() {
+    // Expira o cookie httpOnly no servidor (o signout do NextAuth v5
+    // sozinho não limpa a sessão JWT) e depois sai no client.
+    try {
+      await fetch("/api/v1/auth/logout", { method: "POST" });
+    } catch {
+      // segue o fluxo: o signOut limpa o estado local de qualquer jeito
+    }
+    await signOut({ callbackUrl: "/login" });
+  }
+
   return (
     <header className="no-print sticky top-0 z-30 border-b border-borda bg-fundo/85 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3.5 sm:px-6">
@@ -66,7 +77,7 @@ export function Header({ aba, onAba, contagem, pendentes }: Props) {
           {sessao && (
             <button
               type="button"
-              onClick={() => signOut({ callbackUrl: "/login" })}
+              onClick={sair}
               aria-label="Sair da conta"
               className="interativo cursor-pointer rounded-sm border border-borda px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-texto-2 hover:border-critica/50 hover:text-critica"
             >

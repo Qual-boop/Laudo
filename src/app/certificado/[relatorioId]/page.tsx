@@ -3,15 +3,15 @@ import type { ReactNode } from "react";
 import { Suspense, cache } from "react";
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
-import db from "@/lib/db";
 import { auth } from "@/auth";
 import { normalizarPlano } from "@/lib/planos";
 import {
+  carregarDadosCertificado,
+  type Certificado,
+} from "@/lib/certificado-dados";
+import {
   formatarHash,
-  hashCertificado,
   progressoCertificado,
-  type AchadoCertificado,
-  type DadosCertificado,
 } from "@/lib/certificado";
 import { AcoesCertificado } from "@/components/certificado/AcoesCertificado";
 import { SeverityBadge } from "@/components/SeverityBadge";
@@ -22,106 +22,14 @@ import type { ResultadoReteste, Severidade, StatusVerificacao } from "@/lib/tipo
 
 type Params = PageProps<"/certificado/[relatorioId]">["params"];
 
-type LinhaRelatorio = {
-  id: number;
-  cliente: string;
-  titulo: string;
-  data: string;
-  versao: string;
-};
-
-type LinhaAchado = {
-  achado_ref: string;
-  titulo: string;
-  severidade: string;
-  status: string;
-  data_reteste: string | null;
-  resultado: string | null;
-};
-
-const SEVERIDADES: Severidade[] = ["Critica", "Alta", "Media", "Baixa"];
-const STATUS: StatusVerificacao[] = ["pendente", "verificado", "nao-corrigido"];
-const RESULTADOS: ResultadoReteste[] = ["corrigido", "nao-corrigido", "parcial"];
-
-type Certificado = {
-  dados: DadosCertificado;
-  progresso: ReturnType<typeof progressoCertificado>;
-  hash: string;
-};
-
 /**
- * Carrega relatório + retestes numa única consulta por achado (subquery do
- * último reteste), calcula o progresso e o hash.
- *
- * `connection()` é obrigatório aqui: better-sqlite3 é síncrono e executaria
+ * Lib pura carrega os dados; aqui só envolvemos com `cache` + `connection()`.
+ * `connection()` é obrigatório: better-sqlite3 é síncrono e executaria
  * durante o prerender, congelando no build o estado do banco daquela hora.
- * A chamada também deixa `new Date()` fora da fase estática.
  */
 const carregarCertificado = cache(async (id: number): Promise<Certificado | null> => {
   await connection();
-
-  const relatorio = db
-    .prepare("SELECT id, cliente, titulo, data, versao FROM relatorios WHERE id = ?")
-    .get(id) as LinhaRelatorio | undefined;
-
-  if (!relatorio) return null;
-
-  const linhas = db
-    .prepare(
-      `SELECT a.achado_ref, a.titulo, a.severidade, a.status,
-              (SELECT r.data_reteste FROM retestes r
-                WHERE r.achado_id = a.id
-                ORDER BY date(r.data_reteste) DESC, r.id DESC LIMIT 1) AS data_reteste,
-              (SELECT r.resultado FROM retestes r
-                WHERE r.achado_id = a.id
-                ORDER BY date(r.data_reteste) DESC, r.id DESC LIMIT 1) AS resultado
-         FROM achados_verificacao a
-        WHERE a.relatorio_id = ?
-        ORDER BY a.id`,
-    )
-    .all(id) as LinhaAchado[];
-
-  const achados: AchadoCertificado[] = linhas.map((l) => ({
-    ref: String(l.achado_ref),
-    titulo: String(l.titulo),
-    severidade: (SEVERIDADES.includes(l.severidade as Severidade)
-      ? l.severidade
-      : "Media") as Severidade,
-    status: (STATUS.includes(l.status as StatusVerificacao)
-      ? l.status
-      : "pendente") as StatusVerificacao,
-    dataReteste: l.data_reteste ? String(l.data_reteste) : null,
-    resultado: (RESULTADOS.includes(l.resultado as ResultadoReteste)
-      ? l.resultado
-      : null) as ResultadoReteste | null,
-  }));
-
-  // Data de emissão derivada do dado gravado (último reteste, senão a data do
-  // relatório) e não de `new Date()`: assim o hash continua conferível dias
-  // depois — o certificado não muda de hash ao ser reaberto.
-  const datasReteste = achados
-    .map((a) => a.dataReteste)
-    .filter((d): d is string => Boolean(d))
-    .sort();
-  const emitidoEm = datasReteste.at(-1) ?? relatorio.data;
-
-  const dados: DadosCertificado = {
-    relatorio: {
-      id: Number(relatorio.id),
-      cliente: relatorio.cliente,
-      titulo: relatorio.titulo,
-      data: relatorio.data,
-      versao: relatorio.versao,
-    },
-    achados,
-    emitidoEm,
-  };
-
-  return {
-    dados,
-    progresso: progressoCertificado(achados),
-    hash: hashCertificado(dados),
-  };
+  return carregarDadosCertificado(id);
 });
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {

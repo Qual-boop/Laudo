@@ -271,6 +271,25 @@ export function copiarParaClipboard(texto: string): Promise<void> {
   return navigator.clipboard.writeText(texto);
 }
 
+/** Texto simples do relatório inteiro (plano free + clientes sem markdown). */
+export function gerarExportacaoTexto(relatorio: Relatorio): string {
+  const { capa, sumarioExecutivo, achados, conclusao } = relatorio;
+  const linhas = [
+    `${capa.titulo} — ${capa.cliente} (${capa.data})`,
+    `Risco geral: ${sumarioExecutivo.riscoGeral} · ${sumarioExecutivo.totalAchados} achado(s)`,
+    "",
+    ...achados.map(
+      (a, i) =>
+        `${String(i + 1).padStart(3, "0")} [${a.severidade}] ${a.titulo} (CVSS ${a.cvss.score.toFixed(1)})`,
+    ),
+    "",
+    conclusao,
+    "",
+    "Relatório gerado por Laudo",
+  ];
+  return linhas.join("\n");
+}
+
 export function abrirNovaAbaJira(exportacao: ExportacaoJira, baseUrl: string): void {
   const params = new URLSearchParams({
     summary: exportacao.summary,
