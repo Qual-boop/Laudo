@@ -21,6 +21,11 @@ db.exec(`
     email TEXT NOT NULL UNIQUE,
     senha_hash TEXT,
     plano TEXT NOT NULL DEFAULT 'free',
+    plano_expira_em TEXT,
+    asaas_customer_id TEXT,
+    asaas_subscription_id TEXT,
+    assinatura_status TEXT,
+    assinatura_ciclo TEXT,
     criado_em TEXT DEFAULT CURRENT_TIMESTAMP,
     atualizado_em TEXT DEFAULT CURRENT_TIMESTAMP
   )
@@ -114,17 +119,39 @@ const colunasUsuarios = db
 if (!colunasUsuarios.some((c) => c.name === "plano")) {
   db.exec("ALTER TABLE usuarios ADD COLUMN plano TEXT NOT NULL DEFAULT 'free'");
 }
+if (!colunasUsuarios.some((c) => c.name === "plano_expira_em")) {
+  db.exec("ALTER TABLE usuarios ADD COLUMN plano_expira_em TEXT");
+}
 
-// Migração leve: billing Stripe (Fase 5).
+// Migração de saída do Stripe: remove colunas legadas (linhas preservadas).
+for (const coluna of ["stripe_customer_id", "stripe_subscription_id"]) {
+  const atuais = db.prepare("PRAGMA table_info(usuarios)").all() as { name: string }[];
+  if (atuais.some((c) => c.name === coluna)) {
+    db.exec(`ALTER TABLE usuarios DROP COLUMN ${coluna}`);
+  }
+}
+
+// Migração leve: billing Asaas (substitui Stripe).
 for (const [coluna, tipo] of [
-  ["stripe_customer_id", "TEXT"],
-  ["stripe_subscription_id", "TEXT"],
-  ["plano_expira_em", "TEXT"],
+  ["asaas_customer_id", "TEXT"],
+  ["asaas_subscription_id", "TEXT"],
+  ["assinatura_status", "TEXT"],
+  ["assinatura_ciclo", "TEXT"],
 ] as const) {
-  if (!colunasUsuarios.some((c) => c.name === coluna)) {
+  const atuais = db.prepare("PRAGMA table_info(usuarios)").all() as { name: string }[];
+  if (!atuais.some((c) => c.name === coluna)) {
     db.exec(`ALTER TABLE usuarios ADD COLUMN ${coluna} ${tipo}`);
   }
 }
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS webhook_eventos (
+    id TEXT PRIMARY KEY,
+    evento TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    processado_em TEXT DEFAULT CURRENT_TIMESTAMP
+  )
+`);
 
 // Índices das consultas mais frequentes da aba Verificação.
 db.exec(`

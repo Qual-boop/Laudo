@@ -7,9 +7,11 @@ export type Usuario = {
   email: string;
   senha_hash: string | null;
   plano: string;
-  stripe_customer_id: string | null;
-  stripe_subscription_id: string | null;
   plano_expira_em: string | null;
+  asaas_customer_id: string | null;
+  asaas_subscription_id: string | null;
+  assinatura_status: string | null;
+  assinatura_ciclo: string | null;
   criado_em: string;
   atualizado_em: string;
 };
@@ -47,7 +49,7 @@ export function buscarUsuarioPorId(id: number): Usuario | null {
   return linha ?? null;
 }
 
-/** Troca o plano (checkout Stripe, admin). Retorna false se inválido. */
+/** Troca o plano (checkout, webhook, admin). Retorna false se inválido. */
 export function definirPlano(id: number, plano: string): boolean {
   if (plano !== "free" && plano !== "pro" && plano !== "team") return false;
   const info = db
