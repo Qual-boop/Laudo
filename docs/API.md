@@ -78,23 +78,29 @@ curl http://localhost:3000/api/v1/assinatura -H 'Authorization: Bearer eyJ...'
 
 Uma vez por conta free. `201 {"plano":"pro","expiraEm":"...","trial":true}`.
 
-### `POST /api/v1/checkout` — sessão do Stripe Checkout
+### `POST /api/v1/checkout` — checkout recorrente (Asaas)
 
 ```bash
 curl -X POST http://localhost:3000/api/v1/checkout \
   -H 'Authorization: Bearer eyJ...' -H 'Content-Type: application/json' \
   -d '{"plano":"pro","periodo":"mensal"}'
-# 200 {"url":"https://checkout.stripe.com/..."}
+# 200 {"url":"https://sandbox.asaas.com/checkoutSession/show/..."}
 ```
 
-### `POST /api/v1/portal` — Stripe Customer Portal (faturas, cartão)
+Cria o cliente no Asaas na primeira vez (nome + e-mail) e devolve o link
+de pagamento (cartão). Sem `ASAAS_API_KEY` → 500 `ASAAS_AUSENTE`.
 
-`200 {"url":"https://billing.stripe.com/..."}`. Sem assinatura → 409.
+### `POST /api/v1/assinatura/cancelar` — cancela no Asaas e volta p/ free
 
-### `POST /api/v1/webhook/stripe` — webhook (HMAC `STRIPE_WEBHOOK_SECRET`)
+`200 {"ok":true,"plano":"free"}`. Sem assinatura → 409.
 
-Eventos: `checkout.session.completed` (vira pro/team),
-`customer.subscription.updated/deleted` (renova expira ou volta p/ free).
+### `POST /api/v1/webhook/asaas` — webhook (idempotente)
+
+Eventos: `CHECKOUT_PAID` (ativa), `SUBSCRIPTION_CREATED` (salva id),
+`PAYMENT_RECEIVED` (renova ciclo), `PAYMENT_OVERDUE` (marca `past_due`
+sem cancelar), `SUBSCRIPTION_DELETED` (volta p/ free). Sempre 200;
+repetidos são ignorados (`webhook_eventos`). Com `ASAAS_WEBHOOK_TOKEN`
+configurado, exige header `asaas-access-token`.
 
 ### `POST /api/v1/gerar` — gerar relatório via IA
 

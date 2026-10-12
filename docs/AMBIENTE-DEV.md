@@ -24,16 +24,16 @@ bash scripts/autostart-cron.sh
 # Ligar a VM
 npm run ambiente:iniciar   # dev + túnel (mostra o link público)
 # ...trabalhar (link em /tmp/laudo-tunnel-url.txt)...
-npm run ambiente:parar     # para dev + túnel (stripe continua)
+npm run ambiente:parar     # ao terminar
 ```
+
+> O Asaas não precisa de infra local (checkout e webhook são HTTPS).
+> Para simular um webhook: `bash scripts/simular-webhook-asaas.sh CHECKOUT_PAID <usuario_id> pro mensal`.
 
 ## Diagnóstico
 
 ```bash
-npm run ambiente:status    # dev? stripe? túnel? link?
-npm run servicos:logs      # logs do stripe (systemd)
-npm run servicos:reiniciar # reinicia o stripe se travar
-bash scripts/parar-webhook.sh  # para o listen manual (modo sem systemd)
+npm run ambiente:status    # dev? túnel? link?
 ```
 
 ## O que é automático

@@ -201,12 +201,19 @@ if deve_rodar reteste; then
   registrar "7. Registrar reteste" "$OK" $(( $(agora_ms) - INI ))
 fi
 
-# ---------- FLUXO 8 — checkout ----------
+# ---------- FLUXO 8 — checkout (Asaas) ----------
+# Sem ASAAS_API_KEY: espera 500 ASAAS_AUSENTE (degradação limpa).
+# Com chave: 200 + link do checkout Asaas.
 if deve_rodar checkout; then
   INI=$(agora_ms); OK=1
   C=$(curl -s -w "\n%{http_code}" -X POST "$BASE/api/v1/checkout" -H "Authorization: Bearer $TOKEN1" -H 'Content-Type: application/json' -d '{"plano":"pro","ciclo":"mensal"}')
-  [ "$(printf '%s' "$C" | tail -n 1)" = "200" ] || OK=0
-  printf '%s' "$C" | head -n 1 | grep -q "https://checkout.stripe.com" || OK=0
+  if grep -q '^ASAAS_API_KEY=.\+' .env 2>/dev/null; then
+    [ "$(printf '%s' "$C" | tail -n 1)" = "200" ] || OK=0
+    printf '%s' "$C" | head -n 1 | grep -q "asaas.com/checkoutSession/show" || OK=0
+  else
+    [ "$(printf '%s' "$C" | tail -n 1)" = "500" ] || OK=0
+    printf '%s' "$C" | head -n 1 | grep -q "ASAAS_AUSENTE" || OK=0
+  fi
   CA=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE/api/v1/checkout" -H 'Content-Type: application/json' -d '{"plano":"pro","periodo":"mensal"}')
   [ "$CA" = "401" ] || OK=0
   CI=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE/api/v1/checkout" -H "Authorization: Bearer $TOKEN1" -H 'Content-Type: application/json' -d '{"plano":"diamante","periodo":"mensal"}')

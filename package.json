@@ -9,20 +9,12 @@
     "test": "vitest run --typecheck",
     "test:watch": "vitest --typecheck",
     "limpar-banco": "node scripts/limpar-banco.ts --executar",
-    "stripe:setup": "node scripts/criar-produtos-stripe.ts",
-    "stripe:webhook:start": "bash scripts/setup-webhook.sh",
-    "stripe:webhook:stop": "bash scripts/parar-webhook.sh",
     "ambiente:iniciar": "bash scripts/iniciar-tudo.sh",
     "ambiente:parar": "bash scripts/parar-tudo.sh",
     "ambiente:status": "bash scripts/status-tudo.sh",
     "e2e": "bash scripts/e2e-completo.sh",
     "e2e:checkout": "bash scripts/e2e-completo.sh --apenas=checkout",
-    "e2e:auth": "bash scripts/e2e-completo.sh --apenas=auth",
-    "servicos:instalar": "bash scripts/instalar-servicos.sh",
-    "servicos:status": "sudo systemctl status stripe-listen",
-    "servicos:logs": "sudo tail -f /var/log/stripe-listen.log",
-    "servicos:parar": "sudo systemctl stop stripe-listen",
-    "servicos:reiniciar": "sudo systemctl restart stripe-listen"
+    "e2e:auth": "bash scripts/e2e-completo.sh --apenas=auth"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -31,7 +23,6 @@
     "next-auth": "^5.0.0-beta.32",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "stripe": "^23.0.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Sobe o ambiente completo: dev server + túnel cloudflared.
 # Uso: bash scripts/iniciar-tudo.sh   (ou npm run ambiente:iniciar)
-# O stripe listen roda à parte (systemd ou cron) — aqui só conferimos.
+# (O Asaas não precisa de infra local: checkout e webhook são HTTPS.)
 set -u
 
 PROJETO="$(cd "$(dirname "$0")/.." && pwd)"
@@ -11,16 +11,6 @@ DEV_PID=/tmp/laudo-dev.pid
 TUN_PID=/tmp/laudo-tunnel.pid
 TUN_LOG=/tmp/laudo-tunnel.log
 TUN_URL=/tmp/laudo-tunnel-url.txt
-
-echo "— stripe listen —"
-if systemctl is-active --quiet stripe-listen 2>/dev/null; then
-  STRIPE_TXT="ativo (systemd)"
-elif pgrep -f "[s]tripe listen.*forward-to localhost:3000" > /dev/null 2>&1; then
-  STRIPE_TXT="ativo (processo)"
-else
-  STRIPE_TXT="INATIVO — rode npm run stripe:webhook:start ou instale o serviço"
-fi
-echo "  $STRIPE_TXT"
 
 echo "— limpando processos antigos —"
 for F in "$DEV_PID" "$TUN_PID"; do
@@ -67,8 +57,6 @@ TUN_PID_N=$(cat "$TUN_PID")
   else
     echo "  Dev server:     ❌ NÃO responde (PID $DEV_PID_N — ver /tmp/laudo-dev.log)"
   fi
-  echo "  Stripe listen:  $STRIPE_TXT"
-  if [ -n "$LINK" ] && kill -0 "$TUN_PID_N" 2>/dev/null; then
     echo "  Cloudflared:    ✅ rodando (PID $TUN_PID_N)"
     echo ""
     echo "  🌐 Link público:"
@@ -80,6 +68,5 @@ TUN_PID_N=$(cat "$TUN_PID")
   echo "  Comandos úteis:"
   echo "     npm run ambiente:status   → ver status"
   echo "     npm run ambiente:parar    → parar tudo"
-  echo "     npm run servicos:logs     → ver logs do stripe"
   echo "═══════════════════════════════════════════════════════════"
 }

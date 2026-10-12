@@ -1,5 +1,5 @@
 #!/bin/sh
-# Para dev server + túnel. O stripe listen NÃO é parado (systemd/cron).
+# Para dev server + túnel.
 # Uso: bash scripts/parar-tudo.sh   (ou npm run ambiente:parar)
 PARADOS=""
 
@@ -19,4 +19,3 @@ for F in /tmp/laudo-dev.pid /tmp/laudo-tunnel.pid; do
 done
 
 echo "Parado:$PARADOS"
-echo "stripe listen: mantido (systemd/cron roda sempre)"
