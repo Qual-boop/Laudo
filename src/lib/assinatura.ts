@@ -43,8 +43,8 @@ export function assinaturaDe(usuario: {
 }
 
 export function precoPara(_plano: PlanoPago, _periodo: Periodo): null {
-  // Legado do Stripe (price IDs). No Asaas o valor vai no payload do
-  // checkout (ver VALORES em lib/asaas.ts) — nada a resolver aqui.
+  // Legado (price IDs do provedor anterior). No Asaas o valor vai no payload
+  // do checkout (ver VALORES em lib/asaas.ts) — nada a resolver aqui.
   return null;
 }
 

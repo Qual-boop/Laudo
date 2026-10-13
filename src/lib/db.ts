@@ -133,7 +133,7 @@ if (!colunasUsuarios.some((c) => c.name === "plano_expira_em")) {
   db.exec("ALTER TABLE usuarios ADD COLUMN plano_expira_em TEXT");
 }
 
-// Migração de saída do Stripe: remove colunas legadas (linhas preservadas).
+// Migração de saída do provedor anterior: remove colunas legadas (linhas preservadas).
 for (const coluna of ["stripe_customer_id", "stripe_subscription_id"]) {
   const atuais = db.prepare("PRAGMA table_info(usuarios)").all() as { name: string }[];
   if (atuais.some((c) => c.name === coluna)) {
@@ -141,7 +141,7 @@ for (const coluna of ["stripe_customer_id", "stripe_subscription_id"]) {
   }
 }
 
-// Migração leve: billing Asaas (substitui Stripe).
+// Migração leve: billing Asaas.
 for (const [coluna, tipo] of [
   ["asaas_customer_id", "TEXT"],
   ["asaas_subscription_id", "TEXT"],
