@@ -112,6 +112,11 @@ if deve_rodar cadastro; then
 fi
 
 # ---------- token helper ----------
+# Modo isolado (--apenas=X): o fluxo 1 (cadastro) é pulado, então garante
+# aqui o usuário-base. No run completo APENAS="" e o fluxo 1 cria (201).
+if [ -n "$APENAS" ]; then
+  curl -s -X POST "$BASE/api/v1/auth/cadastro" -H 'Content-Type: application/json' -d "{\"nome\":\"E2E Um\",\"email\":\"$EMAIL1\",\"senha\":\"$SENHA\"}" > /dev/null
+fi
 TOKEN1=$(curl -s -X POST "$BASE/api/v1/auth/token" -H 'Content-Type: application/json' -d "{\"email\":\"$EMAIL1\",\"senha\":\"$SENHA\"}" | json "['token']")
 if [ -z "$TOKEN1" ]; then echo "FALHA: sem token para $EMAIL1" >&2; exit 1; fi
 curl -s -X POST "$BASE/api/v1/auth/cadastro" -H 'Content-Type: application/json' -d "{\"nome\":\"E2E Dois\",\"email\":\"$EMAIL2\",\"senha\":\"$SENHA\"}" > /dev/null
@@ -219,6 +224,23 @@ if deve_rodar checkout; then
   CI=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE/api/v1/checkout" -H "Authorization: Bearer $TOKEN1" -H 'Content-Type: application/json' -d '{"plano":"diamante","periodo":"mensal"}')
   [ "$CI" = "400" ] || OK=0
   registrar "8. Checkout" "$OK" $(( $(agora_ms) - INI ))
+fi
+
+# ---------- FLUXO 8b — webhook Asaas (idempotência, hermético) ----------
+# Evento desconhecido com id único: registra e ignora (sem efeito no plano).
+# Repetir o mesmo id → "já processado". Limpa a linha de teste no final.
+if deve_rodar checkout; then
+  INI=$(agora_ms); OK=1
+  EVID="evt_e2e_${TS}"
+  W1=$(curl -s -w "\n%{http_code}" -X POST "$BASE/api/v1/webhook/asaas" -H 'Content-Type: application/json' -d "{\"id\":\"$EVID\",\"event\":\"E2E_IGNORADO\"}")
+  [ "$(printf '%s' "$W1" | tail -n 1)" = "200" ] || OK=0
+  printf '%s' "$W1" | head -n 1 | grep -q '"ok":true' || OK=0
+  W2=$(curl -s -X POST "$BASE/api/v1/webhook/asaas" -H 'Content-Type: application/json' -d "{\"id\":\"$EVID\",\"event\":\"E2E_IGNORADO\"}")
+  echo "$W2" | grep -q '"ok":true' || OK=0
+  N=$(sqlite3 pentest.db "SELECT COUNT(*) FROM webhook_eventos WHERE id='$EVID';")
+  [ "$N" = "1" ] || OK=0
+  sqlite3 pentest.db "DELETE FROM webhook_eventos WHERE id='$EVID';"
+  registrar "8b. Webhook (idempotente)" "$OK" $(( $(agora_ms) - INI ))
 fi
 
 # ---------- FLUXO 9 — limites ----------

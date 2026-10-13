@@ -56,6 +56,8 @@ Sem token configurado, a rota aceita chamadas locais (útil para
    `ASAAS_API_KEY` (live) e `ASAAS_WEBHOOK_TOKEN` (novo, do painel live).
 3. Cadastre o webhook live apontando para
    `https://seu-dominio/api/v1/webhook/asaas` com os 5 eventos.
+   (Deploy automatizado: ver `docs/DEPLOY.md` — a URL final é
+   `https://laudo.vercel.app/api/v1/webhook/asaas`.)
 4. Faça um checkout real de R$ 1 (ou trial) e confira o upgrade.
 5. Preços ficam no código (`VALORES` em `lib/asaas.ts`) — sem price IDs.
 
