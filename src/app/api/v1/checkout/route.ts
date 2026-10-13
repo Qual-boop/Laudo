@@ -67,7 +67,12 @@ export async function POST(request: Request) {
       ).run(customerId, auth.usuario.id);
     }
 
-    const base = new URL(request.url).origin;
+    // Base pública para os redirects do Asaas: em produção usa
+    // NEXT_PUBLIC_APP_URL (ex.: https://laudo.vercel.app); local cai
+    // para a origem da requisição.
+    const base =
+      process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "") ||
+      new URL(request.url).origin;
     const checkout = await criarCheckout({
       customerId,
       planoCiclo: `${plano}_${periodo}`,

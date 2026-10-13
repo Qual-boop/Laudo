@@ -1,6 +1,16 @@
 import Database from "better-sqlite3";
 import path from "path";
 
+/**
+ * Banco local (SQLite). Usado em dev/testes e quando DATABASE_URL
+ * NÃO está definida.
+ *
+ * Produção (Neon/Postgres): ver `lib/db-pg.ts` (mesmo schema em PG) e
+ * `scripts/migrar-dados.ts` (copia pentest.db → Neon). A troca da camada
+ * de acesso para Postgres acontece com DATABASE_URL configurada
+ * (docs/DEPLOY.md); até lá este arquivo segue como fonte de verdade local.
+ */
+
 const db = new Database(path.join(process.cwd(), "pentest.db"));
 
 // Sem isso as cláusulas ON DELETE CASCADE abaixo seriam ignoradas:
