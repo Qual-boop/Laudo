@@ -26,10 +26,13 @@ echo "— subindo next dev (PID é o servidor, sem wrapper npm) —"
 rm -f /tmp/laudo-dev.log
 nohup npx next dev > /tmp/laudo-dev.log 2>&1 &
 echo $! > "$DEV_PID"
-sleep 5
 
+# Polling (até 40s) em vez de sleep fixo: máquina lenta não quebra o script.
 DEV_OK=0
-if curl -s -o /dev/null -m 10 http://localhost:3000/; then DEV_OK=1; fi
+for _ in $(seq 1 40); do
+  if curl -s -o /dev/null -m 3 http://localhost:3000/; then DEV_OK=1; break; fi
+  sleep 1
+done
 # PID real do servidor (npx cria shells intermediários que morrem):
 # resolve pela porta em vez de confiar no $! do lançador.
 DEV_PID_N=$(fuser 3000/tcp 2>/dev/null | sed 's/.*://' | awk '{print $1}')
@@ -40,11 +43,16 @@ echo "— subindo cloudflared —"
 rm -f "$TUN_LOG" "$TUN_URL"
 nohup cloudflared tunnel --url http://127.0.0.1:3000 > "$TUN_LOG" 2>&1 &
 echo $! > "$TUN_PID"
-sleep 10
 
-LINK=$(grep -o 'https://[a-zA-Z0-9.-]*\.trycloudflare\.com' "$TUN_LOG" 2>/dev/null | head -n 1 || true)
+# Polling do link no log (até 30s) em vez de sleep fixo.
+LINK=""
+for _ in $(seq 1 30); do
+  LINK=$(grep -o 'https://[a-zA-Z0-9.-]*\.trycloudflare\.com' "$TUN_LOG" 2>/dev/null | head -n 1 || true)
+  if [ -n "$LINK" ]; then break; fi
+  sleep 1
+done
 if [ -n "$LINK" ]; then printf '%s\n' "$LINK" > "$TUN_URL"; fi
-TUN_PID_N=$(cat "$TUN_PID")
+TUN_PID_N=$(cat "$TUN_PID" 2>/dev/null || true)
 
 {
   echo ""
@@ -57,6 +65,7 @@ TUN_PID_N=$(cat "$TUN_PID")
   else
     echo "  Dev server:     ❌ NÃO responde (PID $DEV_PID_N — ver /tmp/laudo-dev.log)"
   fi
+  if [ -n "$LINK" ]; then
     echo "  Cloudflared:    ✅ rodando (PID $TUN_PID_N)"
     echo ""
     echo "  🌐 Link público:"
