@@ -90,6 +90,22 @@ const ACHADO_VAZIO: AchadoEntrada = {
   dataRetesteSugerida: "",
 };
 
+/**
+ * Linha do formulário com chave estável para o React. Sem ela, `key={i}`
+ * reutilizava o DOM errado ao remover/duplicar do meio (foco e valores
+ * trocavam de achado). A chave nunca viaja para a API (montarEntrada tira).
+ */
+type AchadoForm = AchadoEntrada & { chave: string };
+
+let seqAchado = 0;
+function novaChaveAchado(): string {
+  seqAchado += 1;
+  return `achado-${Date.now()}-${seqAchado}`;
+}
+function novoAchado(): AchadoForm {
+  return { ...ACHADO_VAZIO, chave: novaChaveAchado() };
+}
+
 export default function Home() {
   const [eng, setEng] = useState({
     cliente: "",
@@ -99,7 +115,7 @@ export default function Home() {
     limitacoes: "",
     ferramentas: "",
   });
-  const [achados, setAchados] = useState<AchadoEntrada[]>([{ ...ACHADO_VAZIO }]);
+  const [achados, setAchados] = useState<AchadoForm[]>([novoAchado()]);
 
   const [relatorio, setRelatorio] = useState<Relatorio | null>(null);
   const [aba, setAba] = useState<Aba>("verificacao");
@@ -216,13 +232,17 @@ export default function Home() {
   }, []);
 
   function adicionarAchado() {
-    setAchados((atuais) => [...atuais, { ...ACHADO_VAZIO }]);
+    setAchados((atuais) => [...atuais, novoAchado()]);
   }
 
   function duplicarAchado(indice: number) {
     setAchados((atuais) => {
       const copia = [...atuais];
-      copia.splice(indice + 1, 0, { ...copia[indice], titulo: `${copia[indice].titulo} (cópia)` });
+      copia.splice(indice + 1, 0, {
+        ...copia[indice],
+        titulo: `${copia[indice].titulo} (cópia)`,
+        chave: novaChaveAchado(),
+      });
       return copia;
     });
   }
@@ -251,7 +271,9 @@ export default function Home() {
   function montarEntrada(): RelatorioEntrada {
     return {
       ...eng,
-      achados: achados.filter((a) => a.titulo.trim() || a.descricao.trim()),
+      achados: achados
+        .filter((a) => a.titulo.trim() || a.descricao.trim())
+        .map(({ chave: _chave, ...resto }) => resto),
     };
   }
 
@@ -552,7 +574,7 @@ export default function Home() {
             <div className="flex flex-col gap-5 p-5 sm:p-6">
               {achados.map((achado, i) => (
                 <div
-                  key={i}
+                  key={achado.chave}
                   className="rounded-md border border-borda bg-superficie-2 p-4 sm:p-5"
                 >
                   <div className="mb-4 flex items-center justify-between gap-3">

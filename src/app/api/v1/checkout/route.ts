@@ -43,14 +43,27 @@ export async function POST(request: Request) {
 
   const usuario = db
     .prepare(
-      "SELECT id, nome, email, asaas_customer_id FROM usuarios WHERE id = ?",
+      "SELECT id, nome, email, asaas_customer_id, asaas_subscription_id, assinatura_status FROM usuarios WHERE id = ?",
     )
     .get(auth.usuario.id) as {
     id: number;
     nome: string;
     email: string;
     asaas_customer_id: string | null;
+    asaas_subscription_id: string | null;
+    assinatura_status: string | null;
   };
+
+  // Sem trava, um assinante ativo pagaria dobrado abrindo outro checkout
+  // (a UI desabilita, mas a API permitia). Trial (pro sem subscription)
+  // e ex-assinante podem assinar normalmente.
+  if (usuario?.asaas_subscription_id && usuario?.assinatura_status === "ativa") {
+    return erroApi(
+      "Você já tem uma assinatura ativa. Cancele a atual antes de assinar de novo.",
+      "ASSINATURA_ATIVA",
+      409,
+    );
+  }
 
   try {
     let customerId = usuario?.asaas_customer_id ?? null;

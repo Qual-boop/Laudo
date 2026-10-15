@@ -2,6 +2,7 @@ import { afterAll, afterEach, describe, expect, it } from "vitest";
 import db from "@/lib/db";
 import {
   incrementarUso,
+  lerUso,
   mesAtual,
   normalizarPlano,
   obterUso,
@@ -80,5 +81,18 @@ describe("limites", () => {
     expect(obterUso(id, mesAtual()).relatorios_criados).toBe(0);
     expect(resetarUsoMensal()).toBeGreaterThanOrEqual(1);
     expect(obterUso(id, "2026-01").relatorios_criados).toBe(0);
+  });
+
+  it("lerUso lê sem criar linha (checagem que não consome)", async () => {
+    const id = await garantirUsuario();
+    // Sem nenhum uso: zeros e nenhuma linha criada.
+    expect(lerUso(id)).toEqual({ relatorios_criados: 0, retestes_registrados: 0 });
+    const linhas = db
+      .prepare("SELECT COUNT(*) AS n FROM uso_mensal WHERE usuario_id = ?")
+      .get(id) as { n: number };
+    expect(linhas.n).toBe(0);
+    // Com uso existente: reflete sem duplicar.
+    incrementarUso(id, "relatorios_criados");
+    expect(lerUso(id).relatorios_criados).toBe(1);
   });
 });

@@ -30,8 +30,16 @@ export function assinaturaDe(usuario: {
   const expirado = !!expira && new Date(expira).getTime() < Date.now();
 
   if (plano !== "free" && expirado) {
-    definirPlano(usuario.id, "free");
-    return { plano: "free", expiraEm: null, subscriptionId: null, trial: false };
+    // Downgrade preguiçoso com limpeza: sem isso, expira passado e
+    // subscription antiga ficavam no banco para sempre (e todo request
+    // repetia o UPDATE). O id da assinatura é mantido para permitir
+    // conciliação/cancelamento no Asaas.
+    db.prepare(
+      `UPDATE usuarios SET plano = 'free', plano_expira_em = NULL,
+        assinatura_status = 'expirada',
+        atualizado_em = CURRENT_TIMESTAMP WHERE id = ?`,
+    ).run(usuario.id);
+    return { plano: "free", expiraEm: null, subscriptionId: usuario.asaas_subscription_id, trial: false };
   }
 
   return {

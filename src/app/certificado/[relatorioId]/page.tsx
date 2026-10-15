@@ -7,6 +7,7 @@ import { auth } from "@/auth";
 import { normalizarPlano } from "@/lib/planos";
 import {
   carregarDadosCertificado,
+  donoDoRelatorio,
   type Certificado,
 } from "@/lib/certificado-dados";
 import {
@@ -32,10 +33,23 @@ const carregarCertificado = cache(async (id: number): Promise<Certificado | null
   return carregarDadosCertificado(id);
 });
 
+/** true só se o visitante logado é o dono do relatório (fail-closed). */
+async function visitanteEDono(id: number): Promise<boolean> {
+  const sessao = await auth();
+  const visitante = Number(sessao?.user?.id);
+  if (!Number.isInteger(visitante) || visitante <= 0) return false;
+  return donoDoRelatorio(id) === visitante;
+}
+
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { relatorioId } = await params;
   const id = Number(relatorioId);
   if (!Number.isInteger(id) || id <= 0) {
+    return { title: "Certificado de correção — Laudo" };
+  }
+
+  // Sem dono, sem metadados: o <title> vazaria cliente/título alheios.
+  if (!(await visitanteEDono(id))) {
     return { title: "Certificado de correção — Laudo" };
   }
 
@@ -72,6 +86,9 @@ async function CorpoCertificado({ params }: { params: Params }) {
   const { relatorioId } = await params;
   const id = Number(relatorioId);
   if (!Number.isInteger(id) || id <= 0) notFound();
+
+  // Certificado é privado: só o dono vê (404 para não vazar existência).
+  if (!(await visitanteEDono(id))) notFound();
 
   // Certificado é recurso Pro/Team: free vê o bloqueio com upgrade.
   const sessao = await auth();

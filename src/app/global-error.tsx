@@ -36,7 +36,7 @@ export default function GlobalError({ error, reset }: Props) {
           <div className="icon" aria-hidden="true">💥</div>
           <h1>Erro crítico na aplicação</h1>
           <p>Algo deu muito errado. A aplicação não pode continuar.</p>
-          <button onClick={reset}>Recarregar aplicação</button>
+          <button type="button" onClick={reset}>Recarregar aplicação</button>
           {error.digest && <p className="digest">{error.digest}</p>}
         </div>
       </body>

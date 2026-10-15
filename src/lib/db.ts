@@ -32,6 +32,7 @@ db.exec(`
     senha_hash TEXT,
     plano TEXT NOT NULL DEFAULT 'free',
     plano_expira_em TEXT,
+    trial_usado_em TEXT,
     asaas_customer_id TEXT,
     asaas_subscription_id TEXT,
     assinatura_status TEXT,
@@ -147,6 +148,9 @@ for (const [coluna, tipo] of [
   ["asaas_subscription_id", "TEXT"],
   ["assinatura_status", "TEXT"],
   ["assinatura_ciclo", "TEXT"],
+  // Trial é uma vez por conta: sobrevive a pagar→cancelar (plano_expira_em
+  // é zerado no cancelamento, este carimbo não).
+  ["trial_usado_em", "TEXT"],
 ] as const) {
   const atuais = db.prepare("PRAGMA table_info(usuarios)").all() as { name: string }[];
   if (!atuais.some((c) => c.name === coluna)) {

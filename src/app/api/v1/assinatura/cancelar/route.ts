@@ -22,8 +22,11 @@ export async function POST(request: Request) {
   try {
     await cancelarAssinatura(u.asaas_subscription_id);
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    return erroApi(msg || "Falha ao cancelar.", "CANCELAMENTO_FALHOU", 502);
+    // 404 no Asaas = já cancelada/removida por lá: só limpa local.
+    if ((e as { status?: number }).status !== 404) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return erroApi(msg || "Falha ao cancelar.", "CANCELAMENTO_FALHOU", 502);
+    }
   }
 
   db.prepare(

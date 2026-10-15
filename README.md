@@ -76,6 +76,15 @@ cp .env.example .env
 | `GROQ_BASE_URL` | não | `https://api.groq.com/openai/v1` | Endpoint do Groq. |
 | `GROQ_MODELO` | não | `openai/gpt-oss-120b` | Modelo do Groq. |
 | `GROQ_MAX_TOKENS` | não | `6000` | Limite de tokens do Groq. |
+| `ASAAS_API_KEY` | sim (p/ checkout) | — | Chave do Asaas (sandbox p/ teste). Sem ela, `/api/v1/checkout` responde `ASAAS_AUSENTE`. |
+| `ASAAS_BASE_URL` | não | sandbox | `https://api.asaas.com/v3` em produção. |
+| `ASAAS_WEBHOOK_TOKEN` | não (sim em prod) | — | Token do webhook; sem ele a rota aceita chamadas locais. |
+| `DATABASE_URL` | sim (em prod) | — | Postgres (Neon). Sem ela, usa `pentest.db` local. |
+| `NEXT_PUBLIC_APP_URL` | sim (em prod) | — | URL pública (redirects do checkout Asaas). |
+
+Assinaturas via **Asaas** (checkout recorrente + webhook): guia em
+[docs/ASAAS-SETUP.md](docs/ASAAS-SETUP.md), deploy em
+[docs/DEPLOY.md](docs/DEPLOY.md).
 
 ### Comandos
 

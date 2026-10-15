@@ -19,11 +19,16 @@ export function obterUso(usuarioId: number, mes = mesAtual()): UsoMensal {
     `INSERT INTO uso_mensal (usuario_id, mes_ano) VALUES (?, ?)
      ON CONFLICT (usuario_id, mes_ano) DO NOTHING`,
   ).run(usuarioId, mes);
+  return lerUso(usuarioId, mes);
+}
+
+/** Leitura sem escrita (não cria a linha): para checagens que não consomem. */
+export function lerUso(usuarioId: number, mes = mesAtual()): UsoMensal {
   const linha = db
     .prepare(
       "SELECT relatorios_criados, retestes_registrados FROM uso_mensal WHERE usuario_id = ? AND mes_ano = ?",
     )
-    .get(usuarioId, mes) as UsoMensal;
+    .get(usuarioId, mes) as UsoMensal | undefined;
   return linha ?? { relatorios_criados: 0, retestes_registrados: 0 };
 }
 

@@ -23,11 +23,11 @@ export type ExportacaoGitHub = {
 
 function escapeHtml(str: string): string {
   return str
-    .replace(/&/g, "\u0026amp;")
-    .replace(/</g, "\u0026lt;")
-    .replace(/>/g, "\u0026gt;")
-    .replace(/"/g, "\u0026quot;")
-    .replace(/'/g, "\u0027;");
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;");
 }
 
 function severidadeParaJiraLabel(s: Severidade): string {
@@ -300,7 +300,8 @@ export function abrirNovaAbaJira(exportacao: ExportacaoJira, baseUrl: string): v
   if (exportacao.components?.length) {
     params.set("components", exportacao.components.map((c) => c.name).join(","));
   }
-  window.open(`${baseUrl.replace(/\/$/, "")}/secure/CreateIssueDetails!default.jspa?${params.toString()}`, "_blank");
+  // noopener+noreferrer: sem isso a aba aberta acessa window.opener (tabnabbing).
+  window.open(`${baseUrl.replace(/\/$/, "")}/secure/CreateIssueDetails!default.jspa?${params.toString()}`, "_blank", "noopener,noreferrer");
 }
 
 export function abrirNovaAbaGitHub(exportacao: ExportacaoGitHub, repoUrl: string): void {
@@ -309,5 +310,5 @@ export function abrirNovaAbaGitHub(exportacao: ExportacaoGitHub, repoUrl: string
     body: exportacao.body,
     labels: exportacao.labels.join(","),
   });
-  window.open(`${repoUrl.replace(/\/$/, "")}/issues/new?${params.toString()}`, "_blank");
+  window.open(`${repoUrl.replace(/\/$/, "")}/issues/new?${params.toString()}`, "_blank", "noopener,noreferrer");
 }

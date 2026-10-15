@@ -8,6 +8,7 @@ export type Usuario = {
   senha_hash: string | null;
   plano: string;
   plano_expira_em: string | null;
+  trial_usado_em: string | null;
   asaas_customer_id: string | null;
   asaas_subscription_id: string | null;
   assinatura_status: string | null;

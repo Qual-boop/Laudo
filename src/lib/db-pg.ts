@@ -57,6 +57,7 @@ export async function criarSchemaPg(): Promise<void> {
       senha_hash TEXT,
       plano TEXT NOT NULL DEFAULT 'free',
       plano_expira_em TIMESTAMPTZ,
+      trial_usado_em TIMESTAMPTZ,
       asaas_customer_id TEXT,
       asaas_subscription_id TEXT,
       assinatura_status TEXT,

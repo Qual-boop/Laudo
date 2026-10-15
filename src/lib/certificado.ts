@@ -92,7 +92,8 @@ export function hashCertificado(dados: DadosCertificado): string {
     emitidoEm: dados.emitidoEm,
     relatorio: dados.relatorio,
     achados: [...dados.achados].sort((a, b) =>
-      a.ref.localeCompare(b.ref, "pt-BR"),
+      // Codepoint (não localeCompare): determinístico em qualquer ICU/Node.
+      a.ref < b.ref ? -1 : a.ref > b.ref ? 1 : 0,
     ),
   };
 

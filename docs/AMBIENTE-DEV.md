@@ -2,20 +2,12 @@
 
 ## Instalação única (só uma vez)
 
-Opção A — systemd (precisa de sudo):
+Nada além do repo: o Asaas não precisa de infra local (checkout e
+webhook são HTTPS, sem `stripe listen` nem serviços systemd).
 
 ```bash
-npm run servicos:instalar
-```
-
-Instala `stripe-listen.service` (auto-start no boot), cria
-`/etc/stripe-listen.env` (root:root, 600) com a chave lida do `.env`,
-habilita e inicia o serviço.
-
-Opção B — sem sudo (cron `@reboot`):
-
-```bash
-bash scripts/autostart-cron.sh
+npm ci                  # dependências
+npm run build           # build de produção (o e2e sobe ele local)
 ```
 
 ## Rotina diária
@@ -38,12 +30,11 @@ npm run ambiente:status    # dev? túnel? link?
 
 ## O que é automático
 
-- **stripe listen**: desde o boot (systemd, ou cron `@reboot` na opção B).
-- **npm run dev + cloudflared**: só quando você chama `ambiente:iniciar`.
+- **Nada no boot**: dev + cloudflared só sobem com `ambiente:iniciar`.
 - O link do túnel muda a cada início — sempre copie o novo de
   `/tmp/laudo-tunnel-url.txt` (e atualize `AUTH_URL` se usar OAuth).
 
-## E2E (15 fluxos)
+## E2E (16 checagens)
 
 ```bash
 npm run build              # o e2e sobe o build de produção local

@@ -24,8 +24,8 @@ export async function GET(
     return erroApi("Relatório não encontrado.", "NAO_ENCONTRADO", 404);
   }
 
-  // Relatórios antigos (antes do multi-usuário) não têm dono.
-  if (linha.usuario_id !== null && linha.usuario_id !== auth.usuario.id) {
+  // Fail-closed: relatório sem dono (legado) não abre para ninguém.
+  if (linha.usuario_id !== auth.usuario.id) {
     return erroApi("Acesso negado a este relatório.", "ACESSO_NEGADO", 403);
   }
 

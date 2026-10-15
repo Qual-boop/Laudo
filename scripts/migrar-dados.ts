@@ -38,7 +38,7 @@ const TABELAS = [
 
 // Colunas TIMESTAMPTZ no Postgres (conversão de texto ISO → Date).
 const COLUNAS_DATA: Record<string, string[]> = {
-  usuarios: ["plano_expira_em", "criado_em", "atualizado_em"],
+  usuarios: ["plano_expira_em", "trial_usado_em", "criado_em", "atualizado_em"],
   sessoes: ["expira_em", "criado_em"],
   relatorios: ["criado_em"],
   achados_verificacao: ["criado_em"],
@@ -54,6 +54,7 @@ const SCHEMA_SQL = `
     senha_hash TEXT,
     plano TEXT NOT NULL DEFAULT 'free',
     plano_expira_em TIMESTAMPTZ,
+    trial_usado_em TIMESTAMPTZ,
     asaas_customer_id TEXT,
     asaas_subscription_id TEXT,
     assinatura_status TEXT,
