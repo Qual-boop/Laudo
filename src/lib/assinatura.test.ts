@@ -15,7 +15,7 @@ function limparEventos() {
 describe("assinatura (Asaas)", () => {
   it("CHECKOUT_PAID ativa o plano pela referência", async () => {
     const u = (await criarUsuario("QA Ass", EMAIL, "senha-123456"))!;
-    const r = aplicarEventoAsaas({
+    const r = await aplicarEventoAsaas({
       id: "evt_teste_001",
       event: "CHECKOUT_PAID",
       checkout: { id: "ck_1", customer: "cus_1", externalReference: `${u.id}:pro:mensal` },
@@ -33,7 +33,7 @@ describe("assinatura (Asaas)", () => {
     const u = (
       db.prepare("SELECT id FROM usuarios WHERE email = ?").get(EMAIL) as { id: number }
     );
-    const r = aplicarEventoAsaas({
+    const r = await aplicarEventoAsaas({
       id: "evt_teste_001",
       event: "CHECKOUT_PAID",
       checkout: { id: "ck_1", customer: "cus_1", externalReference: `${u.id}:pro:mensal` },
@@ -41,12 +41,12 @@ describe("assinatura (Asaas)", () => {
     expect(r).toMatchObject({ ok: true, aplicado: false });
   });
 
-  it("SUBSCRIPTION_CREATED salva o id da assinatura", () => {
+  it("SUBSCRIPTION_CREATED salva o id da assinatura", async () => {
     const u = (
       db.prepare("SELECT id FROM usuarios WHERE email = ?").get(EMAIL) as { id: number }
     );
     db.prepare("UPDATE usuarios SET asaas_customer_id = 'cus_1' WHERE id = ?").run(u.id);
-    const r = aplicarEventoAsaas({
+    const r = await aplicarEventoAsaas({
       id: "evt_teste_002",
       event: "SUBSCRIPTION_CREATED",
       subscription: { id: "sub_1", customer: "cus_1", cycle: "MONTHLY" },
@@ -58,8 +58,8 @@ describe("assinatura (Asaas)", () => {
     expect(linha.asaas_subscription_id).toBe("sub_1");
   });
 
-  it("PAYMENT_OVERDUE marca past_due sem cancelar", () => {
-    const r = aplicarEventoAsaas({
+  it("PAYMENT_OVERDUE marca past_due sem cancelar", async () => {
+    const r = await aplicarEventoAsaas({
       id: "evt_teste_003",
       event: "PAYMENT_OVERDUE",
       payment: { id: "pay_1", subscription: "sub_1" },
@@ -75,8 +75,8 @@ describe("assinatura (Asaas)", () => {
     expect(u.assinatura_status).toBe("past_due");
   });
 
-  it("SUBSCRIPTION_DELETED volta para free", () => {
-    const r = aplicarEventoAsaas({
+  it("SUBSCRIPTION_DELETED volta para free", async () => {
+    const r = await aplicarEventoAsaas({
       id: "evt_teste_004",
       event: "SUBSCRIPTION_DELETED",
       subscription: { id: "sub_1" },
@@ -92,8 +92,8 @@ describe("assinatura (Asaas)", () => {
     expect(u.asaas_subscription_id).toBeNull();
   });
 
-  it("assinaturaDe degrada plano expirado (lazy downgrade)", () => {
-    const a = assinaturaDe({
+  it("assinaturaDe degrada plano expirado (lazy downgrade)", async () => {
+    const a = await assinaturaDe({
       id: 1,
       plano: "pro",
       plano_expira_em: "2000-01-01T00:00:00.000Z",
@@ -102,8 +102,8 @@ describe("assinatura (Asaas)", () => {
     expect(a.plano).toBe("free");
   });
 
-  it("trial = pro sem subscription", () => {
-    const a = assinaturaDe({
+  it("trial = pro sem subscription", async () => {
+    const a = await assinaturaDe({
       id: 1,
       plano: "pro",
       plano_expira_em: new Date(Date.now() + 86400_000).toISOString(),

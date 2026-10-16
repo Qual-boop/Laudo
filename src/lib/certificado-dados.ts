@@ -1,4 +1,4 @@
-import db from "@/lib/db";
+import { buscarTodos, buscarUm } from "@/lib/banco";
 import {
   hashCertificado,
   progressoCertificado,
@@ -12,7 +12,7 @@ import type {
 } from "@/lib/tipos";
 
 /**
- * Dados do certificado (lib pura — usada pela página e pela API v1).
+ * Dados do certificado (lib usada pela página e pela API v1).
  * Rota de API já é dinâmica (lê o request); aqui sem `cache`/`connection`.
  */
 
@@ -44,34 +44,39 @@ export type Certificado = {
 };
 
 /** Dono do relatório (para 403) ou null se não existe. */
-export function donoDoRelatorio(relatorioId: number): number | null {
-  const linha = db
-    .prepare("SELECT usuario_id FROM relatorios WHERE id = ?")
-    .get(relatorioId) as { usuario_id: number | null } | undefined;
+export async function donoDoRelatorio(relatorioId: number): Promise<number | null> {
+  const linha = await buscarUm<{ usuario_id: number | null }>(
+    "SELECT usuario_id FROM relatorios WHERE id = ?",
+    relatorioId,
+  );
   return linha ? linha.usuario_id : null;
 }
 
-export function carregarDadosCertificado(id: number): Certificado | null {
-  const relatorio = db
-    .prepare("SELECT id, cliente, titulo, data, versao FROM relatorios WHERE id = ?")
-    .get(id) as LinhaRelatorio | undefined;
+export async function carregarDadosCertificado(
+  id: number,
+): Promise<Certificado | null> {
+  const relatorio = await buscarUm<LinhaRelatorio>(
+    "SELECT id, cliente, titulo, data, versao FROM relatorios WHERE id = ?",
+    id,
+  );
 
   if (!relatorio) return null;
 
-  const linhas = db
-    .prepare(
-      `SELECT a.achado_ref, a.titulo, a.severidade, a.status,
-              (SELECT r.data_reteste FROM retestes r
-                WHERE r.achado_id = a.id
-                ORDER BY date(r.data_reteste) DESC, r.id DESC LIMIT 1) AS data_reteste,
-              (SELECT r.resultado FROM retestes r
-                WHERE r.achado_id = a.id
-                ORDER BY date(r.data_reteste) DESC, r.id DESC LIMIT 1) AS resultado
-         FROM achados_verificacao a
-        WHERE a.relatorio_id = ?
-        ORDER BY a.id`,
-    )
-    .all(id) as LinhaAchado[];
+  // data_reteste é texto "YYYY-MM-DD" (ordena lexicograficamente igual a
+  // cronologicamente) — nada de date() para valer nos dois bancos.
+  const linhas = await buscarTodos<LinhaAchado>(
+    `SELECT a.achado_ref, a.titulo, a.severidade, a.status,
+            (SELECT r.data_reteste FROM retestes r
+              WHERE r.achado_id = a.id
+              ORDER BY r.data_reteste DESC, r.id DESC LIMIT 1) AS data_reteste,
+            (SELECT r.resultado FROM retestes r
+              WHERE r.achado_id = a.id
+              ORDER BY r.data_reteste DESC, r.id DESC LIMIT 1) AS resultado
+       FROM achados_verificacao a
+      WHERE a.relatorio_id = ?
+      ORDER BY a.id`,
+    id,
+  );
 
   const achados: AchadoCertificado[] = linhas.map((l) => ({
     ref: String(l.achado_ref),

@@ -1,4 +1,4 @@
-import db from "@/lib/db";
+import { buscarTodos, dialeto, executar, inserir, transacao } from "@/lib/banco";
 import { exigirUsuario, erroApi } from "@/lib/api-auth";
 import {
   incrementarUso,
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
   }
 
   // Plano free: no máximo 3 relatórios por mês.
-  const uso = obterUso(auth.usuario.id);
+  const uso = await obterUso(auth.usuario.id);
   const veredito = verificarLimite(auth.usuario.plano, uso, "relatorios");
   if (!veredito.permitido) {
     return Response.json(
@@ -62,21 +62,12 @@ export async function POST(request: Request) {
   }
   const riscoGeral = v.dados.sumarioExecutivo?.riscoGeral || "Medio";
 
-  const inserirRelatorio = db.prepare(
-    `INSERT INTO relatorios (cliente, titulo, data, versao, risco_geral, total_achados, relatorio_json, usuario_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-  );
-
-  const inserirAchado = db.prepare(
-    `INSERT INTO achados_verificacao
-       (relatorio_id, achado_ref, titulo, severidade, cwe, confianca, data_reteste_sugerida, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 'pendente')`,
-  );
-
   // Relatório e achados entram juntos: um relatório salvo sem achados
   // verificáveis deixaria a aba Verificação inconsistente.
-  const salvar = db.transaction(() => {
-    const info = inserirRelatorio.run(
+  const relatorioId = await transacao(async () => {
+    const id = await inserir(
+      `INSERT INTO relatorios (cliente, titulo, data, versao, risco_geral, total_achados, relatorio_json, usuario_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       capa.cliente || "Não informado",
       capa.titulo || "Relatório",
       capa.data || new Date().toISOString().slice(0, 10),
@@ -87,11 +78,12 @@ export async function POST(request: Request) {
       auth.usuario.id,
     );
 
-    const relatorioId = Number(info.lastInsertRowid);
-
     for (const [i, achado] of achados.entries()) {
-      inserirAchado.run(
-        relatorioId,
+      await executar(
+        `INSERT INTO achados_verificacao
+           (relatorio_id, achado_ref, titulo, severidade, cwe, confianca, data_reteste_sugerida, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'pendente')`,
+        id,
         achado.id || `FINDING-${String(i + 1).padStart(3, "0")}`,
         achado.titulo || "Achado sem título",
         achado.severidade || "Media",
@@ -101,11 +93,10 @@ export async function POST(request: Request) {
       );
     }
 
-    return relatorioId;
+    return id;
   });
 
-  const relatorioId = salvar();
-  incrementarUso(auth.usuario.id, "relatorios_criados");
+  await incrementarUso(auth.usuario.id, "relatorios_criados");
 
   return Response.json(
     { id: relatorioId, achados: achados.length },
@@ -129,19 +120,29 @@ export async function GET(request: Request) {
     : { limit: 50, page: 1 };
 
   // Plano free: histórico limitado aos últimos 30 dias.
+  // (data de corte calculada em SQL de cada dialeto)
   const filtroDias =
     LIMITES[auth.usuario.plano].historicoDias === Infinity
       ? ""
-      : "AND r.criado_em >= datetime('now', '-30 days')";
+      : dialeto() === "pg"
+        ? "AND r.criado_em >= now() - interval '30 days'"
+        : "AND r.criado_em >= datetime('now', '-30 days')";
 
-  const relatorios = db
-    .prepare(
-      `SELECT r.id, r.cliente, r.titulo, r.data, r.versao, r.risco_geral, r.total_achados, r.criado_em,
-              (SELECT COUNT(*) FROM achados_verificacao a
-                WHERE a.relatorio_id = r.id AND a.status = 'verificado') AS achados_verificados
-       FROM relatorios r WHERE r.usuario_id = ? ${filtroDias} ORDER BY r.id DESC LIMIT ? OFFSET ?`,
-    )
-    .all(auth.usuario.id, limit, (page - 1) * limit);
+  const relatorios = await buscarTodos<Record<string, unknown>>(
+    `SELECT r.id, r.cliente, r.titulo, r.data, r.versao, r.risco_geral, r.total_achados, r.criado_em,
+            (SELECT COUNT(*) FROM achados_verificacao a
+              WHERE a.relatorio_id = r.id AND a.status = 'verificado') AS achados_verificados
+     FROM relatorios r WHERE r.usuario_id = ? ${filtroDias} ORDER BY r.id DESC LIMIT ? OFFSET ?`,
+    auth.usuario.id,
+    limit,
+    (page - 1) * limit,
+  );
 
-  return Response.json(relatorios);
+  // COUNT(*) no Postgres volta como texto (int8) — normaliza para número.
+  return Response.json(
+    relatorios.map((r) => ({
+      ...r,
+      achados_verificados: Number(r.achados_verificados ?? 0),
+    })),
+  );
 }

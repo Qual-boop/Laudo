@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import db from "@/lib/db";
+import { buscarUm, executar, inserir } from "@/lib/banco";
 
 export type Usuario = {
   id: number;
@@ -36,29 +36,33 @@ export async function compararSenha(
   return bcrypt.compare(senha, hash);
 }
 
-export function buscarUsuarioPorEmail(email: string): Usuario | null {
-  const linha = db
-    .prepare("SELECT * FROM usuarios WHERE email = ?")
-    .get(email.trim().toLowerCase()) as Usuario | undefined;
+export async function buscarUsuarioPorEmail(
+  email: string,
+): Promise<Usuario | null> {
+  const linha = await buscarUm<Usuario>(
+    "SELECT * FROM usuarios WHERE email = ?",
+    email.trim().toLowerCase(),
+  );
   return linha ?? null;
 }
 
-export function buscarUsuarioPorId(id: number): Usuario | null {
-  const linha = db
-    .prepare("SELECT * FROM usuarios WHERE id = ?")
-    .get(id) as Usuario | undefined;
+export async function buscarUsuarioPorId(id: number): Promise<Usuario | null> {
+  const linha = await buscarUm<Usuario>(
+    "SELECT * FROM usuarios WHERE id = ?",
+    id,
+  );
   return linha ?? null;
 }
 
 /** Troca o plano (checkout, webhook, admin). Retorna false se inválido. */
-export function definirPlano(id: number, plano: string): boolean {
+export async function definirPlano(id: number, plano: string): Promise<boolean> {
   if (plano !== "free" && plano !== "pro" && plano !== "team") return false;
-  const info = db
-    .prepare(
-      "UPDATE usuarios SET plano = ?, atualizado_em = CURRENT_TIMESTAMP WHERE id = ?",
-    )
-    .run(plano, id);
-  return info.changes > 0;
+  const alterados = await executar(
+    "UPDATE usuarios SET plano = ?, atualizado_em = CURRENT_TIMESTAMP WHERE id = ?",
+    plano,
+    id,
+  );
+  return alterados > 0;
 }
 
 /** Cria usuário com senha (cadastro). Retorna null se o e-mail já existe. */
@@ -68,30 +72,35 @@ export async function criarUsuario(
   senha: string,
 ): Promise<Usuario | null> {
   const emailNormalizado = email.trim().toLowerCase();
-  if (buscarUsuarioPorEmail(emailNormalizado)) return null;
+  if (await buscarUsuarioPorEmail(emailNormalizado)) return null;
 
   const senha_hash = await hashSenha(senha);
-  const info = db
-    .prepare("INSERT INTO usuarios (nome, email, senha_hash) VALUES (?, ?, ?)")
-    .run(nome.trim(), emailNormalizado, senha_hash);
+  const id = await inserir(
+    "INSERT INTO usuarios (nome, email, senha_hash) VALUES (?, ?, ?)",
+    nome.trim(),
+    emailNormalizado,
+    senha_hash,
+  );
 
-  return buscarUsuarioPorId(Number(info.lastInsertRowid));
+  return buscarUsuarioPorId(id);
 }
 
 /**
  * Garante uma linha para login OAuth (Google): cria sem senha se não
  * existir, nunca sobrescreve nome/senha de conta existente.
  */
-export function buscarOuCriarPorEmail(
+export async function buscarOuCriarPorEmail(
   email: string,
   nome: string,
-): Usuario | null {
-  const existente = buscarUsuarioPorEmail(email);
+): Promise<Usuario | null> {
+  const existente = await buscarUsuarioPorEmail(email);
   if (existente) return existente;
 
-  const info = db
-    .prepare("INSERT INTO usuarios (nome, email, senha_hash) VALUES (?, ?, NULL)")
-    .run(nome.trim() || email, email.trim().toLowerCase());
+  const id = await inserir(
+    "INSERT INTO usuarios (nome, email, senha_hash) VALUES (?, ?, NULL)",
+    nome.trim() || email,
+    email.trim().toLowerCase(),
+  );
 
-  return buscarUsuarioPorId(Number(info.lastInsertRowid));
+  return buscarUsuarioPorId(id);
 }

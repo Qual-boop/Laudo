@@ -1,4 +1,4 @@
-import db from "@/lib/db";
+import { buscarUm, executar } from "@/lib/banco";
 import { exigirUsuario, erroApi } from "@/lib/api-auth";
 
 /**
@@ -9,16 +9,19 @@ export async function POST(request: Request) {
   const auth = await exigirUsuario(request);
   if (!auth.ok) return auth.resposta;
 
-  const u = db
-    .prepare(
-      "SELECT plano, plano_expira_em, trial_usado_em, asaas_subscription_id FROM usuarios WHERE id = ?",
-    )
-    .get(auth.usuario.id) as {
+  const u = await buscarUm<{
     plano: string;
     plano_expira_em: string | null;
     trial_usado_em: string | null;
     asaas_subscription_id: string | null;
-  };
+  }>(
+    "SELECT plano, plano_expira_em, trial_usado_em, asaas_subscription_id FROM usuarios WHERE id = ?",
+    auth.usuario.id,
+  );
+
+  if (!u) {
+    return erroApi("Usuário não existe mais.", "USUARIO_REMOVIDO", 401);
+  }
 
   if (u.plano !== "free" || u.asaas_subscription_id) {
     return erroApi("Trial disponível só para contas free sem assinatura.", "TRIAL_INDISPONIVEL", 409);
@@ -31,9 +34,11 @@ export async function POST(request: Request) {
   }
 
   const expira = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-  db.prepare(
+  await executar(
     "UPDATE usuarios SET plano = 'pro', plano_expira_em = ?, trial_usado_em = CURRENT_TIMESTAMP, atualizado_em = CURRENT_TIMESTAMP WHERE id = ?",
-  ).run(expira, auth.usuario.id);
+    expira,
+    auth.usuario.id,
+  );
 
   return Response.json({ plano: "pro", expiraEm: expira, trial: true }, { status: 201 });
 }

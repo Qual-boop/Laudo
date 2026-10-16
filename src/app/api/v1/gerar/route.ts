@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   // Leitura sem escrita (lerUso) — o consumo acontece no salvar.
   const veredito = verificarLimite(
     normalizarPlano(auth.usuario.plano),
-    lerUso(auth.usuario.id),
+    await lerUso(auth.usuario.id),
     "relatorios",
   );
   if (!veredito.permitido) {

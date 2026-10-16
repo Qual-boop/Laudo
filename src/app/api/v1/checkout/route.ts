@@ -1,4 +1,4 @@
-import db from "@/lib/db";
+import { buscarUm, executar } from "@/lib/banco";
 import { exigirUsuario, erroApi } from "@/lib/api-auth";
 import {
   criarCheckout,
@@ -41,18 +41,17 @@ export async function POST(request: Request) {
     );
   }
 
-  const usuario = db
-    .prepare(
-      "SELECT id, nome, email, asaas_customer_id, asaas_subscription_id, assinatura_status FROM usuarios WHERE id = ?",
-    )
-    .get(auth.usuario.id) as {
+  const usuario = await buscarUm<{
     id: number;
     nome: string;
     email: string;
     asaas_customer_id: string | null;
     asaas_subscription_id: string | null;
     assinatura_status: string | null;
-  };
+  }>(
+    "SELECT id, nome, email, asaas_customer_id, asaas_subscription_id, assinatura_status FROM usuarios WHERE id = ?",
+    auth.usuario.id,
+  );
 
   // Sem trava, um assinante ativo pagaria dobrado abrindo outro checkout
   // (a UI desabilita, mas a API permitia). Trial (pro sem subscription)
@@ -75,9 +74,11 @@ export async function POST(request: Request) {
         email: usuario?.email ?? auth.usuario.email,
       });
       customerId = cliente.id;
-      db.prepare(
+      await executar(
         "UPDATE usuarios SET asaas_customer_id = ?, atualizado_em = CURRENT_TIMESTAMP WHERE id = ?",
-      ).run(customerId, auth.usuario.id);
+        customerId,
+        auth.usuario.id,
+      );
     }
 
     // Base pública para os redirects do Asaas: em produção usa

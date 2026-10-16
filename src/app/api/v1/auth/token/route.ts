@@ -1,5 +1,5 @@
 import { encode } from "next-auth/jwt";
-import db from "@/lib/db";
+import { executar, inserir } from "@/lib/banco";
 import {
   TOKEN_MAX_AGE_SEG,
   erroApi,
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   const v = validar(esquemaLogin, corpo);
   if (!v.ok) return v.resposta;
 
-  const usuario = buscarUsuarioPorEmail(v.dados.email);
+  const usuario = await buscarUsuarioPorEmail(v.dados.email);
   // Mensagem genérica de propósito: não revela se o e-mail existe.
   if (!usuario?.senha_hash) {
     return erroApi("E-mail ou senha inválidos.", "CREDENCIAIS_INVALIDAS", 401);
@@ -41,10 +41,12 @@ export async function POST(request: Request) {
   }
 
   const expiraEm = new Date(Date.now() + TOKEN_MAX_AGE_SEG * 1000);
-  const sessao = db
-    .prepare("INSERT INTO sessoes (usuario_id, token_hash, expira_em) VALUES (?, ?, ?)")
-    .run(usuario.id, "pendente", expiraEm.toISOString());
-  const jti = Number(sessao.lastInsertRowid);
+  const jti = await inserir(
+    "INSERT INTO sessoes (usuario_id, token_hash, expira_em) VALUES (?, ?, ?)",
+    usuario.id,
+    "pendente",
+    expiraEm.toISOString(),
+  );
 
   const token = await encode({
     token: {
@@ -60,7 +62,8 @@ export async function POST(request: Request) {
     maxAge: TOKEN_MAX_AGE_SEG,
   });
 
-  db.prepare("UPDATE sessoes SET token_hash = ? WHERE id = ?").run(
+  await executar(
+    "UPDATE sessoes SET token_hash = ? WHERE id = ?",
     hashToken(token),
     jti,
   );
@@ -78,7 +81,8 @@ export async function DELETE(request: Request) {
     return erroApi("Envie o token em Authorization: Bearer.", "TOKEN_AUSENTE", 400);
   }
 
-  db.prepare("DELETE FROM sessoes WHERE token_hash = ?").run(
+  await executar(
+    "DELETE FROM sessoes WHERE token_hash = ?",
     hashToken(authHeader.slice("Bearer ".length)),
   );
 

@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     subscription?: Record<string, string>;
     payment?: Record<string, string>;
   };
-  aplicarEventoAsaas({
+  await aplicarEventoAsaas({
     id: String(e.id ?? ""),
     event: String(e.event ?? ""),
     checkout: e.checkout,

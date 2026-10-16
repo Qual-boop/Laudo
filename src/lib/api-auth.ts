@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { getToken } from "next-auth/jwt";
-import db from "@/lib/db";
+import { buscarUm } from "@/lib/banco";
 import { buscarUsuarioPorId, type Usuario } from "@/lib/usuarios";
 import { assinaturaDe } from "@/lib/assinatura";
 import type { Plano } from "@/lib/planos";
@@ -111,9 +111,10 @@ export async function exigirUsuario(
   // (Claim próprio `sid`: o `jti` é sobrescrito pelo encode com UUID.)
   const sid = token.sid;
   if (typeof sid === "number" || (typeof sid === "string" && sid)) {
-    const sessao = db
-      .prepare("SELECT usuario_id, expira_em FROM sessoes WHERE id = ?")
-      .get(Number(sid)) as { usuario_id: number; expira_em: string } | undefined;
+    const sessao = await buscarUm<{ usuario_id: number; expira_em: string }>(
+      "SELECT usuario_id, expira_em FROM sessoes WHERE id = ?",
+      Number(sid),
+    );
     if (
       !sessao ||
       sessao.usuario_id !== usuarioId ||
@@ -126,7 +127,7 @@ export async function exigirUsuario(
     }
   }
 
-  const usuario = buscarUsuarioPorId(usuarioId);
+  const usuario = await buscarUsuarioPorId(usuarioId);
   if (!usuario) {
     return {
       ok: false,
@@ -140,7 +141,7 @@ export async function exigirUsuario(
       id: usuario.id,
       nome: usuario.nome,
       email: usuario.email,
-      plano: assinaturaDe(usuario).plano,
+      plano: (await assinaturaDe(usuario)).plano,
     },
   };
 }

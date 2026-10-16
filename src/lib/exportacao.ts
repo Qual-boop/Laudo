@@ -274,14 +274,19 @@ export function copiarParaClipboard(texto: string): Promise<void> {
 /** Texto simples do relatório inteiro (plano free + clientes sem markdown). */
 export function gerarExportacaoTexto(relatorio: Relatorio): string {
   const { capa, sumarioExecutivo, achados, conclusao } = relatorio;
+  // O schema de salvamento aceita achados/JSON parciais — o export não pode
+  // assumir cvss/severidade presentes (500 em produção antes deste guard).
   const linhas = [
     `${capa.titulo} — ${capa.cliente} (${capa.data})`,
-    `Risco geral: ${sumarioExecutivo.riscoGeral} · ${sumarioExecutivo.totalAchados} achado(s)`,
+    `Risco geral: ${sumarioExecutivo?.riscoGeral ?? "Não informado"} · ${
+      sumarioExecutivo?.totalAchados ?? achados.length
+    } achado(s)`,
     "",
-    ...achados.map(
-      (a, i) =>
-        `${String(i + 1).padStart(3, "0")} [${a.severidade}] ${a.titulo} (CVSS ${a.cvss.score.toFixed(1)})`,
-    ),
+    ...achados.map((a, i) => {
+      const cvss =
+        typeof a.cvss?.score === "number" ? ` (CVSS ${a.cvss.score.toFixed(1)})` : "";
+      return `${String(i + 1).padStart(3, "0")} [${a.severidade ?? "Não informada"}] ${a.titulo ?? "Achado"}${cvss}`;
+    }),
     "",
     conclusao,
     "",

@@ -6,7 +6,7 @@ export async function GET(request: Request) {
   const auth = await exigirUsuario(request);
   if (!auth.ok) return auth.resposta;
 
-  const uso = obterUso(auth.usuario.id);
+  const uso = await obterUso(auth.usuario.id);
   const limites = LIMITES[auth.usuario.plano];
 
   return Response.json({

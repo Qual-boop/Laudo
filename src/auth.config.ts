@@ -31,7 +31,7 @@ export const authConfig: NextAuthConfig = {
         const { buscarUsuarioPorEmail, compararSenha } = await import(
           "@/lib/usuarios"
         );
-        const u = buscarUsuarioPorEmail(v.data.email);
+        const u = await buscarUsuarioPorEmail(v.data.email);
         if (!u?.senha_hash) return null;
         if (!(await compararSenha(v.data.senha, u.senha_hash))) return null;
         return { id: String(u.id), name: u.nome, email: u.email };
@@ -45,7 +45,7 @@ export const authConfig: NextAuthConfig = {
       // Login Google precisa de uma linha em `usuarios` (multi-tenant).
       if (account?.provider === "google" && user.email) {
         const { buscarOuCriarPorEmail } = await import("@/lib/usuarios");
-        const u = buscarOuCriarPorEmail(user.email, user.name ?? user.email);
+        const u = await buscarOuCriarPorEmail(user.email, user.name ?? user.email);
         if (!u) return false;
         user.id = String(u.id);
       }
@@ -55,24 +55,24 @@ export const authConfig: NextAuthConfig = {
       if (user?.id) {
         const { buscarUsuarioPorId } = await import("@/lib/usuarios");
         const { assinaturaDe } = await import("@/lib/assinatura");
-        const u = buscarUsuarioPorId(Number(user.id));
+        const u = await buscarUsuarioPorId(Number(user.id));
         if (u) {
           token.usuarioId = u.id;
           token.name = u.nome;
           token.email = u.email;
-          token.plano = assinaturaDe(u).plano;
+          token.plano = (await assinaturaDe(u)).plano;
         }
       }
       // Sessões que só têm `sub`: resolve o usuarioId na hora.
       if (token.usuarioId === undefined && token.sub) {
         const { buscarUsuarioPorId } = await import("@/lib/usuarios");
         const { assinaturaDe } = await import("@/lib/assinatura");
-        const u = buscarUsuarioPorId(Number(token.sub));
+        const u = await buscarUsuarioPorId(Number(token.sub));
         if (u) {
           token.usuarioId = u.id;
           token.name = u.nome;
           token.email = u.email;
-          token.plano = assinaturaDe(u).plano;
+          token.plano = (await assinaturaDe(u)).plano;
         }
       }
       return token;

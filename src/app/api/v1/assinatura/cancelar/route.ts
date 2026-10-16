@@ -1,4 +1,4 @@
-import db from "@/lib/db";
+import { buscarUm, executar } from "@/lib/banco";
 import { exigirUsuario, erroApi } from "@/lib/api-auth";
 import { cancelarAssinatura } from "@/lib/asaas";
 
@@ -11,9 +11,10 @@ export async function POST(request: Request) {
   const auth = await exigirUsuario(request);
   if (!auth.ok) return auth.resposta;
 
-  const u = db
-    .prepare("SELECT asaas_subscription_id FROM usuarios WHERE id = ?")
-    .get(auth.usuario.id) as { asaas_subscription_id: string | null };
+  const u = await buscarUm<{ asaas_subscription_id: string | null }>(
+    "SELECT asaas_subscription_id FROM usuarios WHERE id = ?",
+    auth.usuario.id,
+  );
 
   if (!u?.asaas_subscription_id) {
     return erroApi("Sem assinatura para cancelar.", "SEM_ASSINATURA", 409);
@@ -29,11 +30,12 @@ export async function POST(request: Request) {
     }
   }
 
-  db.prepare(
+  await executar(
     `UPDATE usuarios SET plano = 'free', asaas_subscription_id = NULL,
       plano_expira_em = NULL, assinatura_status = 'cancelada',
       atualizado_em = CURRENT_TIMESTAMP WHERE id = ?`,
-  ).run(auth.usuario.id);
+    auth.usuario.id,
+  );
 
   return Response.json({ ok: true, plano: "free" });
 }

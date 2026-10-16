@@ -40,9 +40,18 @@ Infra e produto (deferidos — exigem decisão/proxy, não bug de código):
 - [ ] `BCRYPT_ROUNDS` aceita mínimo 4 (fixar ≥10 em prod)
 - [ ] Plano da UI vem do JWT (stale até relogar; API já usa o fresco do banco)
 - [ ] `resetarUsoMensal` sem chamada em produção (reset real é por `mes_ano`)
-- [ ] Relatório mínimo salvo (só capa+achados) quebra export Jira/GitHub (`TypeError`)
+- [x] Export `texto` com relatório parcial (500 em produção — `gerarExportacaoTexto` blindado no deploy)
+- [ ] Export Jira/GitHub ainda assume achado completo (`cvss.score` — `TypeError` com JSON parcial)
 - [ ] `GOOGLE_CLIENT_ID/SECRET` (código pronto; botão aparece sozinho quando configurar)
 - [ ] Decisão de produto: `/certificado/[id]` hoje exige login — para
       compartilhar com o cliente final, criar link público com token/hash
 - [ ] Backup do banco + plano de restore
 - [ ] Apps mobile (Expo) e desktop (Tauri) sobre `/api/v1/*` (roadmap)
+
+## Deploy Railway (out/2026)
+
+- [ ] Rotacionar o GitHub PAT exposto no remote do git (`git remote -v` mostra `ghp_...`) e usar remote sem token
+- [ ] Remover `.github/workflows/deploy.yml` (fluxo Vercel obsoleto — deploy é via `railway up`)
+- [ ] Configurar Asaas no Railway (`ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN`) — sem isso o checkout responde 502
+- [ ] Trocar o placeholder `laudo.app` (sitemap/robots/metadata/rodapé) por domínio próprio quando houver
+- [ ] Redirects de compat da API usam `Location` relativo (proxy do Railway entrega host interno); revisar se algum cliente depender de URL absoluta

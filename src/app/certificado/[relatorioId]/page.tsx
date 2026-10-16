@@ -38,7 +38,7 @@ async function visitanteEDono(id: number): Promise<boolean> {
   const sessao = await auth();
   const visitante = Number(sessao?.user?.id);
   if (!Number.isInteger(visitante) || visitante <= 0) return false;
-  return donoDoRelatorio(id) === visitante;
+  return (await donoDoRelatorio(id)) === visitante;
 }
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {

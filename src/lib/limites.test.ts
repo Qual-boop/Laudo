@@ -56,8 +56,8 @@ describe("limites", () => {
 
   it("bloqueia o 4º relatório no free e libera no pro", async () => {
     const id = await garantirUsuario();
-    for (let i = 0; i < 3; i++) incrementarUso(id, "relatorios_criados");
-    const uso = obterUso(id);
+    for (let i = 0; i < 3; i++) await incrementarUso(id, "relatorios_criados");
+    const uso = await obterUso(id);
     expect(uso.relatorios_criados).toBe(3);
     const free = verificarLimite("free", uso, "relatorios");
     expect(free.permitido).toBe(false);
@@ -68,31 +68,31 @@ describe("limites", () => {
 
   it("bloqueia o 11º reteste no free", async () => {
     const id = await garantirUsuario();
-    for (let i = 0; i < 10; i++) incrementarUso(id, "retestes_registrados");
-    const v = verificarLimite("free", obterUso(id), "retestes");
+    for (let i = 0; i < 10; i++) await incrementarUso(id, "retestes_registrados");
+    const v = verificarLimite("free", await obterUso(id), "retestes");
     expect(v.permitido).toBe(false);
     expect(v.limite).toBe(10);
   });
 
   it("mês novo começa zerado (reset automático)", async () => {
     const id = await garantirUsuario();
-    incrementarUso(id, "relatorios_criados", "2026-01");
-    expect(obterUso(id, "2026-01").relatorios_criados).toBe(1);
-    expect(obterUso(id, mesAtual()).relatorios_criados).toBe(0);
-    expect(resetarUsoMensal()).toBeGreaterThanOrEqual(1);
-    expect(obterUso(id, "2026-01").relatorios_criados).toBe(0);
+    await incrementarUso(id, "relatorios_criados", "2026-01");
+    expect((await obterUso(id, "2026-01")).relatorios_criados).toBe(1);
+    expect((await obterUso(id, mesAtual())).relatorios_criados).toBe(0);
+    expect(await resetarUsoMensal()).toBeGreaterThanOrEqual(1);
+    expect((await obterUso(id, "2026-01")).relatorios_criados).toBe(0);
   });
 
   it("lerUso lê sem criar linha (checagem que não consome)", async () => {
     const id = await garantirUsuario();
     // Sem nenhum uso: zeros e nenhuma linha criada.
-    expect(lerUso(id)).toEqual({ relatorios_criados: 0, retestes_registrados: 0 });
+    expect(await lerUso(id)).toEqual({ relatorios_criados: 0, retestes_registrados: 0 });
     const linhas = db
       .prepare("SELECT COUNT(*) AS n FROM uso_mensal WHERE usuario_id = ?")
       .get(id) as { n: number };
     expect(linhas.n).toBe(0);
     // Com uso existente: reflete sem duplicar.
-    incrementarUso(id, "relatorios_criados");
-    expect(lerUso(id).relatorios_criados).toBe(1);
+    await incrementarUso(id, "relatorios_criados");
+    expect((await lerUso(id)).relatorios_criados).toBe(1);
   });
 });

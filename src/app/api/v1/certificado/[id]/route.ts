@@ -21,7 +21,7 @@ export async function GET(
   const v = validar(esquemaId, bruto);
   if (!v.ok) return v.resposta;
 
-  const dono = donoDoRelatorio(v.dados);
+  const dono = await donoDoRelatorio(v.dados);
   if (dono === null) {
     return erroApi("Relatório não encontrado.", "NAO_ENCONTRADO", 404);
   }
@@ -41,7 +41,7 @@ export async function GET(
     );
   }
 
-  const certificado = carregarDadosCertificado(v.dados);
+  const certificado = await carregarDadosCertificado(v.dados);
   if (!certificado) {
     return erroApi("Relatório não encontrado.", "NAO_ENCONTRADO", 404);
   }

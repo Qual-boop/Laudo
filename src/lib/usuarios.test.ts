@@ -46,14 +46,14 @@ describe("usuarios", () => {
 
   it("normaliza e-mail para minúsculas", async () => {
     await criarUsuario("QA", EMAILS[2], "senha-secreta-123");
-    expect(buscarUsuarioPorEmail(EMAILS[2].toUpperCase())?.email).toBe(
+    expect((await buscarUsuarioPorEmail(EMAILS[2].toUpperCase()))?.email).toBe(
       EMAILS[2],
     );
   });
 
   it("buscarOuCriarPorEmail não duplica nem apaga senha", async () => {
     const criado = await criarUsuario("QA Um", EMAILS[0], "senha-secreta-123");
-    const mesmo = buscarOuCriarPorEmail(EMAILS[0], "Nome Google");
+    const mesmo = await buscarOuCriarPorEmail(EMAILS[0], "Nome Google");
     expect(mesmo?.id).toBe(criado?.id);
     expect(mesmo?.senha_hash).toBe(criado?.senha_hash);
   });

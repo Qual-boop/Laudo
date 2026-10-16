@@ -1,4 +1,4 @@
-import db from "@/lib/db";
+import { buscarUm } from "@/lib/banco";
 import { exigirUsuario, erroApi } from "@/lib/api-auth";
 import {
   gerarExportacaoGitHub,
@@ -36,11 +36,10 @@ export async function GET(
     );
   }
 
-  const linha = db
-    .prepare("SELECT relatorio_json, usuario_id FROM relatorios WHERE id = ?")
-    .get(v.dados) as
-    | { relatorio_json: string; usuario_id: number | null }
-    | undefined;
+  const linha = await buscarUm<{ relatorio_json: string; usuario_id: number | null }>(
+    "SELECT relatorio_json, usuario_id FROM relatorios WHERE id = ?",
+    v.dados,
+  );
 
   if (!linha) {
     return erroApi("Relatório não encontrado.", "NAO_ENCONTRADO", 404);

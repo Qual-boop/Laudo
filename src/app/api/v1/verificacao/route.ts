@@ -1,4 +1,4 @@
-import db from "@/lib/db";
+import { buscarTodos, buscarUm, executar, inserir, transacao } from "@/lib/banco";
 import { exigirUsuario, erroApi } from "@/lib/api-auth";
 import { incrementarUso, obterUso, verificarLimite } from "@/lib/limites";
 import { normalizarConfianca, statusParaResultado } from "@/lib/verificacao";
@@ -39,12 +39,12 @@ function hojeISO(): string {
  * Lista achados do usuário com o último reteste de cada um.
  * 3 consultas fixas (lista + últimos + contagens) — sem N+1.
  */
-function listarAchados(
+async function listarAchados(
   usuarioId: number,
   filtroAchadoId?: number,
   limit = 50,
   offset = 0,
-): AchadoVerificavel[] {
+): Promise<AchadoVerificavel[]> {
   const condicoes = ["r.usuario_id = ?"];
   const args: unknown[] = [usuarioId];
   if (filtroAchadoId !== undefined) {
@@ -52,41 +52,45 @@ function listarAchados(
     args.push(filtroAchadoId);
   }
 
-  const linhas = db
-    .prepare(
-      `SELECT a.*, r.cliente AS cliente, r.data AS data_relatorio
+  const linhas = await buscarTodos<Record<string, unknown>>(
+    `SELECT a.*, r.cliente AS cliente, r.data AS data_relatorio
        FROM achados_verificacao a
        JOIN relatorios r ON r.id = a.relatorio_id
        WHERE ${condicoes.join(" AND ")}
        ORDER BY a.id DESC LIMIT ? OFFSET ?`,
-    )
-    .all(...args, limit, offset) as Record<string, unknown>[];
+    ...args,
+    limit,
+    offset,
+  );
 
   if (linhas.length === 0) return [];
 
   const ids = linhas.map((l) => Number(l.id));
   const marcadores = ids.map(() => "?").join(",");
 
-  // pegaN(1) retorna a linha mais recente de cada grupo por achado_id.
-  const ultimos = db
-    .prepare(
-      `SELECT * FROM (
-         SELECT * FROM retestes
-          WHERE achado_id IN (${marcadores})
-          ORDER BY achado_id, date(data_reteste) DESC, id DESC
-       ) WHERE 1 GROUP BY achado_id`,
-    )
-    .all(...ids) as Record<string, unknown>[];
+  // ROW_NUMBER() devolve a linha mais recente de cada achado_id — vale
+  // igual em SQLite (3.25+) e Postgres.
+  const ultimos = await buscarTodos<Record<string, unknown>>(
+    `SELECT * FROM (
+       SELECT *, ROW_NUMBER() OVER (
+         PARTITION BY achado_id ORDER BY data_reteste DESC, id DESC
+       ) AS rn
+         FROM retestes
+        WHERE achado_id IN (${marcadores})
+     ) t WHERE rn = 1`,
+    ...ids,
+  );
 
-  const contagens = db
-    .prepare(
-      `SELECT achado_id, COUNT(*) AS total FROM retestes
-       WHERE achado_id IN (${marcadores}) GROUP BY achado_id`,
-    )
-    .all(...ids) as { achado_id: number; total: number }[];
+  const contagens = await buscarTodos<{ achado_id: number; total: unknown }>(
+    `SELECT achado_id, COUNT(*) AS total FROM retestes
+     WHERE achado_id IN (${marcadores}) GROUP BY achado_id`,
+    ...ids,
+  );
 
   const ultimoPorAchado = new Map(ultimos.map((u) => [Number(u.achado_id), u]));
-  const totalPorAchado = new Map(contagens.map((c) => [c.achado_id, c.total]));
+  const totalPorAchado = new Map(
+    contagens.map((c) => [Number(c.achado_id), Number(c.total)]),
+  );
 
   return linhas.map((linha) => {
     const ultimo = ultimoPorAchado.get(Number(linha.id)) ?? null;
@@ -129,15 +133,14 @@ function listarAchados(
 }
 
 /** Dono do achado (via relatório) ou null se não existe. */
-function donoDoAchado(achadoId: number): number | null {
-  const linha = db
-    .prepare(
-      `SELECT r.usuario_id AS usuario_id
-       FROM achados_verificacao a
-       LEFT JOIN relatorios r ON r.id = a.relatorio_id
-       WHERE a.id = ?`,
-    )
-    .get(achadoId) as { usuario_id: number | null } | undefined;
+async function donoDoAchado(achadoId: number): Promise<number | null> {
+  const linha = await buscarUm<{ usuario_id: number | null }>(
+    `SELECT r.usuario_id AS usuario_id
+     FROM achados_verificacao a
+     LEFT JOIN relatorios r ON r.id = a.relatorio_id
+     WHERE a.id = ?`,
+    achadoId,
+  );
   return linha ? linha.usuario_id : null;
 }
 
@@ -156,7 +159,7 @@ export async function GET(request: Request) {
   const { limit, page } = pag.ok ? pag.dados : { limit: 50, page: 1 };
 
   return Response.json(
-    listarAchados(auth.usuario.id, qAchado.dados, limit, (page - 1) * limit),
+    await listarAchados(auth.usuario.id, qAchado.dados, limit, (page - 1) * limit),
   );
 }
 
@@ -175,7 +178,7 @@ export async function POST(request: Request) {
   if (!v.ok) return v.resposta;
 
   const { achadoId } = v.dados;
-  const dono = donoDoAchado(achadoId);
+  const dono = await donoDoAchado(achadoId);
   if (dono === null) {
     return erroApi("Achado não encontrado.", "NAO_ENCONTRADO", 404);
   }
@@ -186,7 +189,7 @@ export async function POST(request: Request) {
   // Plano free: no máximo 10 retestes por mês.
   const veredito = verificarLimite(
     auth.usuario.plano,
-    obterUso(auth.usuario.id),
+    await obterUso(auth.usuario.id),
     "retestes",
   );
   if (!veredito.permitido) {
@@ -210,26 +213,28 @@ export async function POST(request: Request) {
 
   // Reteste + atualização de status na mesma transação: nunca fica um
   // reteste gravado com o status antigo.
-  const registrar = db.transaction(() => {
-    const info = db
-      .prepare(
-        `INSERT INTO retestes (achado_id, data_reteste, resultado, evidencia)
-         VALUES (?, ?, ?, ?)`,
-      )
-      .run(achadoId, dataReteste, v.dados.resultado, v.dados.evidencia);
+  const retesteId = await transacao(async () => {
+    const id = await inserir(
+      `INSERT INTO retestes (achado_id, data_reteste, resultado, evidencia)
+       VALUES (?, ?, ?, ?)`,
+      achadoId,
+      dataReteste,
+      v.dados.resultado,
+      v.dados.evidencia,
+    );
 
-    db.prepare("UPDATE achados_verificacao SET status = ? WHERE id = ?").run(
+    await executar(
+      "UPDATE achados_verificacao SET status = ? WHERE id = ?",
       novoStatus,
       achadoId,
     );
 
-    return Number(info.lastInsertRowid);
+    return id;
   });
 
-  const retesteId = registrar();
-  incrementarUso(auth.usuario.id, "retestes_registrados");
+  await incrementarUso(auth.usuario.id, "retestes_registrados");
 
-  const [atualizado] = listarAchados(auth.usuario.id, achadoId);
+  const [atualizado] = await listarAchados(auth.usuario.id, achadoId);
 
   return Response.json(
     { retesteId, status: novoStatus, achado: atualizado },
@@ -253,7 +258,7 @@ export async function DELETE(request: Request) {
   }
   const achadoId = v.dados;
 
-  const dono = donoDoAchado(achadoId);
+  const dono = await donoDoAchado(achadoId);
   if (dono === null) {
     return erroApi("Achado não encontrado.", "NAO_ENCONTRADO", 404);
   }
@@ -261,12 +266,13 @@ export async function DELETE(request: Request) {
     return erroApi("Acesso negado a este achado.", "ACESSO_NEGADO", 403);
   }
 
-  db.transaction(() => {
-    db.prepare("DELETE FROM retestes WHERE achado_id = ?").run(achadoId);
-    db.prepare("UPDATE achados_verificacao SET status = 'pendente' WHERE id = ?").run(
+  await transacao(async () => {
+    await executar("DELETE FROM retestes WHERE achado_id = ?", achadoId);
+    await executar(
+      "UPDATE achados_verificacao SET status = 'pendente' WHERE id = ?",
       achadoId,
     );
-  })();
+  });
 
   return Response.json({ ok: true, achadoId });
 }

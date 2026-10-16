@@ -1,85 +1,83 @@
-# Deploy do Laudo (Vercel + Neon + Asaas)
+# Deploy do Laudo (Railway + PostgreSQL + Asaas)
 
-O CI publica sozinho a cada push na branch principal. Você só precisa
-fazer a **ligação das contas uma vez** (3 passos abaixo) — depois disso,
-`git push` = site no ar.
+Produção: **https://laudo-production-9051.up.railway.app**
 
-## O que você precisa fazer (uma vez)
+Projeto Railway `laudo` (serviço `laudo` + plugin `Postgres`), deploy direto
+pela CLI — sem CI. O runtime usa PostgreSQL (`DATABASE_URL` aponta para o
+`postgres.railway.internal`); em desenvolvimento, sem `DATABASE_URL`, o app
+cai no SQLite (`pentest.db`) automaticamente.
 
-### 1. Criar as contas
-
-- **Vercel**: https://vercel.com/signup (importe o repositório do GitHub).
-- **Neon**: https://neon.tech → New Project (Postgres 16, região mais
-  próxima, ex. `US East`) → copie a **Connection string**
-  (`postgresql://...?sslmode=require`).
-
-### 2. Adicionar os secrets no GitHub
-
-Repo → **Settings → Secrets and variables → Actions → New secret**:
-
-| Secret | Onde pegar |
-|---|---|
-| `VERCEL_TOKEN` | Vercel → Account Settings → Tokens → Create |
-| `VERCEL_ORG_ID` | Vercel → Project → Settings → General (ou `vercel link` → `.vercel/project.json`) |
-| `VERCEL_PROJECT_ID` | Idem acima |
-| `DATABASE_URL` | Neon → Connection string (com `?sslmode=require`) |
-| `ASAAS_API_KEY` | Produção: https://api.asaas.com → Integrações → Chave API |
-| `ASAAS_WEBHOOK_TOKEN` | Produção: Integrações → Webhook → token gerado |
-| `AUTH_SECRET` | Gere com `openssl rand -base64 32` |
-| `OPENAI_API_KEY` | https://aistudio.google.com/apikey (Gemini) |
-| `GROQ_API_KEY` | https://console.groq.com/keys (fallback) |
-
-As mesmas variáveis devem existir em **Vercel → Project → Settings →
-Environment Variables** (o `vercel pull` do workflow baixa de lá):
-
-```
-DATABASE_URL, ASAAS_API_KEY, ASAAS_BASE_URL=https://api.asaas.com/v3,
-ASAAS_WEBHOOK_TOKEN, AUTH_SECRET, NEXT_PUBLIC_APP_URL=https://laudo.vercel.app,
-OPENAI_API_KEY, OPENAI_BASE_URL, LAUDO_MODELO, GROQ_API_KEY, ...
-```
-
-### 3. Conectar o repositório na Vercel
-
-Vercel → Add New → Project → Import do GitHub → Deploy. A partir daí o
-workflow `.github/workflows/deploy.yml` assume (push → test → build →
-`vercel deploy --prebuilt --prod`).
-
-## Migrar os dados locais (uma vez)
+## Redeploy
 
 ```bash
-# 1. Cole a DATABASE_URL do Neon no .env
-# 2. Confira sem escrever:
-npm run migrar-dados
-# 3. Copia de verdade (idempotente — rodar 2x não duplica):
-npm run migrar-dados -- --executar
+railway link                       # uma vez: projeto laudo → serviço laudo → environment production
+railway up --service laudo --ci    # build remoto (Nixpacks) + deploy
 ```
 
-Ordem: `usuarios → uso_mensal → sessoes → relatorios →
-achados_verificacao → retestes → webhook_eventos`, com `setval()` das
-sequences ao final. Detalhes em `scripts/migrar-dados.ts`.
+Antes de subir, rode localmente `npm test` e `npm run build`.
+O CI do GitHub (`.github/workflows/deploy.yml`) é do fluxo antigo
+(Vercel) — obsoleto, pode ser removido.
+
+## Variáveis do serviço `laudo`
+
+Já configuradas: `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `AUTH_SECRET`,
+`AUTH_URL`, `NEXTAUTH_URL`, `NEXT_PUBLIC_APP_URL`, `AUTH_TRUST_HOST=true`,
+`OPENAI_API_KEY`, `OPENAI_BASE_URL`, `LAUDO_MODELO`, `LAUDO_MAX_TOKENS`,
+`GROQ_API_KEY`, `GROQ_MODELO`, `GROQ_MAX_TOKENS`.
+
+Faltam para cobrança: `ASAAS_API_KEY` e `ASAAS_WEBHOOK_TOKEN`
+(+ `ASAAS_BASE_URL=https://api.asaas.com/v3`).
+
+```bash
+railway variable set 'CHAVE=valor' --service laudo --skip-deploys
+```
+
+## Migrar dados locais (SQLite → PostgreSQL)
+
+O Postgres não expõe URL pública por padrão; crie um TCP proxy (uma vez):
+
+```bash
+railway tcp-proxy create --port 5432 --service Postgres
+```
+
+Monte a URL com as variáveis do serviço (`PGUSER`, `PGPASSWORD`,
+`PGDATABASE`, `RAILWAY_TCP_PROXY_DOMAIN`, `RAILWAY_TCP_PROXY_PORT` — veja
+com `railway variable list --service Postgres --kv`) e rode:
+
+```bash
+DATABASE_URL='postgresql://...' npm run migrar-dados             # dry-run
+DATABASE_URL='postgresql://...' npm run migrar-dados -- --executar
+```
+
+Idempotente (`ON CONFLICT DO NOTHING` + `setval` das sequences). Linhas
+órfãs (FK apontando para usuário já apagado no SQLite) são puladas com
+aviso — foi o caso do relatório de teste local.
+
+Para abrir um psql direto: `railway connect Postgres`.
 
 ## Webhook do Asaas (produção)
 
-Após o primeiro deploy, cadastre no painel **live**
-(https://api.asaas.com → Integrações → Webhook):
-
-- URL: `https://laudo.vercel.app/api/v1/webhook/asaas`
+- URL: `https://laudo-production-9051.up.railway.app/api/v1/webhook/asaas`
 - Eventos: `CHECKOUT_PAID`, `SUBSCRIPTION_CREATED`, `PAYMENT_RECEIVED`,
   `PAYMENT_OVERDUE`, `SUBSCRIPTION_DELETED`
-- Token → secret `ASAAS_WEBHOOK_TOKEN` (GitHub + Vercel)
+- Token → variável `ASAAS_WEBHOOK_TOKEN` no Railway
 
 Passo a passo com sandbox em `docs/ASAAS-SETUP.md`.
 
-## Como funciona o workflow
-
-1. `npm ci` → instala exatamente o `package-lock.json`.
-2. `npm test` → vitest + typecheck (165 testes). Falhou = sem deploy.
-3. `npm run build` → build Next de produção. Quebrou = sem deploy.
-4. `vercel pull` (env de produção) → `vercel build` → `vercel deploy
-   --prebuilt --prod` → o que foi validado é o que sobe.
-
 ## Rollback
 
-Vercel → Deployments → selecione o deploy anterior → **Promote to
-Production**. O banco (Neon) não sofre rollback — a migração é só
-aditiva (`CREATE TABLE IF NOT EXISTS` + `ON CONFLICT DO NOTHING`).
+```bash
+railway deployment list --service laudo   # histórico
+railway down --service laudo -y           # remove o deploy mais recente (volta ao anterior)
+```
+
+O banco não sofre rollback — as migrações são aditivas.
+
+## Notas
+
+- Redirects de compatibilidade (`/api/gerar`, `/api/relatorios`,
+  `/api/verificacao`) usam `Location` relativo de propósito: atrás do proxy
+  do Railway, `request.url` chega como `localhost:8080` (ver
+  `src/lib/compat-redirect.ts`).
+- `metadataBase`/sitemap/robots apontam para `laudo.app` (placeholder) —
+  trocar ao apontar um domínio próprio (CNAME → Railway).

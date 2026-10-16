@@ -1,4 +1,4 @@
-import db from "@/lib/db";
+import { buscarUm, executar } from "@/lib/banco";
 import { LIMITES, type Plano } from "@/lib/planos";
 
 export { LIMITES, normalizarPlano } from "@/lib/planos";
@@ -14,33 +14,43 @@ export type UsoMensal = {
   retestes_registrados: number;
 };
 
-export function obterUso(usuarioId: number, mes = mesAtual()): UsoMensal {
-  db.prepare(
+export async function obterUso(
+  usuarioId: number,
+  mes = mesAtual(),
+): Promise<UsoMensal> {
+  await executar(
     `INSERT INTO uso_mensal (usuario_id, mes_ano) VALUES (?, ?)
      ON CONFLICT (usuario_id, mes_ano) DO NOTHING`,
-  ).run(usuarioId, mes);
+    usuarioId,
+    mes,
+  );
   return lerUso(usuarioId, mes);
 }
 
 /** Leitura sem escrita (não cria a linha): para checagens que não consomem. */
-export function lerUso(usuarioId: number, mes = mesAtual()): UsoMensal {
-  const linha = db
-    .prepare(
-      "SELECT relatorios_criados, retestes_registrados FROM uso_mensal WHERE usuario_id = ? AND mes_ano = ?",
-    )
-    .get(usuarioId, mes) as UsoMensal | undefined;
+export async function lerUso(
+  usuarioId: number,
+  mes = mesAtual(),
+): Promise<UsoMensal> {
+  const linha = await buscarUm<UsoMensal>(
+    "SELECT relatorios_criados, retestes_registrados FROM uso_mensal WHERE usuario_id = ? AND mes_ano = ?",
+    usuarioId,
+    mes,
+  );
   return linha ?? { relatorios_criados: 0, retestes_registrados: 0 };
 }
 
-export function incrementarUso(
+export async function incrementarUso(
   usuarioId: number,
   campo: "relatorios_criados" | "retestes_registrados",
   mes = mesAtual(),
-): void {
-  obterUso(usuarioId, mes); // garante a linha
-  db.prepare(
+): Promise<void> {
+  await obterUso(usuarioId, mes); // garante a linha
+  await executar(
     `UPDATE uso_mensal SET ${campo} = ${campo} + 1 WHERE usuario_id = ? AND mes_ano = ?`,
-  ).run(usuarioId, mes);
+    usuarioId,
+    mes,
+  );
 }
 
 export type RecursoLimitado = "relatorios" | "retestes";
@@ -66,7 +76,6 @@ export function verificarLimite(
 }
 
 /** Limpa linhas de meses passados (higiene; o reset é automático por mes_ano). */
-export function resetarUsoMensal(mes = mesAtual()): number {
-  const info = db.prepare("DELETE FROM uso_mensal WHERE mes_ano <> ?").run(mes);
-  return Number(info.changes);
+export async function resetarUsoMensal(mes = mesAtual()): Promise<number> {
+  return executar("DELETE FROM uso_mensal WHERE mes_ano <> ?", mes);
 }
