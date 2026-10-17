@@ -12,7 +12,7 @@ import {
   VinhetaReteste,
 } from "@/components/landing/Vinhetas";
 import { LIMITES } from "@/lib/planos";
-import { REPOSITORIO, URL_SITE } from "@/lib/site";
+import { EMAIL_CONTATO, REPOSITORIO, URL_SITE } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: { absolute: "Laudo — Relatório de pentest, reteste e certificado de correção" },
@@ -716,6 +716,7 @@ export default function Landing() {
             <a href="/termos" className="text-texto-2 transition-colors hover:text-texto">Termos</a>
             <a href="/privacidade" className="text-texto-2 transition-colors hover:text-texto">Privacidade</a>
             <a href={REPOSITORIO} className="text-texto-2 transition-colors hover:text-texto">Código-fonte (MIT)</a>
+            <a href={`mailto:${EMAIL_CONTATO}`} className="text-texto-2 transition-colors hover:text-texto">Contato</a>
           </nav>
         </div>
         <div className="border-t border-white/[0.06]">

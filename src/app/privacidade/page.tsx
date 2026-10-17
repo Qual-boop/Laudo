@@ -35,8 +35,8 @@ export default function Privacidade() {
         </p>
         <p>
           Pedidos de exportação/exclusão (LGPD):{" "}
-          <a href="mailto:contato@laudo.app" className="text-accent hover:underline">
-            contato@laudo.app
+          <a href="mailto:eliasmecenasseabra@gmail.com" className="text-accent hover:underline">
+            eliasmecenasseabra@gmail.com
           </a>
           .
         </p>

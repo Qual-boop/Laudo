@@ -8,3 +8,5 @@ export const URL_SITE =
   "https://laudo-production-9051.up.railway.app";
 
 export const REPOSITORIO = "https://github.com/Qual-boop/Laudo";
+
+export const EMAIL_CONTATO = "eliasmecenasseabra@gmail.com";

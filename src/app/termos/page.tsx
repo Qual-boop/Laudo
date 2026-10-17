@@ -33,8 +33,8 @@ export default function Termos() {
         </p>
         <p>
           O serviço é fornecido "como está", sem garantias. Dúvidas:{" "}
-          <a href="mailto:contato@laudo.app" className="text-accent hover:underline">
-            contato@laudo.app
+          <a href="mailto:eliasmecenasseabra@gmail.com" className="text-accent hover:underline">
+            eliasmecenasseabra@gmail.com
           </a>
           .
         </p>

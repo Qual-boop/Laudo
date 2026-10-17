@@ -58,6 +58,6 @@ Infra e produto (deferidos — exigem decisão/proxy, não bug de código):
 
 ## Landing 10/10 (out/2026)
 
-- [ ] E-mail de contato real: `contato@laudo.app` não existe (domínio não é nosso) — saiu do rodapé da landing; conferir termos/privacidade
+- [x] E-mail de contato: eliasmecenasseabra@gmail.com (`EMAIL_CONTATO` em src/lib/site.ts; termos, privacidade e rodapé)
 - [ ] Plano Team: recursos de equipe (workspace, comentários, dashboard) ainda não existem — a página de preços agora diz "em desenvolvimento"
 - [ ] Link público do certificado (hoje exige login) — a landing promete "o cliente pode conferir" via hash; um link público fecharia a promessa

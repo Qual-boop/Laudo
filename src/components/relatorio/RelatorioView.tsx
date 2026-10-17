@@ -47,7 +47,7 @@ export function RelatorioView({
           <span>
             {capa.classificacao} · v{capa.versao}
           </span>
-          <span>Gerado por Laudo — laudo.app</span>
+          <span>Gerado com Laudo</span>
         </div>
       </div>
 
