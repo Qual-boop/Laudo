@@ -174,7 +174,7 @@ function CertificadoEmitido({ certificado }: { certificado: Certificado }) {
           <strong className="font-semibold text-accent">
             {progresso.total} achado{progresso.total === 1 ? "" : "s"}
           </strong>{" "}
-          de segurança do relatório acima, identificados pelo cliente{" "}
+          de segurança do relatório acima, do cliente{" "}
           <strong className="font-semibold">{dados.relatorio.cliente}</strong>,
           foram submetidos a reteste e confirmados como corrigidos.
         </p>

@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useSession } from "next-auth/react";
-import { Logo } from "@/components/Logo";
 
 type PlanoId = "free" | "pro" | "team";
 
@@ -63,10 +62,7 @@ const PLANOS: {
     href: "/cadastro?plano=team",
     features: [
       "Tudo do Pro",
-      "Até 10 usuários por workspace",
-      "Compartilhamento de relatórios",
-      "Comentários e revisão por pares",
-      "Dashboard de equipe",
+      "Recursos de equipe (em desenvolvimento)",
       "Suporte prioritário",
     ],
   },
@@ -96,25 +92,7 @@ const FAQ: { pergunta: string; resposta: string }[] = [
   {
     pergunta: "Meus dados saem do país?",
     resposta:
-      "O conteúdo dos achados é enviado ao provedor de IA na geração. Veja docs/SEGURANCA.md e a página de privacidade para detalhes e LGPD.",
-  },
-];
-
-const DEPOIMENTOS = [
-  {
-    texto: "O certificado de correção virou meu melhor argumento de venda. O cliente vê a prova, não a promessa.",
-    autor: "Pentester freelancer",
-    detalhe: "depoimento ilustrativo",
-  },
-  {
-    texto: "Padronizamos a entrega da consultoria em uma semana. O reteste com evidência acabou com a planilha de follow-up.",
-    autor: "Sócia de consultoria (6 pessoas)",
-    detalhe: "depoimento ilustrativo",
-  },
-  {
-    texto: "Gero o relatório, registro o reteste e exporto para o Jira sem sair da ferramenta. Fecha o ciclo.",
-    autor: "AppSec interno",
-    detalhe: "depoimento ilustrativo",
+      "Em parte: na geração do relatório, o conteúdo dos achados é enviado ao provedor de IA (Google Gemini; Groq como reserva), que pode processá-lo fora do Brasil. Não usamos analytics nem cookies de terceiros. Recomendamos anonimizar dados sensíveis antes de gerar — detalhes na página de Privacidade.",
   },
 ];
 
@@ -122,7 +100,7 @@ function reais(v: number): string {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-/** Cards de planos + FAQ + depoimentos (client: toggle mensal/anual). */
+/** Cards de planos + FAQ (client: toggle mensal/anual). */
 export function SeletorPrecos() {
   const [anual, setAnual] = useState(false);
   const { status } = useSession();
@@ -281,33 +259,6 @@ export function SeletorPrecos() {
         </div>
       </section>
 
-      {/* Depoimentos */}
-      <section className="mt-20">
-        <h2 className="text-center text-2xl font-semibold tracking-tight text-texto sm:text-3xl">
-          Quem usa, prova
-        </h2>
-        <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-3">
-          {DEPOIMENTOS.map((d) => (
-            <figure key={d.texto} className="glass flex flex-col rounded-xl p-6">
-              <div className="flex items-center gap-2" aria-label="Avaliação do produto">
-                <Logo className="h-5 w-5 text-accent" />
-                <span aria-hidden="true" className="font-mono text-xs text-accent">
-                  ★★★★★
-                </span>
-              </div>
-              <blockquote className="mt-4 flex-1 text-sm leading-relaxed text-texto">
-                “{d.texto}”
-              </blockquote>
-              <figcaption className="mt-4">
-                <p className="text-sm font-medium text-texto-2">{d.autor}</p>
-                <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-texto-2/60">
-                  {d.detalhe}
-                </p>
-              </figcaption>
-            </figure>
-          ))}
-        </div>
-      </section>
     </>
   );
 }

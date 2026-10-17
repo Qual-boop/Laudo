@@ -26,6 +26,7 @@ const PUBLICO = [
   "/sitemap.xml",
   "/robots.txt",
   "/favicon.ico",
+  "/opengraph-image", // prévia de compartilhamento (crawlers não têm sessão)
 ];
 
 function nomesCookie(): [string, string] {

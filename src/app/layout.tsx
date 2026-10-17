@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import { ProvedorSessao } from "@/components/ProvedorSessao";
+import { URL_SITE } from "@/lib/site";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,28 +16,42 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
+/* Serifa só para destaques (landing e certificado) — o resto é Geist. */
+const instrumentSerif = Instrument_Serif({
+  variable: "--font-instrument-serif",
+  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
+  display: "swap",
+});
+
 export const viewport: Viewport = {
-  themeColor: "#0f0f0f",
+  themeColor: "#0a0e14",
   width: "device-width",
   initialScale: 1,
 };
 
+const TITULO = "Laudo — Relatório de pentest, reteste e certificado de correção";
+const DESCRICAO =
+  "Gere o relatório de pentest com IA, registre o reteste com evidência e entregue ao cliente um certificado de correção com hash SHA-256. Em português, grátis para começar.";
+
 export const metadata: Metadata = {
-  metadataBase: new URL("https://laudo.app"),
+  metadataBase: new URL(URL_SITE),
   title: {
-    default: "Laudo — Relatórios de pentest em segundos",
+    default: TITULO,
     template: "%s | Laudo",
   },
-  description:
-    "Gere visões executiva, técnica e de ticket a partir de um achado de pentest, com IA. Certificados de correção, exportação Jira/GitHub e verificação de retestes.",
+  description: DESCRICAO,
+  applicationName: "Laudo",
   keywords: [
-    "pentest",
-    "relatório de segurança",
+    "relatório de pentest",
     "teste de intrusão",
-    "vulnerabilidade",
+    "reteste de vulnerabilidades",
     "certificado de correção",
-    "Jira",
-    "GitHub",
+    "assurance de segurança",
+    "CVSS",
+    "OWASP",
+    "pentest freelancer",
   ],
   authors: [{ name: "Laudo" }],
   creator: "Laudo",
@@ -52,29 +67,19 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
+  // Imagem: app/opengraph-image.tsx (convenção de arquivo do Next).
   openGraph: {
     type: "website",
     locale: "pt_BR",
-    url: "https://laudo.app",
+    url: "/",
     siteName: "Laudo",
-    title: "Laudo — Relatórios de pentest em segundos",
-    description:
-      "Gere relatórios profissionais de teste de intrusão com IA. Certificados de correção, verificação de retestes e exportação para Jira/GitHub.",
-    images: [
-      {
-        url: "/icon.svg",
-        width: 512,
-        height: 512,
-        alt: "Laudo - Relatórios de pentest",
-      },
-    ],
+    title: TITULO,
+    description: DESCRICAO,
   },
   twitter: {
     card: "summary_large_image",
-    title: "Laudo — Relatórios de pentest em segundos",
-    description:
-      "Gere relatórios profissionais de teste de intrusão com IA. Certificados de correção e exportação para Jira/GitHub.",
-    images: ["/icon.svg"],
+    title: TITULO,
+    description: DESCRICAO,
   },
   icons: {
     icon: "/icon.svg",
@@ -88,12 +93,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="pt-BR"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} h-full antialiased`}
     >
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      </head>
       <body className="flex min-h-full flex-col font-sans">
         <ProvedorSessao>{children}</ProvedorSessao>
       </body>

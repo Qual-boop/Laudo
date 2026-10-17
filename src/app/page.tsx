@@ -1,451 +1,507 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { Logo } from "@/components/Logo";
-import { TerminalBar } from "@/components/TerminalBar";
+import { Icone, type NomeIcone } from "@/components/landing/Icone";
+import { PainelHero } from "@/components/landing/PainelHero";
+import { CicloAssurance } from "@/components/landing/CicloAssurance";
+import { CertificadoExemplo } from "@/components/landing/CertificadoExemplo";
+import {
+  VinhetaCadastro,
+  VinhetaDelta,
+  VinhetaRelatorio,
+  VinhetaReteste,
+} from "@/components/landing/Vinhetas";
+import { LIMITES } from "@/lib/planos";
+import { REPOSITORIO, URL_SITE } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Laudo — Prove que as correções funcionaram",
+  title: { absolute: "Laudo — Relatório de pentest, reteste e certificado de correção" },
   description:
-    "Plataforma de assurance que fecha o ciclo do pentest: gera o relatório, acompanha o reteste e entrega o certificado de que as falhas foram corrigidas.",
+    "Gere o relatório de pentest com IA, registre o reteste com evidência e entregue ao cliente um certificado de correção com hash SHA-256. Em português, grátis para começar.",
+  alternates: { canonical: "/" },
 };
 
-const PASSOS = [
+/* ------------------------------------------------------------------ *
+ * Conteúdo. Tudo aqui precisa ser verdade no produto — se uma linha
+ * deixar de ser, mude a linha (não o produto às pressas).
+ * ------------------------------------------------------------------ */
+
+const ESPECIFICACOES = [
+  "CVSS v3.1",
+  "OWASP Top 10",
+  "CWE",
+  "SHA-256",
+  "PDF A4",
+  "Jira",
+  "GitHub",
+  "Código aberto · MIT",
+];
+
+const PASSOS: { titulo: string; texto: string; vinheta: () => ReactNode }[] = [
   {
-    numero: "01",
     titulo: "Cadastre o engagement e os achados",
     texto:
       "Cliente, escopo, período, ferramentas e limitações. Cada achado entra com severidade, CWE, evidência e o quanto você confia nele.",
+    vinheta: VinhetaCadastro,
   },
   {
-    numero: "02",
     titulo: "Gere o relatório completo com IA",
     texto:
-      "Sete seções: capa, sumário executivo, escopo, achados com CVSS e OWASP, recomendações, conclusão e disclaimer.",
+      "Sete seções prontas para revisar: sumário executivo, escopo, achados com CVSS e OWASP, recomendações de curto e longo prazo, conclusão e disclaimer.",
+    vinheta: VinhetaRelatorio,
   },
   {
-    numero: "03",
     titulo: "Registre o reteste com evidência",
     texto:
-      "Data, resultado (corrigido, não corrigido ou parcial) e a evidência que comprova. O histórico de cada reteste fica guardado.",
+      "Para cada achado: data, resultado (corrigido, não corrigido ou parcial) e a evidência que comprova. Nada se perde — o histórico fica.",
+    vinheta: VinhetaReteste,
   },
   {
-    numero: "04",
-    titulo: "Entregue o Delta e o Certificado",
+    titulo: "Entregue o delta e o certificado",
     texto:
-      "Relatório de delta antes vs depois e, com 100% dos achados verificados, o certificado de correção com hash de verificação.",
+      "O relatório de delta mostra o antes e o depois. Com 100% dos achados verificados, o certificado de correção é liberado.",
+    vinheta: VinhetaDelta,
   },
 ];
 
-const RECURSOS = [
+const PROVAS_CERTIFICADO: { titulo: string; texto: string; icone: NomeIcone }[] = [
   {
-    icone: "▤",
+    titulo: "Só existe com 100% verificado",
+    texto:
+      "Enquanto houver achado pendente ou não corrigido, o Laudo mostra o que falta — e não emite o selo.",
+    icone: "check",
+  },
+  {
+    titulo: "Hash SHA-256 recalculável",
+    texto:
+      "O hash cobre relatório, achados, datas de reteste e emissão, em JSON canônico. Qualquer alteração muda o valor — e qualquer um pode recalcular.",
+    icone: "hash",
+  },
+  {
+    titulo: "Pronto para a reunião de acompanhamento",
+    texto:
+      "Imprime em A4 com fundo claro, junto do relatório de delta. É o documento que o seu cliente leva para a diretoria.",
+    icone: "documento",
+  },
+];
+
+const RECURSOS: { titulo: string; texto: string; icone: NomeIcone }[] = [
+  {
     titulo: "Relatório de 7 seções",
-    texto: "Capa, sumário, escopo, achados, recomendações, conclusão e disclaimer.",
+    texto: "Capa, sumário executivo, escopo, achados, recomendações, conclusão e disclaimer.",
+    icone: "documento",
   },
   {
-    icone: "▲",
-    titulo: "Achados com CVSS, OWASP e CWE",
-    texto: "Vetor de ataque, passos de reprodução e remediação em curto e longo prazo.",
+    titulo: "CVSS, OWASP e CWE",
+    texto: "Vetor CVSS v3.1, categoria OWASP, passos de reprodução e remediação por achado.",
+    icone: "alvo",
   },
   {
-    icone: "◷",
     titulo: "Motor de verificação",
-    texto: "Status por achado: pendente, verificado ou não corrigido. Com filtro e progresso.",
+    texto: "Status por achado — pendente, verificado ou não corrigido — com filtro e progresso.",
+    icone: "radar",
   },
   {
-    icone: "⇄",
     titulo: "Relatório de delta",
-    texto: "O que mudou entre o achado original e o reteste, com a evidência de cada um.",
+    texto: "O que mudou entre o achado original e o reteste, com a evidência de cada lado.",
+    icone: "delta",
   },
   {
-    icone: "⎙",
-    titulo: "Exportação em PDF, Jira e GitHub",
-    texto: "Paginação A4, capa isolada e exportação por achado em 3 formatos.",
+    titulo: "PDF, Jira e GitHub",
+    texto: "PDF A4 com capa isolada e exportação de cada achado como ticket.",
+    icone: "exportar",
   },
   {
-    icone: "⇌",
-    titulo: "Fallback entre provedores de IA",
-    texto: "Gemini, depois Groq, depois relatório local. Nunca fica sem resposta.",
+    titulo: "IA que não te deixa na mão",
+    texto: "Gemini, depois Groq, depois um relatório local. Você sempre sai com o documento.",
+    icone: "camadas",
   },
 ];
 
-const PUBLICO = [
+const PUBLICO: { titulo: string; texto: string; ganho: string; icone: NomeIcone }[] = [
   {
     titulo: "Pentesters freelancers",
-    texto: "Feche o ciclo do engagement sem maintainers nem cobros extras.",
+    texto: "Entregue como uma consultoria grande, sem montar relatório no Word nem controlar reteste em planilha.",
+    ganho: "O certificado vira argumento de venda — e de renovação.",
+    icone: "usuario",
   },
   {
     titulo: "Consultorias pequenas",
-    texto: "Até 10 pessoas padronizam a entrega e provam a correção sem planilha.",
+    texto: "Um padrão de entrega para todo o time, do achado ao certificado.",
+    ganho: "Cada projeto termina com prova, não com promessa.",
+    icone: "equipe",
   },
   {
-    titulo: "Times internos ofensivos",
-    texto: "O time de dev recebe achado rastreável e o status fecha o ticket.",
+    titulo: "Times internos de segurança",
+    texto: "Achado rastreável exportado para o Jira ou GitHub do time de desenvolvimento.",
+    ganho: "O reteste fecha o ticket — com evidência.",
+    icone: "codigo",
   },
 ];
 
-const DOR = [
+type Celula = true | false | string;
+
+const COMPARACAO: { recurso: string; laudo: Celula; pdf: Celula; enterprise: Celula }[] = [
+  { recurso: "Relatório com IA (CVSS, OWASP, CWE)", laudo: true, pdf: false, enterprise: true },
+  { recurso: "Reteste com evidência e histórico", laudo: true, pdf: false, enterprise: true },
+  { recurso: "Certificado de correção com hash verificável", laudo: true, pdf: false, enterprise: "Varia" },
+  { recurso: "Exportação por achado para Jira e GitHub", laudo: true, pdf: false, enterprise: true },
+  { recurso: "Em português", laudo: true, pdf: "Varia", enterprise: "Raro" },
+  { recurso: "Código aberto", laudo: "MIT", pdf: "Varia", enterprise: false },
+  { recurso: "Preço", laudo: "A partir de R$ 0", pdf: "Baixo", enterprise: "Sob consulta" },
+];
+
+const FREE = LIMITES.free;
+
+const PLANOS = [
   {
-    titulo: "Você entrega o relatório. O cliente paga. E depois?",
-    texto:
-      "O engagement acaba no PDF. Ninguém tem o que mostrar na reunião de acompanhamento.",
+    nome: "Free",
+    preco: "R$ 0",
+    periodo: "para sempre",
+    descricao: "Para conhecer o fluxo com projetos reais.",
+    itens: [
+      `${FREE.relatoriosMes} relatórios por mês`,
+      `${FREE.achadosPorRelatorio} achados por relatório`,
+      `${FREE.retestesMes} retestes por mês`,
+      "Exportação em texto",
+      `Histórico de ${FREE.historicoDias} dias`,
+    ],
+    cta: "Começar grátis",
+    href: "/cadastro",
+    destaque: false,
   },
   {
-    titulo: "Ninguém sabe se as vulnerabilidades foram corrigidas de verdade.",
-    texto:
-      "O time de dev diz que arrumou. Sem reteste com evidência, é só uma afirmação sem prova.",
-  },
-  {
-    titulo: "Sem prova de correção, o pentest vira só mais um PDF na gaveta.",
-    texto:
-      "O mesmo teste do ano passado vira a mesma pergunta: quais continuam abertas?",
+    nome: "Pro",
+    preco: "R$ 19,90",
+    periodo: "/mês",
+    descricao: "Para quem entrega pentest todo mês.",
+    itens: [
+      "Relatórios, achados e retestes ilimitados",
+      "Certificado de correção com hash",
+      "Exportação para Jira e GitHub",
+      "Sem marca d'água",
+      "Histórico ilimitado",
+    ],
+    cta: "Assinar o Pro",
+    href: "/cadastro?plano=pro",
+    destaque: true,
   },
 ];
 
-const DIFERENCIAL = [
+const FAQ: { pergunta: string; resposta: string }[] = [
   {
-    titulo: "Outras ferramentas param quando você clica em “exportar”.",
-    texto:
-      "Geram documento bonito e devolvem o controle. A garantia continua sendo uma promessa sua.",
+    pergunta: "O que exatamente o certificado prova?",
+    resposta:
+      "Que todos os achados do relatório foram retestados e marcados como corrigidos, com data de reteste. O hash SHA-256 é calculado sobre esses dados em JSON canônico: se alguém alterar um achado, uma data ou o cliente, o hash muda. Ele não substitui o seu parecer técnico — ele registra, de forma conferível, o que foi verificado.",
   },
   {
-    titulo: "O Laudo continua até você ter prova de que a correção foi aplicada.",
-    texto:
-      "O achado não some depois do PDF. Ele ganha status, histórico de reteste e evidência.",
+    pergunta: "A IA escreve o relatório por mim?",
+    resposta:
+      "Ela escreve o rascunho: sumário executivo, CVSS, categoria OWASP, passos de reprodução e recomendações. Você revisa, ajusta e decide o que vai para o cliente. Se o provedor de IA estiver fora do ar, o Laudo tenta o próximo e, em último caso, gera um relatório local.",
   },
   {
-    titulo: "Seu cliente não compra um relatório. Ele compra a garantia de que o problema sumiu.",
-    texto:
-      "O certificado de correção é o entregável que fecha o ciclo — com hash de verificação e data de emissão.",
+    pergunta: "Os dados dos meus clientes vão para a IA?",
+    resposta:
+      "O conteúdo dos achados é enviado ao provedor de IA (Google Gemini; Groq como reserva) no momento da geração, e pode ser processado fora do Brasil. O Laudo não usa analytics nem cookies de terceiros. Recomendamos anonimizar dados sensíveis antes de gerar — detalhes na página de Privacidade.",
   },
-];
-
-/* Comparação honesta: o que cada categoria entrega. */
-const COMPARACAO: { recurso: string; laudo: boolean; pdf: boolean; enterprise: boolean }[] = [
-  { recurso: "Relatório com IA (CVSS, OWASP)", laudo: true, pdf: false, enterprise: true },
-  { recurso: "Reteste com evidência", laudo: true, pdf: false, enterprise: true },
-  { recurso: "Certificado de correção com hash", laudo: true, pdf: false, enterprise: false },
-  { recurso: "Exportação Jira / GitHub por achado", laudo: true, pdf: false, enterprise: true },
-  { recurso: "Preço de freelancer (a partir de R$ 19,90)", laudo: true, pdf: true, enterprise: false },
-  { recurso: "Auto-hospedável e leve", laudo: true, pdf: true, enterprise: false },
+  {
+    pergunta: "Em quais planos está o certificado?",
+    resposta:
+      "No Pro e no Team. No Free você usa relatório, verificação e reteste para conhecer o fluxo; a página do certificado mostra o que falta para liberá-lo.",
+  },
+  {
+    pergunta: "Preciso de cartão para começar?",
+    resposta:
+      "Não. O Free não pede cartão. Nos planos pagos, o cancelamento vale ao fim do ciclo e a conta volta para o Free com os dados intactos.",
+  },
+  {
+    pergunta: "O código é aberto mesmo?",
+    resposta:
+      "Sim, sob licença MIT, no GitHub. Você pode auditar como o hash do certificado é calculado — o que, para um produto de segurança, deveria ser o mínimo.",
+  },
 ];
 
 /* ------------------------------------------------------------------ *
- * Mockup estático do painel de verificação — deixa o hero mostrar o
- * produto em vez de descrever o produto.
+ * Peças de layout
  * ------------------------------------------------------------------ */
 
-const MOCK = [
-  {
-    ref: "FINDING-001",
-    titulo: "SQL Injection no formulário de login",
-    severidade: "Crítica",
-    cor: "critica",
-    status: "Verificado",
-    statusCor: "accent",
-    icone: "✓",
-    progresso: "w-full",
-    tempo: "há 2 dias",
-  },
-  {
-    ref: "FINDING-002",
-    titulo: "IDOR no endpoint de faturas",
-    severidade: "Alta",
-    cor: "alta",
-    status: "Não corrigido",
-    statusCor: "critica",
-    icone: "✗",
-    progresso: "w-1/3",
-    tempo: "há 9 dias",
-  },
-  {
-    ref: "FINDING-003",
-    titulo: "Cookie de sessão sem HttpOnly",
-    severidade: "Média",
-    cor: "media",
-    status: "Pendente",
-    statusCor: "media",
-    icone: "○",
-    progresso: "w-0",
-    tempo: "aguardando reteste",
-  },
-];
-
-const BOTAO = (extra = "") =>
-  `inline-flex items-center justify-center rounded-md border px-4 py-2 font-mono text-[10px] uppercase tracking-wider transition-colors duration-200 ${extra}`;
-
-function Celula({ sim }: { sim: boolean }) {
+function Cabecalho({
+  sobretitulo,
+  titulo,
+  texto,
+  centro,
+}: {
+  sobretitulo: string;
+  titulo: ReactNode;
+  texto?: ReactNode;
+  centro?: boolean;
+}) {
   return (
-    <span
-      aria-label={sim ? "Incluso" : "Não incluso"}
-      className={`font-mono text-sm ${sim ? "text-accent" : "text-texto-2/40"}`}
-    >
-      {sim ? "✓" : "—"}
-    </span>
+    <div className={centro ? "mx-auto max-w-3xl text-center" : "max-w-3xl"}>
+      <p className="font-mono text-xs uppercase tracking-[0.18em] text-accent">{sobretitulo}</p>
+      <h2 className="mt-4 text-balance text-[2rem] font-semibold leading-[1.1] tracking-[-0.025em] text-texto sm:text-[2.75rem]">
+        {titulo}
+      </h2>
+      {texto && <p className="mt-5 text-lg leading-relaxed text-texto-2">{texto}</p>}
+    </div>
   );
 }
 
+function Destaque({ children }: { children: ReactNode }) {
+  return <em className="font-serif font-normal italic text-accent">{children}</em>;
+}
+
+function ValorCelula({ valor, laudo }: { valor: Celula; laudo?: boolean }) {
+  if (valor === true) {
+    return (
+      <span className={laudo ? "text-accent" : "text-texto"}>
+        <Icone nome="check" className="mx-auto h-5 w-5" />
+        <span className="sr-only">Sim</span>
+      </span>
+    );
+  }
+  if (valor === false) {
+    return (
+      <span className="text-texto-2/40">
+        —<span className="sr-only">Não</span>
+      </span>
+    );
+  }
+  return <span className={`text-sm ${laudo ? "font-medium text-accent" : "text-texto-2"}`}>{valor}</span>;
+}
+
+const CONTAINER = "mx-auto w-full max-w-6xl px-4 sm:px-6";
+
+/* Dados estruturados (rich results): produto + perguntas frequentes. */
+const JSON_LD = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      name: "Laudo",
+      url: URL_SITE,
+      applicationCategory: "SecurityApplication",
+      operatingSystem: "Web",
+      inLanguage: "pt-BR",
+      description:
+        "Plataforma de assurance para pentest: relatório com IA, reteste com evidência e certificado de correção com hash SHA-256.",
+      offers: [
+        { "@type": "Offer", name: "Free", price: "0", priceCurrency: "BRL" },
+        { "@type": "Offer", name: "Pro", price: "19.90", priceCurrency: "BRL" },
+        { "@type": "Offer", name: "Team", price: "49.90", priceCurrency: "BRL" },
+      ],
+    },
+    {
+      "@type": "FAQPage",
+      mainEntity: FAQ.map((f) => ({
+        "@type": "Question",
+        name: f.pergunta,
+        acceptedAnswer: { "@type": "Answer", text: f.resposta },
+      })),
+    },
+  ],
+};
+
 export default function Landing() {
   return (
-    <>
-      <header className="no-print sticky top-0 z-10 border-b border-borda bg-fundo/85 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-5 sm:px-6">
-          <Logo className="h-9 w-9 shrink-0 text-accent" />
-          <span className="text-lg font-bold tracking-tight text-texto">Laudo</span>
-          <nav className="ml-auto flex items-center gap-2">
-            <a
-              href="#como-funciona"
-              className={`${BOTAO("border-transparent text-texto-2 hover:border-borda hover:text-texto")} hidden sm:inline-flex`}
-            >
-              Como funciona
-            </a>
-            <a
-              href="/precos"
-              className={`${BOTAO("border-transparent text-texto-2 hover:border-borda hover:text-texto")} hidden sm:inline-flex`}
-            >
-              Preços
-            </a>
-            <a
-              href="/login"
-              className={`${BOTAO("border-borda text-texto-2 hover:border-accent hover:text-accent")}`}
-            >
+    <div className="lp-raiz flex flex-1 flex-col">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD).replace(/</g, "\\u003c") }}
+      />
+
+      {/* ---------------------------------------------------- Cabeçalho */}
+      <header className="no-print sticky top-0 z-20 border-b border-white/[0.06] bg-fundo/75 backdrop-blur-xl">
+        <div className={`${CONTAINER} flex h-16 items-center gap-2 sm:gap-3`}>
+          <a href="/" className="flex items-center gap-2.5" aria-label="Laudo — início">
+            <Logo className="h-8 w-8 shrink-0 text-accent" />
+            <span className="text-lg font-semibold tracking-tight text-texto">Laudo</span>
+          </a>
+          <nav aria-label="Seções" className="ml-8 hidden items-center gap-7 text-sm text-texto-2 lg:flex">
+            <a href="#como-funciona" className="transition-colors hover:text-texto">Como funciona</a>
+            <a href="#certificado" className="transition-colors hover:text-texto">Certificado</a>
+            <a href="#precos" className="transition-colors hover:text-texto">Preços</a>
+            <a href="#faq" className="transition-colors hover:text-texto">Dúvidas</a>
+          </nav>
+          <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+            <a href="/login" className="rounded-full px-1.5 py-2 text-sm text-texto-2 transition-colors hover:text-texto sm:px-3">
               Entrar
             </a>
-            <a
-              href="/cadastro"
-              className={`${BOTAO("border-accent text-accent hover:bg-accent hover:text-fundo")}`}
-            >
-              Criar conta
+            <a href="/cadastro" className="lp-btn-primario lp-btn-pequeno">
+              Começar grátis
             </a>
-          </nav>
+          </div>
         </div>
       </header>
 
       <main className="flex-1">
-        {/* ------------------------------------------------ Hero */}
-        <section className="relative overflow-hidden border-b border-borda">
-          <div aria-hidden="true" className="fundo-hero pointer-events-none absolute inset-0" />
-          <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:py-24">
-            <div className="revelar">
-              <p className="font-mono text-[11px] uppercase tracking-widest text-accent">
-                plataforma de assurance
+        {/* -------------------------------------------------------- Hero */}
+        <section className="relative overflow-hidden">
+          <div className={`${CONTAINER} grid grid-cols-1 items-center gap-14 pb-20 pt-16 sm:pt-24 lg:grid-cols-[1.05fr_1fr] lg:gap-10 lg:pb-28 lg:pt-28`}>
+            <div>
+              <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-texto-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+                Beta aberto · assurance para pentest
               </p>
-              <h1 className="mt-4 text-5xl font-bold leading-[1.05] tracking-tight text-texto sm:text-6xl">
-                Prove que as <span className="texto-gradiente">correções funcionaram</span>
+              <h1 className="mt-7 text-[2.9rem] font-semibold leading-[1.02] tracking-[-0.035em] text-texto sm:text-[4rem] lg:text-[4.4rem]">
+                Prove que as correções <Destaque>funcionaram.</Destaque>
               </h1>
-              <p className="mt-6 max-w-xl text-base leading-relaxed text-texto-2">
-                O Laudo fecha o ciclo do pentest: gera o relatório, acompanha o
-                reteste e entrega o certificado de que as falhas foram
-                corrigidas.
+              <p className="mt-7 max-w-xl text-lg leading-relaxed text-texto-2 sm:text-xl">
+                O Laudo leva o pentest até o fim: relatório com IA, reteste com
+                evidência e um <span className="text-texto">certificado de correção</span>{" "}
+                com hash verificável.
               </p>
-              <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                <a
-                  href="/cadastro"
-                  className={`${BOTAO("border-accent bg-accent px-6 py-3 text-xs text-fundo hover:bg-transparent hover:text-accent")} cursor-pointer`}
-                >
-                  Criar conta grátis
+              <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+                <a href="/cadastro" className="lp-btn-primario">
+                  Começar grátis
+                  <Icone nome="seta" className="h-4 w-4" />
                 </a>
-                <a
-                  href="#como-funciona"
-                  className={`${BOTAO("border-borda px-6 py-3 text-xs text-texto-2 hover:border-accent hover:text-accent")} cursor-pointer`}
-                >
-                  Ver como funciona
+                <a href="#certificado" className="lp-btn-secundario">
+                  Ver um certificado
                 </a>
               </div>
-              <p className="mt-5 font-mono text-[11px] text-texto-2">
-                grátis para começar · sem cartão
+              <p className="mt-6 text-sm text-texto-2">
+                Grátis para começar · sem cartão · em português
               </p>
             </div>
 
-            {/* Mockup do painel de verificação */}
-            <div className="revelar relative" style={{ animationDelay: "150ms" }}>
-              <div className="glass rounded-xl shadow-[0_8px_60px_-12px_var(--color-accent)]">
-                <TerminalBar aoVivo>
-                  laudo@pentest:~/verificacao
-                </TerminalBar>
+            <PainelHero />
+          </div>
+        </section>
 
-                <div className="flex flex-col gap-4 p-4 sm:p-5">
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-xs font-medium text-texto">
-                      1 de 3 achados verificados
-                    </span>
-                    <span className="font-mono text-[10px] text-texto-2">
-                      33%
-                    </span>
-                  </div>
-                  <div className="h-1.5 overflow-hidden rounded-sm bg-borda">
-                    <div className="h-full w-1/3 bg-media" />
-                  </div>
+        {/* ------------------------------------------- Faixa de padrões */}
+        <div className="border-y border-white/[0.06] bg-white/[0.015]">
+          <ul
+            aria-label="Padrões e integrações"
+            className={`${CONTAINER} flex flex-wrap items-center justify-center gap-x-8 gap-y-3 py-6 font-mono text-xs uppercase tracking-[0.14em] text-texto-2`}
+          >
+            {ESPECIFICACOES.map((e) => (
+              <li key={e}>{e}</li>
+            ))}
+          </ul>
+        </div>
 
-                  {MOCK.map((m) => (
-                    <div
-                      key={m.ref}
-                      className="rounded-md border border-borda bg-superficie-2 p-3"
-                    >
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span
-                          className={`inline-flex h-4 w-4 items-center justify-center rounded-sm text-[10px] ${
-                            m.statusCor === "accent"
-                              ? "bg-accent/15 text-accent"
-                              : m.statusCor === "critica"
-                                ? "bg-critica/15 text-critica"
-                                : "bg-media/15 text-media"
-                          }`}
-                        >
-                          {m.icone}
-                        </span>
-                        <span className="font-mono text-[9px] tracking-wider text-accent">
-                          {m.ref}
-                        </span>
-                        <span
-                          className={`font-mono text-[9px] uppercase tracking-wider ${
-                            m.cor === "critica"
-                              ? "text-critica"
-                              : m.cor === "alta"
-                                ? "text-alta"
-                                : "text-media"
-                          }`}
-                        >
-                          {m.severidade}
-                        </span>
-                        <span
-                          className={`ml-auto font-mono text-[9px] uppercase tracking-wider ${
-                            m.statusCor === "accent"
-                              ? "text-accent"
-                              : m.statusCor === "critica"
-                                ? "text-critica"
-                                : "text-media"
-                          }`}
-                        >
-                          {m.status}
-                        </span>
-                      </div>
-                      <p className="mt-2 text-xs leading-snug text-texto">
-                        {m.titulo}
-                      </p>
-                      <div className="mt-2.5 flex items-center gap-2">
-                        <div className="h-0.5 flex-1 overflow-hidden rounded-sm bg-borda">
-                          <div
-                            className={`h-full ${
-                              m.statusCor === "accent"
-                                ? "bg-accent"
-                                : m.statusCor === "critica"
-                                  ? "bg-critica"
-                                  : "bg-borda"
-                            } ${m.progresso}`}
-                          />
-                        </div>
-                        <span className="font-mono text-[9px] text-texto-2">
-                          {m.tempo}
-                        </span>
-                      </div>
+        {/* ----------------------------------------------------- O ciclo */}
+        <section id="ciclo" className="scroll-mt-20 py-24 sm:py-32">
+          <div className={CONTAINER}>
+            <Cabecalho
+              sobretitulo="o problema"
+              titulo={
+                <>
+                  O pentest costuma acabar no PDF. <Destaque>O&nbsp;risco, não.</Destaque>
+                </>
+              }
+              texto="Você entrega o relatório, o cliente paga e o time de dev diz que corrigiu. Sem reteste com evidência, isso é uma afirmação — e no próximo ano a pergunta volta: quais continuam abertas?"
+            />
+            <div className="mt-16">
+              <CicloAssurance />
+            </div>
+          </div>
+        </section>
+
+        {/* ----------------------------------------------- Como funciona */}
+        <section id="como-funciona" className="scroll-mt-20 border-t border-white/[0.06] py-24 sm:py-32">
+          <div className={CONTAINER}>
+            <Cabecalho
+              sobretitulo="como funciona"
+              titulo={
+                <>
+                  Do achado ao certificado, <Destaque>num fluxo só.</Destaque>
+                </>
+              }
+              texto="Quatro passos, a mesma ferramenta, nenhuma planilha de follow-up."
+            />
+            <ol className="mt-16 flex flex-col gap-16 sm:gap-20">
+              {PASSOS.map((p, i) => {
+                const Vinheta = p.vinheta;
+                return (
+                  <li
+                    key={p.titulo}
+                    className="grid grid-cols-1 items-center gap-8 lg:grid-cols-2 lg:gap-16"
+                  >
+                    <div className={i % 2 === 1 ? "lg:order-2" : ""}>
+                      <span className="font-mono text-sm text-accent">0{i + 1}</span>
+                      <h3 className="mt-3 text-2xl font-semibold tracking-tight text-texto sm:text-[1.75rem]">
+                        {p.titulo}
+                      </h3>
+                      <p className="mt-4 max-w-md text-base leading-relaxed text-texto-2">{p.texto}</p>
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              <p className="mt-3 text-center font-mono text-[10px] text-texto-2">
-                painel de verificação · ciclo de correção
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* ------------------------------------------ O problema */}
-        <section className="border-b border-borda">
-          <div className="revelar mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
-            <h2 className="text-2xl font-semibold tracking-tight text-texto sm:text-3xl">
-              O problema
-            </h2>
-            <ul className="mt-10 grid grid-cols-1 gap-4 lg:grid-cols-3">
-              {DOR.map((item) => (
-                <li
-                  key={item.titulo}
-                  className="rounded-lg border border-borda bg-superficie p-5 transition-colors duration-200 hover:border-critica/40"
-                >
-                  <span aria-hidden="true" className="font-mono text-xs text-critica">
-                    ✗
-                  </span>
-                  <h3 className="mt-3 text-sm font-semibold leading-snug text-texto">
-                    {item.titulo}
-                  </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-texto-2">
-                    {item.texto}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-
-        {/* --------------------------------------- Como funciona */}
-        <section id="como-funciona" className="scroll-mt-20 border-b border-borda">
-          <div className="revelar mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
-            <h2 className="text-2xl font-semibold tracking-tight text-texto sm:text-3xl">
-              Como funciona
-            </h2>
-            <ol className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {PASSOS.map((p, i) => (
-                <li
-                  key={p.numero}
-                  className="revelar rounded-xl border border-borda bg-superficie p-5 transition-colors duration-200 hover:border-accent/40"
-                  style={{ animationDelay: `${i * 90}ms` }}
-                >
-                  <span className="font-mono text-3xl font-bold text-accent/90">{p.numero}</span>
-                  <h3 className="mt-3 text-sm font-semibold leading-snug text-texto">
-                    {p.titulo}
-                  </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-texto-2">
-                    {p.texto}
-                  </p>
-                </li>
-              ))}
+                    <div className={i % 2 === 1 ? "lg:order-1" : ""}>
+                      <Vinheta />
+                    </div>
+                  </li>
+                );
+              })}
             </ol>
           </div>
         </section>
 
-        {/* -------------------------------------- O que inclui */}
-        <section className="border-b border-borda">
-          <div className="revelar mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
-            <h2 className="text-2xl font-semibold tracking-tight text-texto sm:text-3xl">
-              O que está incluso
-            </h2>
-            <ul className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {RECURSOS.map((r, i) => (
-                <li
-                  key={r.titulo}
-                  className="revelar glass brilho-hover rounded-xl p-5"
-                  style={{ animationDelay: `${i * 70}ms` }}
-                >
-                  <span aria-hidden="true" className="font-mono text-sm text-accent">
-                    {r.icone}
+        {/* ------------------------------------------------- Certificado */}
+        <section id="certificado" className="relative scroll-mt-20 overflow-hidden border-t border-white/[0.06] py-24 sm:py-32">
+          <div aria-hidden="true" className="lp-aura absolute left-1/2 top-1/3 -z-0 h-[36rem] w-[60rem] -translate-x-1/2 opacity-60" />
+          <div className={`${CONTAINER} relative`}>
+            <Cabecalho
+              centro
+              sobretitulo="o entregável"
+              titulo={
+                <>
+                  Seu cliente não compra um relatório. <Destaque>Compra a certeza.</Destaque>
+                </>
+              }
+              texto="O certificado de correção é o documento que fecha o ciclo: o que foi encontrado, quando foi retestado e a prova de que foi corrigido."
+            />
+            <div className="mx-auto mt-14 max-w-4xl">
+              <CertificadoExemplo />
+              <p className="mt-4 text-center text-xs text-texto-2">
+                Dados fictícios. O hash, não: é o SHA-256 real do conteúdo acima.
+              </p>
+            </div>
+            <ul className="mx-auto mt-16 grid max-w-5xl grid-cols-1 gap-10 md:grid-cols-3">
+              {PROVAS_CERTIFICADO.map((p) => (
+                <li key={p.titulo}>
+                  <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-accent">
+                    <Icone nome={p.icone} />
                   </span>
-                  <h3 className="mt-3 text-sm font-semibold text-texto">
-                    {r.titulo}
-                  </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-texto-2">
-                    {r.texto}
-                  </p>
+                  <h3 className="mt-4 text-base font-semibold text-texto">{p.titulo}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-texto-2">{p.texto}</p>
                 </li>
               ))}
             </ul>
           </div>
         </section>
 
-        {/* ---------------------------------------- Para quem é */}
-        <section className="border-b border-borda">
-          <div className="revelar mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
-            <h2 className="text-2xl font-semibold tracking-tight text-texto sm:text-3xl">
-              Para quem é
-            </h2>
-            <ul className="mt-10 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {/* ---------------------------------------------------- Recursos */}
+        <section id="recursos" className="scroll-mt-20 border-t border-white/[0.06] py-24 sm:py-32">
+          <div className={CONTAINER}>
+            <Cabecalho
+              sobretitulo="o que está incluso"
+              titulo="Tudo o que um engagement precisa depois do teste."
+            />
+            <ul className="mt-14 grid grid-cols-1 gap-x-10 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
+              {RECURSOS.map((r) => (
+                <li key={r.titulo} className="border-t border-white/[0.08] pt-6">
+                  <Icone nome={r.icone} className="h-6 w-6 text-accent" />
+                  <h3 className="mt-4 text-base font-semibold text-texto">{r.titulo}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-texto-2">{r.texto}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------- Para quem é */}
+        <section id="para-quem" className="scroll-mt-20 border-t border-white/[0.06] py-24 sm:py-32">
+          <div className={CONTAINER}>
+            <Cabecalho sobretitulo="para quem é" titulo="Feito para quem assina o pentest." />
+            <ul className="mt-14 grid grid-cols-1 gap-5 lg:grid-cols-3">
               {PUBLICO.map((p) => (
-                <li
-                  key={p.titulo}
-                  className="rounded-lg border border-borda bg-superficie p-5"
-                >
-                  <h3 className="text-sm font-semibold text-texto">{p.titulo}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-texto-2">
-                    {p.texto}
+                <li key={p.titulo} className="lp-painel flex flex-col rounded-2xl p-7">
+                  <Icone nome={p.icone} className="h-6 w-6 text-texto-2" />
+                  <h3 className="mt-5 text-lg font-semibold text-texto">{p.titulo}</h3>
+                  <p className="mt-2 flex-1 text-sm leading-relaxed text-texto-2">{p.texto}</p>
+                  <p className="mt-6 border-t border-white/[0.06] pt-4 text-sm text-texto lg:min-h-[4.25rem]">
+                    <span className="text-accent">→ </span>
+                    {p.ganho}
                   </p>
                 </li>
               ))}
@@ -453,68 +509,57 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* ------------------------------------- Diferencial */}
-        <section className="border-b border-borda">
-          <div className="revelar mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
-            <h2 className="text-2xl font-semibold tracking-tight text-texto sm:text-3xl">
-              Por que não somos mais um gerador de PDF
-            </h2>
-            <ul className="mt-10 flex flex-col gap-4">
-              {DIFERENCIAL.map((d) => (
-                <li
-                  key={d.titulo}
-                  className="flex flex-col gap-3 rounded-lg border border-accent/25 bg-accent/[0.04] p-5 sm:flex-row sm:gap-4"
-                >
-                  <span
-                    aria-hidden="true"
-                    className="shrink-0 font-mono text-sm text-accent"
-                  >
-                    ✓
-                  </span>
-                  <div>
-                    <h3 className="text-sm font-semibold leading-snug text-texto">
-                      {d.titulo}
-                    </h3>
-                    <p className="mt-1.5 text-sm leading-relaxed text-texto-2">
-                      {d.texto}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-
-        {/* ------------------------------------- Comparação */}
-        <section className="border-b border-borda">
-          <div className="revelar mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
-            <h2 className="text-2xl font-semibold tracking-tight text-texto sm:text-3xl">
-              Comparação
-            </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-texto-2">
-              Geradores de PDF param no documento. Plataformas enterprise
-              cobrem o ciclo todo, mas custam como enterprise. O Laudo fecha
-              o ciclo por preço de freelancer.
-            </p>
-            <div className="mt-10 overflow-x-auto rounded-lg border border-borda">
-              <table className="w-full min-w-[560px] border-collapse bg-superficie text-left text-sm">
+        {/* -------------------------------------------------- Comparação */}
+        <section id="comparacao" className="scroll-mt-20 border-t border-white/[0.06] py-24 sm:py-32">
+          <div className={CONTAINER}>
+            <Cabecalho
+              sobretitulo="comparação"
+              titulo={
+                <>
+                  O ciclo completo, <Destaque>por preço de freelancer.</Destaque>
+                </>
+              }
+              texto="Geradores de relatório param no documento. Plataformas enterprise cobrem o ciclo, mas são em inglês e com preço sob consulta."
+            />
+            {/* relative: os textos sr-only (absolutos) ficam presos à rolagem
+                da tabela em vez de alargar a página no celular. */}
+            <div className="relative mt-12 overflow-x-auto">
+              <table className="w-full min-w-[640px] border-collapse text-left">
                 <thead>
-                  <tr className="border-b border-borda font-mono text-[11px] uppercase tracking-wider text-texto-2">
-                    <th scope="col" className="px-5 py-4 font-medium">Recurso</th>
-                    <th scope="col" className="px-5 py-4 font-medium text-accent">Laudo</th>
-                    <th scope="col" className="px-5 py-4 font-medium">Gerador de PDF</th>
-                    <th scope="col" className="px-5 py-4 font-medium">Enterprise</th>
+                  <tr className="text-sm">
+                    <th scope="col" className="py-4 pr-4 font-normal text-texto-2">
+                      <span className="sr-only">Recurso</span>
+                    </th>
+                    <th scope="col" className="w-36 rounded-t-xl bg-accent/[0.07] px-4 py-4 text-center font-semibold text-accent">
+                      Laudo
+                    </th>
+                    <th scope="col" className="w-36 px-4 py-4 text-center font-normal text-texto-2">
+                      Gerador de relatório
+                    </th>
+                    <th scope="col" className="w-36 px-4 py-4 text-center font-normal text-texto-2">
+                      Plataforma enterprise
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {COMPARACAO.map((c) => (
-                    <tr key={c.recurso} className="border-b border-borda last:border-0">
-                      <th scope="row" className="px-5 py-3.5 text-sm font-normal text-texto">
+                  {COMPARACAO.map((c, i) => (
+                    <tr key={c.recurso} className="border-t border-white/[0.06]">
+                      <th scope="row" className="py-4 pr-4 text-sm font-normal text-texto">
                         {c.recurso}
                       </th>
-                      <td className="px-5 py-3.5"><Celula sim={c.laudo} /></td>
-                      <td className="px-5 py-3.5"><Celula sim={c.pdf} /></td>
-                      <td className="px-5 py-3.5"><Celula sim={c.enterprise} /></td>
+                      <td
+                        className={`bg-accent/[0.07] px-4 py-4 text-center ${
+                          i === COMPARACAO.length - 1 ? "rounded-b-xl" : ""
+                        }`}
+                      >
+                        <ValorCelula valor={c.laudo} laudo />
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <ValorCelula valor={c.pdf} />
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <ValorCelula valor={c.enterprise} />
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -523,48 +568,162 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* ------------------------------------------- CTA */}
-        <section>
-          <div className="mx-auto max-w-6xl px-4 py-20 text-center sm:px-6 sm:py-28">
-            <h2 className="mx-auto max-w-3xl text-3xl font-bold tracking-tight text-texto sm:text-4xl">
-              O relatório já foi entregue. Agora prove que acabou.
+        {/* ------------------------------------------------------ Preços */}
+        <section id="precos" className="scroll-mt-20 border-t border-white/[0.06] py-24 sm:py-32">
+          <div className={CONTAINER}>
+            <Cabecalho
+              centro
+              sobretitulo="preços"
+              titulo={
+                <>
+                  Comece grátis. <Destaque>Certifique no Pro.</Destaque>
+                </>
+              }
+              texto="Sem cartão para começar. Cancele quando quiser, mantendo seus dados."
+            />
+            <div className="mx-auto mt-14 grid max-w-4xl grid-cols-1 gap-5 md:grid-cols-2">
+              {PLANOS.map((p) => (
+                <article
+                  key={p.nome}
+                  className={`relative flex flex-col rounded-2xl p-8 ${
+                    p.destaque
+                      ? "lp-painel ring-1 ring-accent/40 shadow-[0_0_80px_-30px_var(--color-accent)]"
+                      : "border border-white/[0.08]"
+                  }`}
+                >
+                  {p.destaque && (
+                    <span className="absolute right-6 top-6 rounded-full bg-accent/[0.12] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-accent">
+                      com certificado
+                    </span>
+                  )}
+                  <h3 className="text-lg font-semibold text-texto">{p.nome}</h3>
+                  <p className="mt-1 text-sm text-texto-2">{p.descricao}</p>
+                  <p className="mt-6 flex items-baseline gap-1.5">
+                    <span className="text-5xl font-semibold tracking-tight text-texto">{p.preco}</span>
+                    <span className="text-sm text-texto-2">{p.periodo}</span>
+                  </p>
+                  <ul className="mt-8 flex flex-1 flex-col gap-3">
+                    {p.itens.map((item) => (
+                      <li key={item} className="flex items-start gap-3 text-sm text-texto-2">
+                        <Icone nome="check" className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                  <a
+                    href={p.href}
+                    className={`mt-9 ${p.destaque ? "lp-btn-primario" : "lp-btn-secundario"} w-full`}
+                  >
+                    {p.cta}
+                  </a>
+                </article>
+              ))}
+            </div>
+            <p className="mx-auto mt-8 max-w-2xl text-center text-sm leading-relaxed text-texto-2">
+              Consultoria? O <span className="text-texto">Team</span> (R$ 49,90/mês) inclui
+              tudo do Pro; os recursos de equipe estão em desenvolvimento. Plano anual com 20%
+              de desconto —{" "}
+              <a href="/precos" className="text-accent underline-offset-4 hover:underline">
+                ver todos os planos
+              </a>
+              .
+            </p>
+          </div>
+        </section>
+
+        {/* --------------------------------------------------------- FAQ */}
+        <section id="faq" className="scroll-mt-20 border-t border-white/[0.06] py-24 sm:py-32">
+          <div className={`${CONTAINER} grid grid-cols-1 gap-12 lg:grid-cols-[1fr_1.6fr]`}>
+            <div>
+              <Cabecalho sobretitulo="dúvidas" titulo="Perguntas que todo pentester faz." />
+              <p className="mt-5 text-base leading-relaxed text-texto-2">
+                O código é aberto: o que não estiver aqui, está no{" "}
+                <a href={REPOSITORIO} className="text-accent underline-offset-4 hover:underline">
+                  GitHub
+                </a>
+                .
+              </p>
+            </div>
+            <div className="divide-y divide-white/[0.07] border-y border-white/[0.07]">
+              {FAQ.map((f) => (
+                <details key={f.pergunta} className="group py-1">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-6 py-5 text-base font-medium text-texto [&::-webkit-details-marker]:hidden">
+                    {f.pergunta}
+                    <span
+                      aria-hidden="true"
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/10 text-accent transition-transform duration-200 group-open:rotate-45"
+                    >
+                      +
+                    </span>
+                  </summary>
+                  <p className="pb-6 pr-12 text-[15px] leading-relaxed text-texto-2">{f.resposta}</p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* -------------------------------------------------- CTA final */}
+        <section className="px-4 pb-24 sm:px-6 sm:pb-32">
+          <div className="lp-painel relative mx-auto max-w-6xl overflow-hidden rounded-3xl px-6 py-20 text-center sm:px-12 sm:py-24">
+            <div aria-hidden="true" className="lp-aura absolute left-1/2 top-0 h-80 w-[44rem] -translate-x-1/2 -translate-y-1/2" />
+            <Logo className="relative mx-auto h-12 w-12 text-accent" />
+            <h2 className="relative mx-auto mt-8 max-w-3xl text-[2.2rem] font-semibold leading-[1.08] tracking-[-0.03em] text-texto sm:text-5xl">
+              O relatório já foi entregue. <Destaque>Agora prove que acabou.</Destaque>
             </h2>
-            <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-texto-2">
-              Crie sua conta, gere o relatório e comece a acompanhar as
-              correções hoje.
+            <p className="relative mx-auto mt-6 max-w-xl text-lg text-texto-2">
+              Crie a conta, gere o primeiro relatório e acompanhe as correções hoje.
             </p>
-            <a
-              href="/cadastro"
-              className={`${BOTAO("mt-10 cursor-pointer border-accent bg-accent px-8 py-3.5 text-xs text-fundo shadow-[0_0_36px_-8px_var(--color-accent)] hover:bg-transparent hover:text-accent hover:shadow-[0_0_48px_-6px_var(--color-accent)]")}`}
-            >
-              Criar conta grátis
-            </a>
-            <p className="mt-6 font-mono text-[11px] text-texto-2/70">
-              Pro R$ 19,90/mês · Team R$ 49,90/mês quando sair do beta.
-            </p>
+            <div className="relative mt-10 flex flex-col justify-center gap-3 sm:flex-row">
+              <a href="/cadastro" className="lp-btn-primario">
+                Começar grátis
+                <Icone nome="seta" className="h-4 w-4" />
+              </a>
+              <a href="#certificado" className="lp-btn-secundario">
+                Ver um certificado
+              </a>
+            </div>
           </div>
         </section>
       </main>
 
-      <footer className="border-t border-borda">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 py-8 font-mono text-[11px] text-texto-2/60 sm:flex-row sm:px-6">
-          <span>Laudo · plataforma de assurance para pentest</span>
-          <nav className="flex items-center gap-5" aria-label="Links legais">
-            <a href="/termos" className="transition-colors hover:text-accent">
-              Termos
+      {/* ------------------------------------------------------- Rodapé */}
+      <footer className="border-t border-white/[0.06]">
+        <div className={`${CONTAINER} grid grid-cols-2 gap-10 py-14 sm:grid-cols-4`}>
+          <div className="col-span-2 sm:col-span-1">
+            <a href="/" className="flex items-center gap-2.5" aria-label="Laudo — início">
+              <Logo className="h-7 w-7 text-accent" />
+              <span className="font-semibold tracking-tight text-texto">Laudo</span>
             </a>
-            <a href="/privacidade" className="transition-colors hover:text-accent">
-              Privacidade
-            </a>
-            <a
-              href="mailto:contato@laudo.app"
-              className="transition-colors hover:text-accent"
-            >
-              Contato
-            </a>
+            <p className="mt-4 max-w-xs text-sm leading-relaxed text-texto-2">
+              Assurance para pentest: do relatório à prova de correção.
+            </p>
+          </div>
+          <nav aria-label="Produto" className="flex flex-col gap-3 text-sm">
+            <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-texto-2/70">Produto</p>
+            <a href="#como-funciona" className="text-texto-2 transition-colors hover:text-texto">Como funciona</a>
+            <a href="#certificado" className="text-texto-2 transition-colors hover:text-texto">Certificado</a>
+            <a href="/precos" className="text-texto-2 transition-colors hover:text-texto">Preços</a>
+            <a href="#faq" className="text-texto-2 transition-colors hover:text-texto">Dúvidas</a>
+          </nav>
+          <nav aria-label="Conta" className="flex flex-col gap-3 text-sm">
+            <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-texto-2/70">Conta</p>
+            <a href="/login" className="text-texto-2 transition-colors hover:text-texto">Entrar</a>
+            <a href="/cadastro" className="text-texto-2 transition-colors hover:text-texto">Criar conta</a>
+          </nav>
+          <nav aria-label="Legal e código" className="flex flex-col gap-3 text-sm">
+            <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-texto-2/70">Transparência</p>
+            <a href="/termos" className="text-texto-2 transition-colors hover:text-texto">Termos</a>
+            <a href="/privacidade" className="text-texto-2 transition-colors hover:text-texto">Privacidade</a>
+            <a href={REPOSITORIO} className="text-texto-2 transition-colors hover:text-texto">Código-fonte (MIT)</a>
           </nav>
         </div>
+        <div className="border-t border-white/[0.06]">
+          <p className={`${CONTAINER} py-6 font-mono text-[11px] text-texto-2/60`}>
+            © 2026 Laudo · feito no Brasil
+          </p>
+        </div>
       </footer>
-    </>
+    </div>
   );
 }

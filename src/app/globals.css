@@ -27,6 +27,7 @@
   /* Tipografia */
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+  --font-serif: var(--font-instrument-serif), ui-serif, Georgia, serif;
 
   /* Animações */
   --animate-blink: blink 1.05s step-end infinite;
@@ -393,5 +394,149 @@ textarea::placeholder {
   /* Barra de severidade na lateral do achado */
   .print-barra-severidade {
     width: 4pt !important;
+  }
+}
+
+/* ============================================================
+   Landing (prefixo lp-): usado só pela página inicial.
+   Sem estados iniciais invisíveis — o conteúdo aparece mesmo
+   quando a animação não roda (aba em segundo plano, crawler,
+   prefers-reduced-motion).
+   ============================================================ */
+.lp-raiz {
+  background-color: var(--color-fundo);
+  background-image:
+    radial-gradient(60rem 36rem at 80% -8%, color-mix(in oklab, var(--color-accent) 9%, transparent), transparent 65%),
+    radial-gradient(46rem 30rem at 0% 14%, color-mix(in oklab, var(--color-ciano) 6%, transparent), transparent 70%);
+  background-repeat: no-repeat;
+}
+
+.lp-btn-primario,
+.lp-btn-secundario {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  padding: 0.85rem 1.6rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease;
+}
+
+.lp-btn-primario {
+  background-color: var(--color-accent);
+  color: #03130b;
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.35) inset,
+    0 12px 40px -14px var(--color-accent);
+}
+
+.lp-btn-primario:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.35) inset,
+    0 16px 48px -12px var(--color-accent);
+}
+
+.lp-btn-secundario {
+  border: 1px solid rgb(255 255 255 / 0.12);
+  background-color: rgb(255 255 255 / 0.02);
+  color: var(--color-texto);
+  font-weight: 500;
+}
+
+.lp-btn-secundario:hover {
+  border-color: rgb(255 255 255 / 0.28);
+  background-color: rgb(255 255 255 / 0.05);
+}
+
+.lp-btn-pequeno {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+.lp-painel {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--color-superficie-2) 94%, transparent),
+    color-mix(in oklab, var(--color-superficie) 94%, transparent)
+  );
+  border: 1px solid rgb(255 255 255 / 0.08);
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.04) inset,
+    0 40px 100px -45px rgb(0 0 0 / 0.9);
+}
+
+.lp-aura {
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--color-accent) 16%, transparent), transparent);
+  filter: blur(24px);
+  pointer-events: none;
+}
+
+/* Papel do certificado (mesma paleta da impressão). */
+.lp-papel {
+  background-color: #f7f5ef;
+  color: #0f172a;
+}
+
+/* Guilhoché discreto, como em papel de segurança. */
+.lp-guilhoche {
+  background-image:
+    repeating-radial-gradient(circle at 100% 0%, transparent 0 13px, rgb(4 120 87 / 0.055) 13px 14px),
+    repeating-radial-gradient(circle at 0% 100%, transparent 0 17px, rgb(15 23 42 / 0.04) 17px 18px);
+  mask-image: linear-gradient(135deg, #000 0%, transparent 42%, transparent 62%, #000 100%);
+  -webkit-mask-image: linear-gradient(135deg, #000 0%, transparent 42%, transparent 62%, #000 100%);
+}
+
+/* Barra do hero: completa de 66% para 100% (o último reteste chegando). */
+@keyframes lp-preencher {
+  from {
+    transform: scaleX(0.66);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.lp-progresso {
+  transform-origin: left center;
+  animation: lp-preencher 1.4s cubic-bezier(0.2, 0.7, 0.2, 1) 0.5s both;
+}
+
+@keyframes lp-flutuar {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -6px;
+  }
+}
+
+.lp-flutuar {
+  animation: lp-flutuar 7s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-progresso,
+  .lp-flutuar {
+    animation: none;
+  }
+
+  .lp-btn-primario,
+  .lp-btn-secundario {
+    transition: none;
+  }
+
+  .lp-btn-primario:hover {
+    transform: none;
   }
 }

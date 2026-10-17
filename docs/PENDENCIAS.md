@@ -53,5 +53,11 @@ Infra e produto (deferidos — exigem decisão/proxy, não bug de código):
 - [ ] Revogar no GitHub o PAT antigo (`ghp_...`) — o remote já está sem token (auth via `gh auth setup-git`)
 - [x] `deploy.yml` (Vercel) virou `ci.yml`: só testes + build, com `next typegen` (o CI quebrava com `PageProps` ausente)
 - [ ] Configurar Asaas no Railway (`ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN`) — sem isso o checkout responde 502
-- [ ] Trocar o placeholder `laudo.app` (sitemap/robots/metadata/rodapé) por domínio próprio quando houver
+- [x] SEO sem o placeholder `laudo.app`: metadataBase, sitemap e robots vêm de `NEXT_PUBLIC_APP_URL` (`src/lib/site.ts`) — domínio próprio = trocar só a variável
 - [ ] Redirects de compat da API usam `Location` relativo (proxy do Railway entrega host interno); revisar se algum cliente depender de URL absoluta
+
+## Landing 10/10 (out/2026)
+
+- [ ] E-mail de contato real: `contato@laudo.app` não existe (domínio não é nosso) — saiu do rodapé da landing; conferir termos/privacidade
+- [ ] Plano Team: recursos de equipe (workspace, comentários, dashboard) ainda não existem — a página de preços agora diz "em desenvolvimento"
+- [ ] Link público do certificado (hoje exige login) — a landing promete "o cliente pode conferir" via hash; um link público fecharia a promessa

@@ -1,11 +1,11 @@
 {
-  "name": "Laudo — Relatórios de pentest",
+  "name": "Laudo — Assurance para pentest",
   "short_name": "Laudo",
-  "description": "Gere relatórios profissionais de teste de intrusão com IA",
+  "description": "Relatório de pentest com IA, reteste com evidência e certificado de correção",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f0f0f",
-  "theme_color": "#22c55e",
+  "background_color": "#0a0e14",
+  "theme_color": "#0a0e14",
   "orientation": "portrait-primary",
   "icons": [
     {
