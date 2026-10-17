@@ -15,8 +15,8 @@ railway up --service laudo --ci    # build remoto (Nixpacks) + deploy
 ```
 
 Antes de subir, rode localmente `npm test` e `npm run build`.
-O CI do GitHub (`.github/workflows/deploy.yml`) é do fluxo antigo
-(Vercel) — obsoleto, pode ser removido.
+O CI do GitHub (`.github/workflows/ci.yml`) roda testes + build a cada
+push e pull request — não publica nada.
 
 ## Variáveis do serviço `laudo`
 

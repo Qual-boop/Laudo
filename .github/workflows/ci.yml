@@ -1,0 +1,38 @@
+name: CI
+
+# Valida cada push e pull request (testes + build). Não publica nada:
+# o deploy de produção é manual, via `railway up` (ver docs/DEPLOY.md).
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validar:
+    name: Testes + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Gera os tipos globais de rota (PageProps, LayoutProps...) que o
+      # typecheck dos testes usa. Localmente eles vêm do .next do `next dev`;
+      # num checkout limpo não existem e o vitest --typecheck falha.
+      - name: Tipos de rota do Next
+        run: npx next typegen
+
+      - name: Testes (vitest + typecheck)
+        run: npm test
+
+      - name: Build de produção
+        run: npm run build

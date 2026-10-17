@@ -50,8 +50,8 @@ Infra e produto (deferidos — exigem decisão/proxy, não bug de código):
 
 ## Deploy Railway (out/2026)
 
-- [ ] Rotacionar o GitHub PAT exposto no remote do git (`git remote -v` mostra `ghp_...`) e usar remote sem token
-- [ ] Remover `.github/workflows/deploy.yml` (fluxo Vercel obsoleto — deploy é via `railway up`)
+- [ ] Revogar no GitHub o PAT antigo (`ghp_...`) — o remote já está sem token (auth via `gh auth setup-git`)
+- [x] `deploy.yml` (Vercel) virou `ci.yml`: só testes + build, com `next typegen` (o CI quebrava com `PageProps` ausente)
 - [ ] Configurar Asaas no Railway (`ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN`) — sem isso o checkout responde 502
 - [ ] Trocar o placeholder `laudo.app` (sitemap/robots/metadata/rodapé) por domínio próprio quando houver
 - [ ] Redirects de compat da API usam `Location` relativo (proxy do Railway entrega host interno); revisar se algum cliente depender de URL absoluta
