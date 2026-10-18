@@ -20,7 +20,13 @@ Bugs F6–F20 do diagnóstico ainda deferidos (médios/baixos):
 
 - [ ] F8 export via query-string estoura limite de URL em relatórios grandes
 - [ ] F10 `aoSalvar` com closure stale (`PainelVerificacao.tsx:72`)
-- [ ] F11 sem security headers (adicionar no proxy/CDN ou `next.config.ts`)
+- [x] F11 security headers globais em `next.config.ts` (`lib/cabecalhos-seguranca.ts`):
+      CSP, HSTS (2 anos, sem preload), `nosniff`, `X-Frame-Options: DENY` +
+      `frame-ancestors 'none'`, `Referrer-Policy: strict-origin-when-cross-origin`,
+      `Permissions-Policy`; sem `X-Powered-By`. O `/c/` mantém `noindex` + `no-referrer`
+- [ ] CSP ainda com `script-src 'unsafe-inline'`: com Cache Components o shell é
+      estático, então não dá para usar nonce por request sem tornar tudo dinâmico.
+      Saída futura: hashes/SRI quando o Next suportar para os scripts inline do RSC
 - [ ] F13 `setTimeout` sem cleanup + `import().then()` sem `.catch`
 - [ ] F14 `copiarParaClipboard` sem fallback http
 - [ ] F17 flash do Onboarding + Tabs sem `aria-controls`/setas
@@ -30,7 +36,16 @@ Bugs F6–F20 do diagnóstico ainda deferidos (médios/baixos):
 
 Infra e produto (deferidos — exigem decisão/proxy, não bug de código):
 
-- [ ] Rate limiting em login/cadastro/token (fazer no reverse proxy ou middleware)
+- [x] Rate limiting em login/cadastro/token (`lib/limite-taxa.ts`, em memória):
+      login web (`/api/auth/callback/credentials`) e `POST /api/v1/auth/token`
+      dividem o contador — 30/15 min por IP e 10/15 min por e-mail (login certo
+      zera o do e-mail); cadastro 20/h por IP e 5/h por e-mail. Estourou → 429
+      com `Retry-After`. IP = entrada mais à direita do `X-Forwarded-For`
+      (a do proxy; `PROXIES_CONFIAVEIS` ajusta se houver mais de um salto)
+- [ ] Rate limit é por processo: com mais de uma réplica no Railway, mover o
+      contador para o banco/Redis. Depois do deploy, conferir com XFF forjado
+      que o 429 continua chegando (a doc do Railway não garante se o edge
+      acrescenta ou sobrescreve o XFF; o código assume o valor da direita)
 - [ ] Logout não revoga JWT copiado (exige denylist/versão de sessão — desenho pendente)
 - [x] `CHECKOUT_PAID` + 1º `PAYMENT_RECEIVED` estendiam 2x (~60 dias por 1 mês pago) —
       agora a expiração é absoluta (`fimDoPeriodo`: vencimento da cobrança + 1 mês/ano

@@ -50,6 +50,7 @@
 - [ ] `AUTH_SECRET` forte e fora do repo
 - [ ] `AUTH_URL` + `AUTH_TRUST_HOST` configurados no domínio final
 - [ ] `GOOGLE_CLIENT_ID/SECRET` (se usar login Google)
-- [ ] Security headers (`HSTS`, `X-Frame-Options`) no proxy/CDN
-- [ ] Rate limiting no reverse proxy (a API não tem — ver pendências)
+- [x] Security headers (CSP, HSTS, `X-Frame-Options` etc.) — `next.config.ts`
+- [x] Rate limiting em login, token e cadastro — `lib/limite-taxa.ts`
+      (em memória: uma réplica só; ver pendências)
 - [ ] Backup do banco + plano de restore

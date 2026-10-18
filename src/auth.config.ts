@@ -34,6 +34,9 @@ export const authConfig: NextAuthConfig = {
         const u = await buscarUsuarioPorEmail(v.data.email);
         if (!u?.senha_hash) return null;
         if (!(await compararSenha(v.data.senha, u.senha_hash))) return null;
+        // O limite de tentativas fica no route handler (precisa responder
+        // 429); aqui só liberamos o contador do e-mail no login certo.
+        (await import("@/lib/limite-taxa")).liberarEmailLogin(v.data.email);
         return { id: String(u.id), name: u.nome, email: u.email };
       },
     }),

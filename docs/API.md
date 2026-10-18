@@ -24,10 +24,18 @@ curl -X POST http://localhost:3000/api/v1/auth/cadastro \
   -d '{"nome":"Maria","email":"maria@consultoria.com","senha":"segredo-123"}'
 # 201 {"id":1,"nome":"Maria","email":"maria@consultoria.com"}
 # 409 {"error":"Este e-mail já está em uso.","code":"EMAIL_EM_USO"}
+# 429 {"error":"Muitas tentativas...","code":"MUITAS_TENTATIVAS"} + Retry-After
 ```
 
 Regras: nome 1–120 chars, e-mail válido, senha 8–128 chars. Senha guardada
 só como hash bcrypt (custo 12). E-mail único (case-insensitive).
+
+### Limite de tentativas
+
+Login web, token e cadastro respondem **429** com `Retry-After` (segundos)
+quando estouram: login e token dividem o contador (30 por IP e 10 por e-mail
+a cada 15 min; login certo zera o do e-mail); cadastro, 20 por IP e 5 por
+e-mail por hora.
 
 ### Login web
 
@@ -42,6 +50,7 @@ curl -X POST http://localhost:3000/api/v1/auth/token \
   -d '{"email":"maria@consultoria.com","senha":"segredo-123"}'
 # 200 {"token":"eyJ...","expiraEm":"2026-11-09T..."}
 # 401 {"error":"E-mail ou senha inválidos.","code":"CREDENCIAIS_INVALIDAS"}
+# 429 {"error":"Muitas tentativas...","code":"MUITAS_TENTATIVAS"} + Retry-After
 ```
 
 Use o `token` em `Authorization: Bearer`. A sessão fica registrada e pode

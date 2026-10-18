@@ -7,6 +7,12 @@ import {
   hashToken,
   nomeCookieSessao,
 } from "@/lib/api-auth";
+import {
+  ipDoCliente,
+  liberarEmailLogin,
+  resposta429,
+  verificarLogin,
+} from "@/lib/limite-taxa";
 import { buscarUsuarioPorEmail, compararSenha } from "@/lib/usuarios";
 import { esquemaLogin, validar } from "@/lib/validacao";
 
@@ -23,6 +29,13 @@ export async function POST(request: Request) {
     return erroApi("Corpo da requisição inválido.", "JSON_INVALIDO", 400);
   }
 
+  // Antes de validar: tentativa malformada também conta.
+  const bloqueio = verificarLogin(
+    ipDoCliente(request.headers),
+    (corpo as { email?: unknown } | null)?.email,
+  );
+  if (bloqueio) return resposta429(bloqueio);
+
   const v = validar(esquemaLogin, corpo);
   if (!v.ok) return v.resposta;
 
@@ -34,6 +47,7 @@ export async function POST(request: Request) {
   if (!(await compararSenha(v.dados.senha, usuario.senha_hash))) {
     return erroApi("E-mail ou senha inválidos.", "CREDENCIAIS_INVALIDAS", 401);
   }
+  liberarEmailLogin(v.dados.email);
 
   const segredo = process.env.AUTH_SECRET ?? "";
   if (!segredo) {

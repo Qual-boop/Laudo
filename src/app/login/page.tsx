@@ -39,6 +39,10 @@ export default function PaginaLogin() {
         senha,
         redirect: false,
       });
+      if (r?.status === 429) {
+        setErro("Muitas tentativas de login. Aguarde alguns minutos e tente de novo.");
+        return;
+      }
       if (!r || r.error) {
         setErro("E-mail ou senha inválidos.");
         return;

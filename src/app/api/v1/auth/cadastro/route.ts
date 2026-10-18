@@ -1,5 +1,6 @@
 import { criarUsuario } from "@/lib/usuarios";
 import { erroApi } from "@/lib/api-auth";
+import { ipDoCliente, resposta429, verificarCadastro } from "@/lib/limite-taxa";
 import { esquemaCadastro, validar } from "@/lib/validacao";
 
 /** POST /api/v1/auth/cadastro — cria conta com e-mail + senha. Pública. */
@@ -10,6 +11,12 @@ export async function POST(request: Request) {
   } catch {
     return erroApi("Corpo da requisição inválido.", "JSON_INVALIDO", 400);
   }
+
+  const bloqueio = verificarCadastro(
+    ipDoCliente(request.headers),
+    (corpo as { email?: unknown } | null)?.email,
+  );
+  if (bloqueio) return resposta429(bloqueio);
 
   const v = validar(esquemaCadastro, corpo);
   if (!v.ok) return v.resposta;

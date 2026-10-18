@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
+import { cabecalhosSeguranca } from "./src/lib/cabecalhos-seguranca";
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ['*.trycloudflare.com'],
+  // Sem `X-Powered-By: Next.js` (fingerprint de graça).
+  poweredByHeader: false,
   async redirects() {
     return [
       // Rota legada: a landing agora mora em `/`.
@@ -11,6 +14,12 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        // Security headers em tudo (ver lib/cabecalhos-seguranca.ts).
+        source: "/:path*",
+        headers: cabecalhosSeguranca(process.env.NODE_ENV === "development"),
+      },
+      {
+        // Vem depois do global: na mesma chave, a última regra vence.
         // Link público do certificado: fora da busca, e o token não vaza no
         // Referer de quem clicar num link a partir dele.
         source: "/c/:path*",
