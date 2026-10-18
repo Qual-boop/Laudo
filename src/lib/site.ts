@@ -5,7 +5,7 @@
  */
 export const URL_SITE =
   process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/+$/, "") ||
-  "https://laudo-production-9051.up.railway.app";
+  "https://provafix.up.railway.app";
 
 /**
  * Marca. "Provafix" = prova + fix: a prova de que a correção funcionou.

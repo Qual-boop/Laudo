@@ -1,6 +1,6 @@
 # Deploy do Laudo (Railway + PostgreSQL + Asaas)
 
-Produção: **https://laudo-production-9051.up.railway.app**
+Produção: **https://provafix.up.railway.app**
 
 Projeto Railway `laudo` (serviço `laudo` + plugin `Postgres`), deploy direto
 pela CLI — sem CI. O runtime usa PostgreSQL (`DATABASE_URL` aponta para o
@@ -57,7 +57,7 @@ Para abrir um psql direto: `railway connect Postgres`.
 
 ## Webhook do Asaas (produção)
 
-- URL: `https://laudo-production-9051.up.railway.app/api/v1/webhook/asaas`
+- URL: `https://provafix.up.railway.app/api/v1/webhook/asaas`
 - Eventos: `CHECKOUT_PAID`, `SUBSCRIPTION_CREATED`, `PAYMENT_RECEIVED`,
   `PAYMENT_OVERDUE`, `SUBSCRIPTION_DELETED`
 - Token → variável `ASAAS_WEBHOOK_TOKEN` no Railway
