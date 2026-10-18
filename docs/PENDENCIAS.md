@@ -85,5 +85,8 @@ Infra e produto (deferidos — exigem decisão/proxy, não bug de código):
 ## Landing 10/10 (out/2026)
 
 - [x] E-mail de contato: eliasmecenasseabra@gmail.com (`EMAIL_CONTATO` em src/lib/site.ts; termos, privacidade e rodapé)
-- [ ] Plano Team: recursos de equipe (workspace, comentários, dashboard) ainda não existem — a página de preços agora diz "em desenvolvimento"
+- [x] Plano Team: compartilhamento (Pro 1 colega, Team 10) e comentários de revisão por achado
 - [x] Link público do certificado: `/c/<token>` (256 bits, coluna `relatorios.certificado_token`), sem login, só certificado 100% verificado de dono Pro/Team; "copiar link público" e "revogar link" na página do certificado; `/c/<token>/json` entrega o JSON canônico para recalcular o hash (`curl -s … | sha256sum`). No ar desde 17/10/2026 (deploy Railway)
+- [x] Prints de evidência com tarja no navegador; quadro de conformidade (PCI/ISO/LGPD/BCB); agenda de retestes (.ics)
+- [ ] Lembrete por e-mail (hoje: alarme do calendário via .ics) — exige provedor de e-mail
+- [ ] Revisão jurídica do texto do quadro de conformidade (referências normativas)

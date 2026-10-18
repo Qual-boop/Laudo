@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/Button";
 import { Spinner } from "@/components/Spinner";
 import { EstadoVazio, ListaSkeleton } from "@/components/verificacao/PainelBase";
+import { EquipeRevisaoModal } from "@/components/historico/EquipeRevisaoModal";
+import type { RelatorioCompartilhado } from "@/lib/equipe";
 import type { Relatorio, ResumoRelatorio } from "@/lib/tipos";
 
 type Props = {
@@ -23,6 +25,19 @@ export function PainelHistorico({ onAbrir, onAviso, onResumo }: Props) {
   const [lista, setLista] = useState<ResumoRelatorio[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [abrindo, setAbrindo] = useState<number | null>(null);
+  const [compartilhados, setCompartilhados] = useState<RelatorioCompartilhado[]>([]);
+  const [equipeDe, setEquipeDe] = useState<{ id: number; titulo: string } | null>(null);
+
+  useEffect(() => {
+    const controlador = new AbortController();
+    fetch("/api/v1/compartilhados", { signal: controlador.signal })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((dados: RelatorioCompartilhado[]) => setCompartilhados(dados))
+      .catch(() => {
+        // silencioso: a seção só não aparece
+      });
+    return () => controlador.abort();
+  }, []);
 
   const carregar = useCallback(
     async (signal?: AbortSignal) => {
@@ -76,7 +91,48 @@ export function PainelHistorico({ onAbrir, onAviso, onResumo }: Props) {
     );
   }
 
+  const secaoCompartilhados =
+    compartilhados.length > 0 ? (
+      <section className="flex flex-col gap-3">
+        <h2 className="font-mono text-[10px] uppercase tracking-widest text-texto-2">compartilhados comigo</h2>
+        {compartilhados.map((r) => (
+          <article
+            key={`c-${r.id}`}
+            className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-borda bg-superficie px-5 py-4"
+          >
+            <div className="min-w-0">
+              <span className="font-mono text-[10px] tracking-wider text-accent">#{r.id} · de {r.dono}</span>
+              <h3 className="mt-1.5 text-sm font-medium text-texto">{r.cliente}</h3>
+              <p className="mt-0.5 font-mono text-[11px] text-texto-2">
+                {r.titulo} · {r.data} · {r.total_achados} achado{r.total_achados === 1 ? "" : "s"}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variante="fantasma" tamanho="sm" onClick={() => setEquipeDe({ id: r.id, titulo: r.titulo })}>
+                revisão
+              </Button>
+              <Button variante="secundaria" tamanho="sm" onClick={() => abrir(r.id)} disabled={abrindo === r.id}>
+                {abrindo === r.id ? "abrindo..." : "abrir"}
+              </Button>
+            </div>
+          </article>
+        ))}
+      </section>
+    ) : null;
+
+  const modal = equipeDe && (
+    <EquipeRevisaoModal relatorioId={equipeDe.id} titulo={equipeDe.titulo} onFechar={() => setEquipeDe(null)} />
+  );
+
   if (lista.length === 0) {
+    if (secaoCompartilhados) {
+      return (
+        <div className="flex flex-col gap-6">
+          {secaoCompartilhados}
+          {modal}
+        </div>
+      );
+    }
     return (
       <EstadoVazio
         icone="▤"
@@ -115,6 +171,9 @@ export function PainelHistorico({ onAbrir, onAviso, onResumo }: Props) {
           </div>
 
           <div className="flex items-center gap-2">
+            <Button variante="fantasma" tamanho="sm" onClick={() => setEquipeDe({ id: r.id, titulo: r.titulo })}>
+              equipe
+            </Button>
             <a
               href={`/certificado/${r.id}`}
               aria-label={`Certificado de correção do relatório ${r.titulo}`}
@@ -133,6 +192,8 @@ export function PainelHistorico({ onAbrir, onAviso, onResumo }: Props) {
           </div>
         </article>
       ))}
+      {secaoCompartilhados && <div className="mt-4">{secaoCompartilhados}</div>}
+      {modal}
     </div>
   );
 }

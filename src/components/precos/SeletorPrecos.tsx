@@ -30,6 +30,7 @@ const PLANOS: {
       "10 retestes por mês",
       "Exportação em texto simples",
       "Histórico de 30 dias",
+      "Prints de evidência com tarja",
     ],
   },
   {
@@ -47,6 +48,9 @@ const PLANOS: {
       "Retestes ilimitados",
       "Exportação Jira e GitHub",
       "Certificado de correção",
+      "Quadro de conformidade (PCI DSS, ISO 27001, LGPD, BCB)",
+      "Agenda de retestes para o seu calendário",
+      "Revisão em dupla: 1 colega por relatório",
       "Sem marca d'água",
       "Histórico ilimitado",
       "Suporte por email",
@@ -62,7 +66,8 @@ const PLANOS: {
     href: "/cadastro?plano=team",
     features: [
       "Tudo do Pro",
-      "Recursos de equipe (em desenvolvimento)",
+      "Compartilhar relatórios com até 10 colegas",
+      "Comentários de revisão por achado",
       "Suporte prioritário",
     ],
   },

@@ -196,4 +196,43 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_sessoes_token ON sessoes(token_hash);
 `);
 
+
+/* ------------------------------------------------------------
+   Equipe e evidências.
+   compartilhamentos: colegas com acesso de revisão a um relatório.
+   comentarios: revisão por pares (por achado ou do relatório).
+   evidencias: prints com tarja aplicada no navegador (base64 —
+   portável entre SQLite e Postgres; teto de tamanho na API).
+   ------------------------------------------------------------ */
+db.exec(`
+  CREATE TABLE IF NOT EXISTS compartilhamentos (
+    relatorio_id INTEGER NOT NULL REFERENCES relatorios(id) ON DELETE CASCADE,
+    usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    papel TEXT NOT NULL DEFAULT 'revisor',
+    criado_em TEXT DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (relatorio_id, usuario_id)
+  );
+  CREATE TABLE IF NOT EXISTS comentarios (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    relatorio_id INTEGER NOT NULL REFERENCES relatorios(id) ON DELETE CASCADE,
+    achado_ref TEXT,
+    usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    texto TEXT NOT NULL,
+    criado_em TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS evidencias (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    achado_id INTEGER NOT NULL REFERENCES achados_verificacao(id) ON DELETE CASCADE,
+    usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    legenda TEXT,
+    mime TEXT NOT NULL,
+    tamanho INTEGER NOT NULL,
+    dados TEXT NOT NULL,
+    criado_em TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS idx_compartilhamentos_usuario ON compartilhamentos(usuario_id);
+  CREATE INDEX IF NOT EXISTS idx_comentarios_relatorio ON comentarios(relatorio_id, id);
+  CREATE INDEX IF NOT EXISTS idx_evidencias_achado ON evidencias(achado_id, id);
+`);
+
 export default db;

@@ -143,6 +143,26 @@ const RECURSOS: { titulo: string; texto: string; icone: NomeIcone }[] = [
     icone: "radar",
   },
   {
+    titulo: "Quadro de conformidade",
+    texto: "As evidências do pentest e do reteste organizadas por requisito: PCI DSS 11.4, ISO 27001 A.8.8, LGPD art. 46 e Banco Central.",
+    icone: "documento",
+  },
+  {
+    titulo: "Prints com tarja",
+    texto: "Cubra tokens, CPFs e e-mails no próprio navegador antes de enviar. O original não sai da sua máquina.",
+    icone: "cadeado",
+  },
+  {
+    titulo: "Equipe e revisão",
+    texto: "Compartilhe o relatório com colegas e revise por achado, com comentários. Revisão em dupla no Pro, até 10 no Team.",
+    icone: "equipe",
+  },
+  {
+    titulo: "Agenda de retestes",
+    texto: "Retestes e vencimentos de prazo direto no Google Agenda, Outlook ou Apple, com lembrete na véspera.",
+    icone: "check",
+  },
+  {
     titulo: "Biblioteca em português",
     texto: "Modelos dos achados mais comuns, de SQL Injection a JWT sem assinatura, com CWE e severidade típica.",
     icone: "documento",
@@ -196,6 +216,7 @@ const PLANOS = [
       `${FREE.retestesMes} retestes por mês`,
       "Exportação em texto",
       `Histórico de ${FREE.historicoDias} dias`,
+      "Prints de evidência com tarja",
     ],
     cta: "Começar grátis",
     href: "/cadastro",
@@ -209,6 +230,8 @@ const PLANOS = [
     itens: [
       "Relatórios, achados e retestes ilimitados",
       "Certificado de correção com hash",
+      "Quadro de conformidade e agenda de retestes",
+      "Revisão em dupla com 1 colega",
       "Exportação para Jira e GitHub",
       "Sem marca d'água",
       "Histórico ilimitado",
@@ -508,7 +531,7 @@ export default function Landing() {
               sobretitulo="o que está incluso"
               titulo="Tudo o que um engagement precisa, do scan ao certificado."
             />
-            <ul className="mt-14 grid grid-cols-1 gap-x-10 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
+            <ul className="mt-14 grid grid-cols-1 gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
               {RECURSOS.map((r) => (
                 <li key={r.titulo} className="border-t border-white/[0.08] pt-6">
                   <Icone nome={r.icone} className="h-6 w-6 text-accent" />
@@ -652,7 +675,8 @@ export default function Landing() {
             </div>
             <p className="mx-auto mt-8 max-w-2xl text-center text-sm leading-relaxed text-texto-2">
               Consultoria? O <span className="text-texto">Team</span> (R$ 49,90/mês) inclui
-              tudo do Pro; os recursos de equipe estão em desenvolvimento. Plano anual com 20%
+              tudo do Pro e compartilha cada relatório com até 10 colegas, com comentários de
+              revisão por achado. Plano anual com 20%
               de desconto —{" "}
               <a href="/precos" className="text-accent underline-offset-4 hover:underline">
                 ver todos os planos

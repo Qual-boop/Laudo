@@ -4,6 +4,7 @@ import { SeverityBadge } from "@/components/SeverityBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { AcoesExportacaoAchado } from "@/components/verificacao/AcoesExportacaoAchado";
 import { KitCorrecaoModal } from "@/components/verificacao/KitCorrecaoModal";
+import { EvidenciasAchado } from "@/components/verificacao/EvidenciasAchado";
 import type { Plano } from "@/lib/planos";
 import { PRAZO_DIAS, rotuloPrazo, situacaoPrazo, type EstadoPrazo } from "@/lib/prazos";
 import { ROTULO_RESULTADO } from "@/lib/verificacao";
@@ -14,8 +15,11 @@ type Props = {
   onRegistrar: (achado: AchadoVerificavel) => void;
   onVerDelta: (achado: AchadoVerificavel) => void;
   onCopiar: (texto: string, rotulo: string) => void;
+  onAviso?: (texto: string) => void;
   plano?: Plano;
 };
+
+const semAviso = () => {};
 
 /* ---------------------------------------------------------------
    Ícone de status. O glifo carrega o estado mesmo em preto e
@@ -64,10 +68,11 @@ export function tempoRelativo(iso: string | null, agora = new Date()): string | 
   return meses === 1 ? "há 1 mês" : `há ${meses} meses`;
 }
 
-export function AchadoVerificacaoCard({ achado, onRegistrar, onVerDelta, onCopiar, plano = "free" }: Props) {
+export function AchadoVerificacaoCard({ achado, onRegistrar, onVerDelta, onCopiar, onAviso = semAviso, plano = "free" }: Props) {
   const reteste = achado.ultimo_reteste;
   const icone = ICONE[achado.status];
   const [kitAberto, setKitAberto] = useState(false);
+  const [evidenciasAbertas, setEvidenciasAbertas] = useState(false);
 
   const quando = reteste
     ? tempoRelativo(reteste.data_reteste)
@@ -141,6 +146,15 @@ export function AchadoVerificacaoCard({ achado, onRegistrar, onVerDelta, onCopia
           >
             kit dev
           </Button>
+          <Button
+            variante="fantasma"
+            tamanho="sm"
+            onClick={() => setEvidenciasAbertas((v) => !v)}
+            aria-expanded={evidenciasAbertas}
+            title="Prints de evidência, com tarja aplicada no seu navegador"
+          >
+            evidências
+          </Button>
           {reteste && (
             <Button
               variante="fantasma"
@@ -204,6 +218,15 @@ export function AchadoVerificacaoCard({ achado, onRegistrar, onVerDelta, onCopia
           Aguardando reteste. Registre o resultado para confirmar ou refutar a
           correção.
         </p>
+      )}
+
+      {evidenciasAbertas && (
+        <div className="border-t border-borda px-5 py-4">
+          <p className="mb-3 font-mono text-[10px] uppercase tracking-widest text-texto-2">
+            evidências · prints
+          </p>
+          <EvidenciasAchado achadoId={achado.id} podeEditar onAviso={onAviso} />
+        </div>
       )}
 
       {kitAberto && (

@@ -148,4 +148,40 @@ export async function criarSchemaPg(): Promise<void> {
   // Migração aditiva: link público do certificado (NULL = sem link).
   await sql`ALTER TABLE relatorios ADD COLUMN IF NOT EXISTS certificado_token TEXT`;
   await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_relatorios_certificado_token ON relatorios(certificado_token)`;
+
+  // Equipe e evidências (ver lib/db.ts para o racional).
+  await sql`
+    CREATE TABLE IF NOT EXISTS compartilhamentos (
+      relatorio_id INTEGER NOT NULL REFERENCES relatorios(id) ON DELETE CASCADE,
+      usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+      papel TEXT NOT NULL DEFAULT 'revisor',
+      criado_em TIMESTAMPTZ DEFAULT now(),
+      PRIMARY KEY (relatorio_id, usuario_id)
+    )
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS comentarios (
+      id SERIAL PRIMARY KEY,
+      relatorio_id INTEGER NOT NULL REFERENCES relatorios(id) ON DELETE CASCADE,
+      achado_ref TEXT,
+      usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+      texto TEXT NOT NULL,
+      criado_em TIMESTAMPTZ DEFAULT now()
+    )
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS evidencias (
+      id SERIAL PRIMARY KEY,
+      achado_id INTEGER NOT NULL REFERENCES achados_verificacao(id) ON DELETE CASCADE,
+      usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+      legenda TEXT,
+      mime TEXT NOT NULL,
+      tamanho INTEGER NOT NULL,
+      dados TEXT NOT NULL,
+      criado_em TIMESTAMPTZ DEFAULT now()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_compartilhamentos_usuario ON compartilhamentos(usuario_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_comentarios_relatorio ON comentarios(relatorio_id, id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_evidencias_achado ON evidencias(achado_id, id)`;
 }

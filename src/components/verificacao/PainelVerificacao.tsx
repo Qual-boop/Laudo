@@ -195,6 +195,38 @@ export function PainelVerificacao({ onCopiar, onAviso, onResumo, plano = "free" 
         </div>
       </div>
 
+      {/* Documentos por relatório: quadro de conformidade e agenda (.ics). */}
+      {certificados.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-wider">
+          <span className="text-texto-2">documentos</span>
+          {plano === "free" ? (
+            <a href="/precos" className="rounded-sm border border-borda px-2 py-1 text-texto-2 hover:border-accent hover:text-accent">
+              quadro de conformidade e agenda de retestes: planos pro e team →
+            </a>
+          ) : (
+            <>
+              {certificados.map((id) => (
+                <span key={id} className="inline-flex items-center gap-1.5 rounded-sm border border-borda px-2 py-1 text-texto-2">
+                  #{id}
+                  <a href={`/conformidade/${id}`} className="text-accent hover:underline">
+                    conformidade
+                  </a>
+                  <span aria-hidden="true">·</span>
+                  <a href={`/api/v1/agenda?relatorio=${id}`} className="text-accent hover:underline">
+                    agenda .ics
+                  </a>
+                </span>
+              ))}
+              {certificados.length > 1 && (
+                <a href="/api/v1/agenda" className="rounded-sm border border-borda px-2 py-1 text-accent hover:border-accent">
+                  agenda completa .ics
+                </a>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
       {total > 0 && verificados === total && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-accent/40 bg-accent/10 px-5 py-4">
           <p className="text-sm text-texto">
@@ -268,6 +300,7 @@ export function PainelVerificacao({ onCopiar, onAviso, onResumo, plano = "free" 
               key={achado.id}
               achado={achado}
               onCopiar={onCopiar}
+              onAviso={onAviso}
               plano={plano}
               onRegistrar={(a) => {
                 setDeltaDe(null);
