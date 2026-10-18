@@ -60,4 +60,4 @@ Infra e produto (deferidos — exigem decisão/proxy, não bug de código):
 
 - [x] E-mail de contato: eliasmecenasseabra@gmail.com (`EMAIL_CONTATO` em src/lib/site.ts; termos, privacidade e rodapé)
 - [ ] Plano Team: recursos de equipe (workspace, comentários, dashboard) ainda não existem — a página de preços agora diz "em desenvolvimento"
-- [x] Link público do certificado: `/c/<token>` (256 bits, coluna `relatorios.certificado_token`), sem login, só certificado 100% verificado de dono Pro/Team; "copiar link público" e "revogar link" na página do certificado; `/c/<token>/json` entrega o JSON canônico para recalcular o hash (`curl -s … | sha256sum`). No ar desde 18/10/2026 (deploy Railway)
+- [x] Link público do certificado: `/c/<token>` (256 bits, coluna `relatorios.certificado_token`), sem login, só certificado 100% verificado de dono Pro/Team; "copiar link público" e "revogar link" na página do certificado; `/c/<token>/json` entrega o JSON canônico para recalcular o hash (`curl -s … | sha256sum`). No ar desde 17/10/2026 (deploy Railway)
