@@ -14,12 +14,13 @@ import type { AchadoEntrada, Confianca, Severidade } from "@/lib/tipos";
  * as entidades básicas de HTML são decodificadas à mão, depois.
  */
 
-export type FormatoScanner = "nessus" | "burp" | "zap";
+export type FormatoScanner = "nessus" | "burp" | "zap" | "sarif";
 
 export const NOME_SCANNER: Record<FormatoScanner, string> = {
   nessus: "Nessus",
   burp: "Burp Suite",
   zap: "OWASP ZAP",
+  sarif: "SARIF (análise de código)",
 };
 
 export type ResultadoImportacao = {
@@ -181,6 +182,7 @@ export function detectarFormato(conteudo: string): FormatoScanner | null {
   const inicio = conteudo.slice(0, 4000);
   if (/<NessusClientData_v2[\s>]/.test(inicio)) return "nessus";
   if (/<OWASPZAPReport[\s>]/.test(inicio)) return "zap";
+  if (/^\s*\{/.test(inicio) && /"runs"\s*:/.test(conteudo) && /sarif|"version"\s*:\s*"2\.1\.0"/i.test(inicio)) return "sarif";
   if (/^\s*\{/.test(inicio) && /"site"\s*:/.test(conteudo) && /"alerts"\s*:/.test(conteudo)) return "zap";
   if (/<issues[\s>]/.test(inicio) && /<issue>/.test(conteudo)) return "burp";
   return null;
@@ -334,6 +336,87 @@ function importarZap(conteudo: string): Omit<ResultadoImportacao, "formato"> {
 }
 
 /* ------------------------------------------------------------------ *
+ * SARIF 2.1.0 — Semgrep, CodeQL, Trivy, Snyk, Checkmarx, Bandit…
+ * ------------------------------------------------------------------ */
+
+const SEV_NIVEL: Record<string, Severidade> = { error: "Alta", warning: "Media", note: "Baixa" };
+const CONF_PRECISAO: Record<string, Confianca> = {
+  "very-high": "Alta",
+  high: "Alta",
+  medium: "Media",
+  low: "Baixa",
+};
+
+/** "security-severity" (CodeQL, Trivy) é uma nota 0–10 no estilo CVSS. */
+function severidadeNumerica(v: unknown): Severidade | null {
+  const n = Number(texto(v));
+  if (!Number.isFinite(n) || n <= 0) return null;
+  if (n >= 9) return "Critica";
+  if (n >= 7) return "Alta";
+  if (n >= 4) return "Media";
+  return "Baixa";
+}
+
+function textoMensagem(v: unknown): string {
+  if (v && typeof v === "object") {
+    const o = v as Record<string, unknown>;
+    return limparHtml(o.text ?? o.markdown);
+  }
+  return limparHtml(v);
+}
+
+function importarSarif(conteudo: string): Omit<ResultadoImportacao, "formato"> {
+  const doc = JSON.parse(conteudo) as Record<string, any>;
+  const grupos = new Map<string, Grupo>();
+  let ocorrencias = 0;
+  let informativos = 0;
+
+  for (const run of lista<Record<string, any>>(doc.runs)) {
+    const ferramenta = texto(run?.tool?.driver?.name) || "SARIF";
+    const regras = new Map<string, Record<string, any>>();
+    for (const r of lista<Record<string, any>>(run?.tool?.driver?.rules)) {
+      if (texto(r.id)) regras.set(texto(r.id), r);
+    }
+
+    for (const res of lista<Record<string, any>>(run.results)) {
+      const idRegra = texto(res.ruleId) || texto(res.rule?.id);
+      const regra = regras.get(idRegra) ?? {};
+      const props = { ...(regra.properties ?? {}), ...(res.properties ?? {}) } as Record<string, unknown>;
+      const nivel = texto(res.level) || texto(regra.defaultConfiguration?.level) || "warning";
+      const severidade = severidadeNumerica(props["security-severity"]) ?? SEV_NIVEL[nivel];
+      if (!severidade) {
+        informativos++;
+        continue;
+      }
+      ocorrencias++;
+      const tags = lista<string>(props.tags).map(texto).join(" ");
+      const cwe = cweDe((tags.match(/cwe[-/:]?0*(\d{1,5})/i) ?? [])[0] ?? "");
+      const loc = lista<Record<string, any>>(res.locations)[0]?.physicalLocation;
+      const arquivo = texto(loc?.artifactLocation?.uri);
+      const linha = texto(loc?.region?.startLine);
+      const descricao = textoMensagem(regra.fullDescription) || textoMensagem(regra.help);
+      agrupar(
+        grupos,
+        `sarif:${ferramenta}:${idRegra}`,
+        {
+          titulo:
+            textoMensagem(regra.shortDescription) || texto(regra.name) || idRegra || `Regra ${ferramenta}`,
+          severidade,
+          cwe,
+          descricao,
+          solucao: textoMensagem(regra.help) !== descricao ? textoMensagem(regra.help) : "",
+          confianca: CONF_PRECISAO[texto(props.precision).toLowerCase()] ?? "Media",
+          origem: `${ferramenta} (regra ${idRegra})`,
+        },
+        arquivo ? `${arquivo}${linha ? `:${linha}` : ""}` : "",
+        textoMensagem(res.message),
+      );
+    }
+  }
+  return { ...paraAchados(grupos), ocorrencias, informativosIgnorados: informativos };
+}
+
+/* ------------------------------------------------------------------ *
  * Entrada pública
  * ------------------------------------------------------------------ */
 
@@ -343,7 +426,7 @@ export function importarScanner(conteudo: string): ResultadoImportacao {
   const formato = detectarFormato(conteudo);
   if (!formato) {
     throw new ErroImportacao(
-      "Formato não reconhecido. Envie um .nessus (Nessus), o XML de issues do Burp Suite ou o relatório JSON/XML do OWASP ZAP.",
+      "Formato não reconhecido. Envie um .nessus (Nessus), o XML de issues do Burp Suite, o relatório JSON/XML do OWASP ZAP ou um .sarif (Semgrep, CodeQL, Trivy, Snyk…).",
     );
   }
   try {
@@ -352,7 +435,9 @@ export function importarScanner(conteudo: string): ResultadoImportacao {
         ? importarNessus(conteudo)
         : formato === "burp"
           ? importarBurp(conteudo)
-          : importarZap(conteudo);
+          : formato === "sarif"
+            ? importarSarif(conteudo)
+            : importarZap(conteudo);
     return { formato, ...r };
   } catch (e) {
     if (e instanceof ErroImportacao) throw e;

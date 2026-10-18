@@ -1,3 +1,4 @@
+import { calcularCvss } from "@/lib/cvss";
 import { normalizarConfianca } from "@/lib/verificacao";
 import type {
   Achado,
@@ -40,6 +41,14 @@ export function numero(v: unknown, padrao = 0): number {
   }
   const n = typeof v === "string" ? Number(v.trim().replace(",", ".")) : Number(v);
   return Number.isFinite(n) ? n : padrao;
+}
+
+/** "CWE-89: Improper Neutralization…" → "CWE-89". A IA costuma mandar o nome
+ * inteiro, e o salvar aceita só 20 caracteres — o relatório não salvava. */
+export function normalizarCwe(v: unknown): string {
+  const s = txt(v);
+  const m = s.match(/CWE[-\s:]*0*(\d{1,5})/i) ?? s.match(/^\s*0*(\d{1,5})\s*$/);
+  return m ? `CWE-${Number(m[1])}` : s.slice(0, 20);
 }
 
 export function lista(v: unknown): string[] {
@@ -129,6 +138,8 @@ export function normalizarRelatorio(
     .filter((x): x is Record<string, unknown> => !!x && typeof x === "object")
     .map((a, i) => {
       const cvss = obj(a.cvss);
+      // Vetor válido manda: a nota sai da fórmula da spec, não da aritmética da IA.
+      const cvssCalculado = calcularCvss(txt(cvss.vetor));
       const remediacao = obj(a.remediacao);
 
       return {
@@ -136,10 +147,12 @@ export function normalizarRelatorio(
         titulo: txt(a.titulo, "Achado sem título"),
         severidade: mapaSeveridade(a.severidade),
         cvss: {
-          score: Math.min(10, Math.max(0, Number(numero(cvss.score).toFixed(1)))),
-          vetor: txt(cvss.vetor),
+          score:
+            cvssCalculado?.score ??
+            Math.min(10, Math.max(0, Number(numero(cvss.score).toFixed(1)))),
+          vetor: cvssCalculado?.vetor ?? txt(cvss.vetor),
         },
-        cwe: txt(a.cwe),
+        cwe: normalizarCwe(a.cwe),
         owasp: txt(a.owasp),
         descricaoTecnica: txt(a.descricaoTecnica || a.descricao),
         impactoNegocio: txt(a.impactoNegocio || a.impacto),

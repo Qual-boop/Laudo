@@ -11,17 +11,42 @@ import {
   EstadoVazio,
   ListaSkeleton,
 } from "@/components/verificacao/PainelBase";
+import { calcularMetricas, estaAtrasado } from "@/lib/metricas";
 import { montarDelta } from "@/lib/verificacao";
-import type { AchadoVerificavel, DeltaRelatorio as DadosDelta } from "@/lib/tipos";
+import type { AchadoVerificavel, DeltaRelatorio as DadosDelta, Severidade } from "@/lib/tipos";
 
-type Filtro = "todos" | "pendente" | "verificado" | "nao-corrigido";
+type Filtro = "todos" | "pendente" | "verificado" | "nao-corrigido" | "atrasado";
 
 const FILTROS: { id: Filtro; rotulo: string }[] = [
   { id: "todos", rotulo: "todos" },
   { id: "pendente", rotulo: "pendentes" },
   { id: "verificado", rotulo: "verificados" },
   { id: "nao-corrigido", rotulo: "não corrigidos" },
+  { id: "atrasado", rotulo: "atrasados" },
 ];
+
+function filtrar(lista: AchadoVerificavel[], filtro: Filtro): AchadoVerificavel[] {
+  if (filtro === "todos") return lista;
+  if (filtro === "atrasado") return lista.filter((a) => estaAtrasado(a));
+  return lista.filter((a) => a.status === filtro);
+}
+
+const COR_SEVERIDADE: Record<Severidade, string> = {
+  Critica: "bg-critica",
+  Alta: "bg-alta",
+  Media: "bg-media",
+  Baixa: "bg-baixa",
+};
+
+function Indicador({ rotulo, valor, detalhe, alerta }: { rotulo: string; valor: string; detalhe?: string; alerta?: boolean }) {
+  return (
+    <div className={`rounded-md border px-4 py-3 ${alerta ? "border-critica/40 bg-critica/[0.06]" : "border-borda bg-superficie"}`}>
+      <p className="font-mono text-[10px] uppercase tracking-widest text-texto-2">{rotulo}</p>
+      <p className={`mt-1 text-2xl font-semibold tracking-tight ${alerta ? "text-critica" : "text-texto"}`}>{valor}</p>
+      {detalhe && <p className="mt-0.5 text-[11px] text-texto-2">{detalhe}</p>}
+    </div>
+  );
+}
 
 type Props = {
   onCopiar: (texto: string, rotulo: string) => void;
@@ -89,8 +114,11 @@ export function PainelVerificacao({ onCopiar, onAviso, onResumo, plano = "free" 
 
   const total = achados.length;
   const verificados = achados.filter((a) => a.status === "verificado").length;
-  const visiveis =
-    filtro === "todos" ? achados : achados.filter((a) => a.status === filtro);
+  const visiveis = filtrar(achados, filtro);
+  const metricas = calcularMetricas(achados);
+  const severidadesAbertas = (Object.keys(metricas.abertosPorSeveridade) as Severidade[]).filter(
+    (s) => metricas.abertosPorSeveridade[s] > 0,
+  );
   const certificados = [
     ...new Set(
       achados
@@ -127,6 +155,46 @@ export function PainelVerificacao({ onCopiar, onAviso, onResumo, plano = "free" 
     <div className="flex flex-col gap-5">
       <BarraProgresso verificados={verificados} total={total} />
 
+      {/* Indicadores para a reunião de acompanhamento. */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Indicador
+          rotulo="taxa de correção"
+          valor={`${metricas.taxaCorrecao}%`}
+          detalhe={`${metricas.verificados} de ${metricas.total} verificados`}
+        />
+        <Indicador
+          rotulo="tempo médio de correção"
+          valor={
+            metricas.tempoMedioCorrecaoDias === null
+              ? "—"
+              : `${metricas.tempoMedioCorrecaoDias.toLocaleString("pt-BR")} dia${metricas.tempoMedioCorrecaoDias === 1 ? "" : "s"}`
+          }
+          detalhe="da entrega ao reteste que comprovou"
+        />
+        <Indicador
+          rotulo="em atraso"
+          valor={String(metricas.atrasados)}
+          detalhe={metricas.venceLogo ? `${metricas.venceLogo} vence${metricas.venceLogo === 1 ? "" : "m"} em breve` : "prazo por severidade"}
+          alerta={metricas.atrasados > 0}
+        />
+        <div className="rounded-md border border-borda bg-superficie px-4 py-3">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-texto-2">abertos por severidade</p>
+          {severidadesAbertas.length === 0 ? (
+            <p className="mt-1 text-2xl font-semibold tracking-tight text-accent">0</p>
+          ) : (
+            <ul className="mt-2 flex flex-col gap-1">
+              {severidadesAbertas.map((s) => (
+                <li key={s} className="flex items-center gap-2 font-mono text-[11px] text-texto-2">
+                  <span className={`h-1.5 w-1.5 rounded-full ${COR_SEVERIDADE[s]}`} />
+                  {s === "Critica" ? "crítica" : s === "Media" ? "média" : s.toLowerCase()}
+                  <span className="ml-auto text-texto">{metricas.abertosPorSeveridade[s]}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+
       {total > 0 && verificados === total && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-accent/40 bg-accent/10 px-5 py-4">
           <p className="text-sm text-texto">
@@ -153,8 +221,7 @@ export function PainelVerificacao({ onCopiar, onAviso, onResumo, plano = "free" 
           filtro
         </span>
         {FILTROS.map((f) => {
-          const n =
-            f.id === "todos" ? total : achados.filter((a) => a.status === f.id).length;
+          const n = filtrar(achados, f.id).length;
           const ativo = filtro === f.id;
 
           return (

@@ -27,6 +27,7 @@ const NOME_SCANNER: Record<FormatoScanner, string> = {
   nessus: "Nessus",
   burp: "Burp Suite",
   zap: "OWASP ZAP",
+  sarif: "SARIF",
 };
 
 /** Mesmo teto do esquema de geração (lib/validacao.ts). */
@@ -677,7 +678,7 @@ export default function Home() {
                 {importando ? "importando…" : "importar de scanner"}
                 <input
                   type="file"
-                  accept=".nessus,.xml,.json"
+                  accept=".nessus,.xml,.json,.sarif"
                   className="sr-only"
                   disabled={importando}
                   onChange={(e) => {
@@ -707,7 +708,7 @@ export default function Home() {
                 ))}
               </Select>
               <p className="text-xs leading-relaxed text-texto-2 sm:ml-auto sm:max-w-[16rem] sm:text-right">
-                Nessus, Burp Suite e OWASP ZAP. Achados iguais em vários alvos viram um só.
+                Nessus, Burp, ZAP e SARIF (Semgrep, CodeQL, Trivy…). Achados iguais viram um só.
               </p>
             </div>
 

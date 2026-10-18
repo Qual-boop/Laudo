@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { Button } from "@/components/Button";
 import { SeverityBadge } from "@/components/SeverityBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { AcoesExportacaoAchado } from "@/components/verificacao/AcoesExportacaoAchado";
+import { KitCorrecaoModal } from "@/components/verificacao/KitCorrecaoModal";
 import type { Plano } from "@/lib/planos";
 import { PRAZO_DIAS, rotuloPrazo, situacaoPrazo, type EstadoPrazo } from "@/lib/prazos";
 import { ROTULO_RESULTADO } from "@/lib/verificacao";
@@ -65,6 +67,7 @@ export function tempoRelativo(iso: string | null, agora = new Date()): string | 
 export function AchadoVerificacaoCard({ achado, onRegistrar, onVerDelta, onCopiar, plano = "free" }: Props) {
   const reteste = achado.ultimo_reteste;
   const icone = ICONE[achado.status];
+  const [kitAberto, setKitAberto] = useState(false);
 
   const quando = reteste
     ? tempoRelativo(reteste.data_reteste)
@@ -130,6 +133,14 @@ export function AchadoVerificacaoCard({ achado, onRegistrar, onVerDelta, onCopia
 
         <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
           <AcoesExportacaoAchado achado={achado} onCopiar={onCopiar} plano={plano} />
+          <Button
+            variante="fantasma"
+            tamanho="sm"
+            onClick={() => setKitAberto(true)}
+            title="Código antes × depois, teste automatizado e comando de reteste para o time de dev"
+          >
+            kit dev
+          </Button>
           {reteste && (
             <Button
               variante="fantasma"
@@ -193,6 +204,10 @@ export function AchadoVerificacaoCard({ achado, onRegistrar, onVerDelta, onCopia
           Aguardando reteste. Registre o resultado para confirmar ou refutar a
           correção.
         </p>
+      )}
+
+      {kitAberto && (
+        <KitCorrecaoModal achado={achado} onFechar={() => setKitAberto(false)} onCopiar={onCopiar} />
       )}
     </article>
   );

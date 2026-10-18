@@ -30,7 +30,7 @@ const DIA = 86_400_000;
  * CURRENT_TIMESTAMP do SQLite não traz fuso — e vira o dia local de quem
  * vê: às 22h em Brasília já é o dia seguinte em UTC.
  */
-function diaBase(iso: string): number | null {
+export function diaBase(iso: string): number | null {
   const m = iso.match(
     /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?\s*(Z|[+-]\d{2}:?\d{2})?)?/,
   );

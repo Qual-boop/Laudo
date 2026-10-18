@@ -213,6 +213,112 @@ describe("OWASP ZAP", () => {
   });
 });
 
+const SARIF_SEMGREP = JSON.stringify({
+  $schema: "https://json.schemastore.org/sarif-2.1.0.json",
+  version: "2.1.0",
+  runs: [
+    {
+      tool: {
+        driver: {
+          name: "Semgrep OSS",
+          rules: [
+            {
+              id: "python.django.security.injection.sql.sql-injection-db-cursor-execute",
+              name: "sql-injection-db-cursor-execute",
+              shortDescription: { text: "SQL montado com entrada do usuário em cursor.execute" },
+              fullDescription: { text: "User-controlled data flows into a raw SQL query." },
+              help: { text: "Use parameterized queries." },
+              defaultConfiguration: { level: "error" },
+              properties: { precision: "high", tags: ["CWE-89: Improper Neutralization of Special Elements used in an SQL Command", "security"] },
+            },
+          ],
+        },
+      },
+      results: [
+        {
+          ruleId: "python.django.security.injection.sql.sql-injection-db-cursor-execute",
+          level: "error",
+          message: { text: "Detected user input in raw SQL." },
+          locations: [{ physicalLocation: { artifactLocation: { uri: "app/views.py" }, region: { startLine: 42 } } }],
+        },
+        {
+          ruleId: "python.django.security.injection.sql.sql-injection-db-cursor-execute",
+          level: "error",
+          message: { text: "Detected user input in raw SQL." },
+          locations: [{ physicalLocation: { artifactLocation: { uri: "app/relatorios.py" }, region: { startLine: 7 } } }],
+        },
+        {
+          ruleId: "estilo",
+          level: "none",
+          message: { text: "informativo" },
+        },
+      ],
+    },
+  ],
+});
+
+const SARIF_CODEQL = JSON.stringify({
+  version: "2.1.0",
+  runs: [
+    {
+      tool: {
+        driver: {
+          name: "CodeQL",
+          rules: [
+            {
+              id: "js/path-injection",
+              shortDescription: { text: "Uncontrolled data used in path expression" },
+              properties: {
+                "security-severity": "9.3",
+                precision: "very-high",
+                tags: ["security", "external/cwe/cwe-022", "external/cwe/cwe-023"],
+              },
+            },
+          ],
+        },
+      },
+      results: [
+        {
+          ruleId: "js/path-injection",
+          message: { text: "This path depends on a user-provided value." },
+          locations: [{ physicalLocation: { artifactLocation: { uri: "src/arquivos.ts" }, region: { startLine: 18 } } }],
+        },
+      ],
+    },
+  ],
+});
+
+describe("SARIF (análise de código)", () => {
+  it("detecta SARIF sem confundir com ZAP", () => {
+    expect(detectarFormato(SARIF_SEMGREP)).toBe("sarif");
+    expect(detectarFormato(SARIF_CODEQL)).toBe("sarif");
+    expect(detectarFormato(ZAP_JSON)).toBe("zap");
+  });
+
+  it("Semgrep: agrupa por regra, arquivo:linha como local, CWE das tags", () => {
+    const r = importarScanner(SARIF_SEMGREP);
+    expect(r.achados).toHaveLength(1);
+    const a = r.achados[0];
+    expect(a.titulo).toBe("SQL montado com entrada do usuário em cursor.execute");
+    expect(a.severidade).toBe("Alta");
+    expect(a.cwe).toBe("CWE-89");
+    expect(a.confianca).toBe("Alta");
+    expect(a.evidencia).toContain("app/views.py:42");
+    expect(a.evidencia).toContain("app/relatorios.py:7");
+    expect(a.evidencia).toContain("Semgrep OSS");
+    expect(a.descricao).toContain("Use parameterized queries.");
+    expect(r.informativosIgnorados).toBe(1);
+  });
+
+  it("CodeQL: security-severity vira severidade e cwe-022 vira CWE-22", () => {
+    const a = importarScanner(SARIF_CODEQL).achados[0];
+    expect(a.severidade).toBe("Critica");
+    expect(a.cwe).toBe("CWE-22");
+    expect(a.confianca).toBe("Alta");
+    expect(a.evidencia).toContain("src/arquivos.ts:18");
+  });
+});
+
 describe("limites e segurança", () => {
   it("corta em LIMITE_ACHADOS grupos, mantendo os mais graves", () => {
     const itens = Array.from(

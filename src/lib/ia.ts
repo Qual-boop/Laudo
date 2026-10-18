@@ -251,3 +251,43 @@ export async function gerarRelatorio(
   console.error(`[IA] ${motivo}. Usando relatório local.`);
   return relatorioFallback(entrada, motivo);
 }
+
+/**
+ * Chamada genérica que devolve um objeto JSON (kit de correção e afins),
+ * na mesma cadeia Gemini → Groq e com o mesmo retry. Devolve null quando
+ * nenhum provedor entrega JSON válido — o chamador decide o fallback.
+ */
+export async function completarJson(
+  prompt: string,
+  maxTokens = 6000,
+): Promise<{ dados: Record<string, unknown>; provedor: string } | null> {
+  for (const provedor of cadeiaProvedores()) {
+    try {
+      const res = await chamarComRetry(
+        provedor.url,
+        JSON.stringify({
+          model: provedor.modelo,
+          messages: [{ role: "user", content: prompt }],
+          response_format: { type: "json_object" },
+          max_tokens: Math.min(maxTokens, provedor.maxTokens),
+          temperature: 0.2,
+        }),
+        provedor.chave,
+      );
+      console.log(`[IA] ${provedor.nome} (json): status HTTP ${res.status}`);
+      if (!res.ok) continue;
+      const data = (await res.json()) as { choices?: { message?: { content?: unknown } }[] };
+      const conteudo = data?.choices?.[0]?.message?.content;
+      if (typeof conteudo !== "string") continue;
+      const casaco = conteudo.match(/\{[\s\S]*\}/);
+      if (!casaco) continue;
+      const dados: unknown = JSON.parse(casaco[0]);
+      if (dados && typeof dados === "object" && !Array.isArray(dados)) {
+        return { dados: dados as Record<string, unknown>, provedor: provedor.nome };
+      }
+    } catch (e) {
+      console.error(`[IA] ${provedor.nome} (json): falha —`, e instanceof Error ? e.message : String(e));
+    }
+  }
+  return null;
+}

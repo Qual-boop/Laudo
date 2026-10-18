@@ -30,7 +30,7 @@ const ESPECIFICACOES = [
   "CVSS v3.1",
   "OWASP Top 10",
   "CWE",
-  "Nessus · Burp · ZAP",
+  "Nessus · Burp · ZAP · SARIF",
   "SHA-256",
   "PDF A4",
   "Jira",
@@ -123,9 +123,24 @@ const RECURSOS: { titulo: string; texto: string; icone: NomeIcone }[] = [
     icone: "cadeado",
   },
   {
-    titulo: "Importação de scanners",
-    texto: "Nessus, Burp Suite e OWASP ZAP viram achados prontos. O mesmo problema em 30 hosts vira um achado só.",
+    titulo: "Importação de scanners e SAST",
+    texto: "Nessus, Burp Suite, OWASP ZAP e SARIF (Semgrep, CodeQL, Trivy, Snyk). O mesmo problema em 30 alvos vira um achado só.",
     icone: "exportar",
+  },
+  {
+    titulo: "Kit de correção para devs",
+    texto: "Por achado e na stack do cliente: código antes × depois, teste automatizado e o curl de reteste. Pronto para colar na issue ou no PR.",
+    icone: "codigo",
+  },
+  {
+    titulo: "CVSS calculado, não chutado",
+    texto: "A IA escreve o vetor; a nota sai da fórmula oficial do CVSS 3.1. Nota e vetor nunca se contradizem.",
+    icone: "hash",
+  },
+  {
+    titulo: "Métricas de remediação",
+    texto: "Taxa de correção, tempo médio até o reteste comprovar e o que está atrasado — os números da reunião de acompanhamento.",
+    icone: "radar",
   },
   {
     titulo: "Biblioteca em português",
