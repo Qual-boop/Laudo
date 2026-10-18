@@ -123,6 +123,15 @@ if (!colunasRelatorios.some((c) => c.name === "usuario_id")) {
   db.exec("ALTER TABLE relatorios ADD COLUMN usuario_id INTEGER REFERENCES usuarios(id) ON DELETE CASCADE");
 }
 
+// Migração leve: link público do certificado (token aleatório; NULL = sem link).
+// SQLite não aceita UNIQUE no ADD COLUMN — a unicidade vem do índice abaixo.
+if (!colunasRelatorios.some((c) => c.name === "certificado_token")) {
+  db.exec("ALTER TABLE relatorios ADD COLUMN certificado_token TEXT");
+}
+db.exec(
+  "CREATE UNIQUE INDEX IF NOT EXISTS idx_relatorios_certificado_token ON relatorios(certificado_token)",
+);
+
 // Migração leve: plano default 'free' para contas anteriores aos limites.
 const colunasUsuarios = db
   .prepare("PRAGMA table_info(usuarios)")

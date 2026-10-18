@@ -121,6 +121,8 @@ const SCHEMA_SQL = `
   CREATE INDEX IF NOT EXISTS idx_relatorios_usuario ON relatorios(usuario_id);
   CREATE INDEX IF NOT EXISTS idx_sessoes_usuario ON sessoes(usuario_id);
   CREATE INDEX IF NOT EXISTS idx_sessoes_token ON sessoes(token_hash);
+  ALTER TABLE relatorios ADD COLUMN IF NOT EXISTS certificado_token TEXT;
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_relatorios_certificado_token ON relatorios(certificado_token);
 `;
 
 function paraData(v: unknown): Date | null {

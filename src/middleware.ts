@@ -21,6 +21,7 @@ const PUBLICO = [
   "/privacidade",
   "/api/auth",
   "/api/v1/auth",
+  "/c", // link público do certificado (token de 256 bits; ver lib/certificado-publico.ts)
   "/icon.svg",
   "/manifest.json",
   "/sitemap.xml",

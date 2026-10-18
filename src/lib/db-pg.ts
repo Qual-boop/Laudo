@@ -144,4 +144,8 @@ export async function criarSchemaPg(): Promise<void> {
   await sql`CREATE INDEX IF NOT EXISTS idx_relatorios_usuario ON relatorios(usuario_id)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_sessoes_usuario ON sessoes(usuario_id)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_sessoes_token ON sessoes(token_hash)`;
+
+  // Migração aditiva: link público do certificado (NULL = sem link).
+  await sql`ALTER TABLE relatorios ADD COLUMN IF NOT EXISTS certificado_token TEXT`;
+  await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_relatorios_certificado_token ON relatorios(certificado_token)`;
 }

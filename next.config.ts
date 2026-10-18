@@ -8,6 +8,19 @@ const nextConfig: NextConfig = {
       { source: "/apresentacao", destination: "/", permanent: true },
     ];
   },
+  async headers() {
+    return [
+      {
+        // Link público do certificado: fora da busca, e o token não vaza no
+        // Referer de quem clicar num link a partir dele.
+        source: "/c/:path*",
+        headers: [
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+          { key: "Referrer-Policy", value: "no-referrer" },
+        ],
+      },
+    ];
+  },
   /* config options here */
   cacheComponents: true,
   partialPrefetching: true,

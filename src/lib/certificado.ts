@@ -83,11 +83,13 @@ export function serializarCanonico(valor: unknown): string {
 }
 
 /**
- * SHA-256 do payload canônico. Os achados são ordenados por referência
- * antes de serializar — a ordem do `ORDER BY` do banco não pode mudar o hash.
+ * Texto exato que entra no hash (JSON canônico, UTF-8). Os achados são
+ * ordenados por referência antes de serializar — a ordem do `ORDER BY` do
+ * banco não pode mudar o hash. É também o arquivo que o link público
+ * oferece para quem quiser recalcular o hash fora da aplicação.
  */
-export function hashCertificado(dados: DadosCertificado): string {
-  const payload = {
+export function payloadCanonico(dados: DadosCertificado): string {
+  return serializarCanonico({
     documento: DOCUMENTO_CERTIFICADO,
     emitidoEm: dados.emitidoEm,
     relatorio: dados.relatorio,
@@ -95,9 +97,12 @@ export function hashCertificado(dados: DadosCertificado): string {
       // Codepoint (não localeCompare): determinístico em qualquer ICU/Node.
       a.ref < b.ref ? -1 : a.ref > b.ref ? 1 : 0,
     ),
-  };
+  });
+}
 
-  return createHash("sha256").update(serializarCanonico(payload)).digest("hex");
+/** SHA-256 (hex) do payload canônico. */
+export function hashCertificado(dados: DadosCertificado): string {
+  return createHash("sha256").update(payloadCanonico(dados)).digest("hex");
 }
 
 /** 64 hex em 8 blocos de 8 — cabe numa linha e continua legível para conferir. */
