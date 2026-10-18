@@ -18,6 +18,20 @@ import {
   dispararPaywall,
   usePaywall,
 } from "@/components/PaywallModal";
+import { ROTULO_TIPO, lerResumoProtecao } from "@/lib/anonimizacao";
+import { BIBLIOTECA, CATEGORIAS, achadoDoModelo } from "@/lib/biblioteca-achados";
+// Só o tipo: o parser XML fica no servidor, fora do bundle do cliente.
+import type { FormatoScanner, ResultadoImportacao } from "@/lib/importacao";
+
+const NOME_SCANNER: Record<FormatoScanner, string> = {
+  nessus: "Nessus",
+  burp: "Burp Suite",
+  zap: "OWASP ZAP",
+};
+
+/** Mesmo teto do esquema de geração (lib/validacao.ts). */
+const LIMITE_ACHADOS_FORM = 50;
+const LIMITE_IMPORTACAO_BYTES = 15 * 1024 * 1024;
 
 // Componentes pesados carregados sob demanda (code splitting).
 // `ssr: false` porque todos dependem de APIs do browser ou de estado
@@ -120,6 +134,7 @@ export default function Home() {
   const [relatorio, setRelatorio] = useState<Relatorio | null>(null);
   const [aba, setAba] = useState<Aba>("verificacao");
   const [loading, setLoading] = useState(false);
+  const [importando, setImportando] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [resumo, setResumo] = useState<ResumoGeral | null>(null);
 
@@ -262,6 +277,76 @@ export default function Home() {
     setAchados((atuais) => atuais.filter((_, i) => i !== indice));
   }
 
+  /**
+   * Junta achados prontos (scanner ou biblioteca) ao formulário. Linhas
+   * vazias saem para dar lugar aos novos; o teto é o mesmo da geração.
+   * Devolve quantos entraram.
+   */
+  function incluirAchados(novos: AchadoEntrada[]): number {
+    const preenchidos = achados.filter(
+      (a) => a.titulo.trim() || a.descricao.trim() || a.evidencia.trim(),
+    );
+    const cabem = novos.slice(0, Math.max(0, LIMITE_ACHADOS_FORM - preenchidos.length));
+    const proximos = [
+      ...preenchidos,
+      ...cabem.map((n) => ({ ...n, chave: novaChaveAchado() })),
+    ];
+    setAchados(proximos.length > 0 ? proximos : [novoAchado()]);
+    return cabem.length;
+  }
+
+  function usarModelo(id: string) {
+    const modelo = achadoDoModelo(id);
+    if (!modelo) return;
+    if (incluirAchados([modelo]) === 0) {
+      toastErro(`O formulário já tem ${LIMITE_ACHADOS_FORM} achados, o máximo por relatório.`);
+    }
+  }
+
+  async function importarArquivo(arquivo: File) {
+    if (arquivo.size > LIMITE_IMPORTACAO_BYTES) {
+      toastErro("Arquivo maior que 15 MB. Exporte só o escopo do engagement.");
+      return;
+    }
+    setImportando(true);
+    try {
+      const res = await fetch("/api/v1/importar", {
+        method: "POST",
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+        body: await arquivo.text(),
+      });
+      const corpo = await res.json().catch(() => null);
+      if (!res.ok) {
+        toastErro(corpo?.error ?? "Não foi possível importar o arquivo.");
+        return;
+      }
+      const r = corpo as ResultadoImportacao;
+      const nome = NOME_SCANNER[r.formato];
+      if (r.achados.length === 0) {
+        toastAviso(`O arquivo do ${nome} não tem achados acima de informativo.`);
+        return;
+      }
+      const entraram = incluirAchados(r.achados);
+      setEng((atual) =>
+        atual.ferramentas.toLowerCase().includes(nome.toLowerCase())
+          ? atual
+          : { ...atual, ferramentas: atual.ferramentas.trim() ? `${atual.ferramentas.trim()}, ${nome}` : nome },
+      );
+      const detalhes = [
+        `${r.ocorrencias} ocorrência${r.ocorrencias === 1 ? "" : "s"} agrupada${r.ocorrencias === 1 ? "" : "s"}`,
+        r.informativosIgnorados ? `${r.informativosIgnorados} informativo(s) ignorado(s)` : "",
+        r.truncado || entraram < r.achados.length ? "só os mais graves couberam no limite de 50" : "",
+      ].filter(Boolean);
+      sucesso(
+        `${entraram} achado${entraram === 1 ? "" : "s"} importado${entraram === 1 ? "" : "s"} do ${nome} (${detalhes.join("; ")}). Revise e valide antes de gerar.`,
+      );
+    } catch {
+      toastErro("Não foi possível conectar ao servidor. Verifique sua conexão.");
+    } finally {
+      setImportando(false);
+    }
+  }
+
   function atualizarAchado(indice: number, mudanca: Partial<AchadoEntrada>) {
     setAchados((atuais) =>
       atuais.map((a, i) => (i === indice ? { ...a, ...mudanca } : a)),
@@ -319,6 +404,16 @@ export default function Home() {
       }
 
       setRelatorio(corpo as Relatorio);
+
+      const protegidos = lerResumoProtecao(res.headers.get("X-Laudo-Protegidos"));
+      if (protegidos.length > 0) {
+        const total = protegidos.reduce((soma, p) => soma + p.quantidade, 0);
+        sucesso(
+          `Escudo de privacidade: ${total} dado${total === 1 ? "" : "s"} do cliente protegido${total === 1 ? "" : "s"} antes da IA (${protegidos
+            .map((p) => `${ROTULO_TIPO[p.tipo]}: ${p.quantidade}`)
+            .join(", ")}). A IA não viu nenhum deles.`,
+        );
+      }
     } catch {
       toastErro("Não foi possível conectar ao servidor. Verifique sua conexão.");
     } finally {
@@ -571,6 +666,51 @@ export default function Home() {
               </span>
             </CardHeader>
 
+            {/* Atalhos de entrada: scanner e biblioteca. */}
+            <div className="flex flex-col gap-3 border-b border-borda px-5 py-4 sm:flex-row sm:items-center sm:px-6">
+              <label
+                className={`inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md border border-accent/50 px-3 py-2 font-mono text-[11px] uppercase tracking-wider text-accent transition-colors duration-200 hover:bg-accent/10 ${
+                  importando ? "pointer-events-none opacity-60" : ""
+                }`}
+              >
+                {importando ? <Spinner /> : <span aria-hidden="true">↥</span>}
+                {importando ? "importando…" : "importar de scanner"}
+                <input
+                  type="file"
+                  accept=".nessus,.xml,.json"
+                  className="sr-only"
+                  disabled={importando}
+                  onChange={(e) => {
+                    const arquivo = e.target.files?.[0];
+                    e.target.value = "";
+                    if (arquivo) void importarArquivo(arquivo);
+                  }}
+                />
+              </label>
+              <Select
+                aria-label="Adicionar achado da biblioteca"
+                className="min-w-0 font-mono text-xs sm:max-w-xs sm:flex-1"
+                value=""
+                onChange={(e) => usarModelo(e.target.value)}
+              >
+                <option value="" disabled>
+                  + adicionar da biblioteca…
+                </option>
+                {CATEGORIAS.map((cat) => (
+                  <optgroup key={cat} label={cat}>
+                    {BIBLIOTECA.filter((m) => m.categoria === cat).map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.titulo}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </Select>
+              <p className="text-xs leading-relaxed text-texto-2 sm:ml-auto sm:max-w-[16rem] sm:text-right">
+                Nessus, Burp Suite e OWASP ZAP. Achados iguais em vários alvos viram um só.
+              </p>
+            </div>
+
             <div className="flex flex-col gap-5 p-5 sm:p-6">
               {achados.map((achado, i) => (
                 <div
@@ -733,6 +873,18 @@ export default function Home() {
               <Button variante="secundaria" onClick={adicionarAchado} className="self-start">
                 + adicionar achado
               </Button>
+
+              <p className="flex items-start gap-2 rounded-md border border-accent/25 bg-accent/[0.05] px-3 py-2.5 text-xs leading-relaxed text-texto-2">
+                <span aria-hidden="true" className="font-mono text-accent">
+                  ◈
+                </span>
+                <span>
+                  <span className="font-medium text-texto">Escudo de privacidade ativo.</span>{" "}
+                  Antes de enviar à IA, o Laudo troca IPs, domínios, e-mails, CPF/CNPJ,
+                  senhas, tokens e o nome do cliente por marcadores — e devolve os dados
+                  reais só no seu relatório.
+                </span>
+              </p>
 
               <div className="flex flex-col gap-3 border-t border-borda pt-5 sm:flex-row">
                 <Button

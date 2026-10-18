@@ -383,6 +383,7 @@ REGRAS
 11. Preencha "cliente" com "${entrada.cliente || "Não informado"}" e "data" no formato YYYY-MM-DD.
 12. Todo o texto deve ser pronto para entrega: nada de "aqui", "segue", "o modelo", "como exemplo", "sendo o caso".
 13. Copie "confianca" e "dataRetesteSugerida" exatamente como o pentester informou, sem recalcular. Se a data vier vazia, use "".
+14. Marcadores como [[IP-1]], [[HOST-2]], [[CLIENTE-1]] ou [[SEGREDO-1]] substituem dados confidenciais do cliente. Copie cada marcador exatamente como aparece, com os colchetes duplos, onde ele fizer sentido no texto. Nunca invente, traduza, explique ou remova marcadores.
 
 Responda SOMENTE com o JSON.`;
 }

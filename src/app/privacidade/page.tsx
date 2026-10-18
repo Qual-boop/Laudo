@@ -29,9 +29,14 @@ export default function Privacidade() {
           a sua conta. Apagar a conta apaga tudo (cascata no banco).
         </p>
         <p>
-          <strong className="text-texto">IA:</strong> o conteúdo dos achados é
-          enviado ao provedor de IA na geração. Sem analytics, sem cookies de
-          terceiros, sem rastreamento.
+          <strong className="text-texto">IA:</strong> na geração, o conteúdo dos
+          achados é enviado ao provedor de IA (Google Gemini; Groq como reserva),
+          que pode processá-lo fora do Brasil. Antes do envio, o Escudo de
+          privacidade substitui IPs, domínios, e-mails, CPF/CNPJ, números de
+          cartão, senhas, tokens, cookies e o nome do cliente por marcadores; a
+          correspondência fica só na memória da requisição e não é armazenada.
+          Nomes internos que não seguem esses padrões não são reconhecidos. Sem
+          analytics, sem cookies de terceiros, sem rastreamento.
         </p>
         <p>
           Pedidos de exportação/exclusão (LGPD):{" "}

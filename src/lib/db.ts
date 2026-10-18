@@ -11,7 +11,12 @@ import path from "path";
  * (docs/DEPLOY.md); até lá este arquivo segue como fonte de verdade local.
  */
 
-const db = new Database(path.join(process.cwd(), "pentest.db"));
+// SQLITE_PATH tira o banco da pasta do projeto: dentro dela, cada escrita
+// dispara o watcher do `next dev`, que recompila e recarrega a página em
+// ciclo. Sem a variável, mantém o caminho de sempre.
+const db = new Database(
+  process.env.SQLITE_PATH?.trim() || path.join(process.cwd(), "pentest.db"),
+);
 
 // Sem isso as cláusulas ON DELETE CASCADE abaixo seriam ignoradas:
 // o better-sqlite3 (e o SQLite) deixa FKs desligadas por padrão.

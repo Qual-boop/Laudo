@@ -3,6 +3,7 @@ import { SeverityBadge } from "@/components/SeverityBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { AcoesExportacaoAchado } from "@/components/verificacao/AcoesExportacaoAchado";
 import type { Plano } from "@/lib/planos";
+import { PRAZO_DIAS, rotuloPrazo, situacaoPrazo, type EstadoPrazo } from "@/lib/prazos";
 import { ROTULO_RESULTADO } from "@/lib/verificacao";
 import type { AchadoVerificavel, StatusVerificacao } from "@/lib/tipos";
 
@@ -22,6 +23,12 @@ const ICONE: Record<StatusVerificacao, { glifo: string; classe: string }> = {
   verificado: { glifo: "✓", classe: "bg-accent/15 text-accent" },
   "nao-corrigido": { glifo: "✗", classe: "bg-critica/15 text-critica" },
   pendente: { glifo: "○", classe: "bg-media/15 text-media" },
+};
+
+const COR_PRAZO: Record<EstadoPrazo, string> = {
+  atrasado: "border-critica/40 bg-critica/10 text-critica",
+  "vence-logo": "border-media/40 bg-media/10 text-media",
+  "no-prazo": "border-borda text-texto-2",
 };
 
 function dataCurta(iso: string | null): string | null {
@@ -65,6 +72,10 @@ export function AchadoVerificacaoCard({ achado, onRegistrar, onVerDelta, onCopia
       ? tempoRelativo(achado.data_reteste_sugerida)
       : null;
 
+  // Prazo de correção só importa enquanto o achado não foi verificado.
+  const prazo =
+    achado.status === "verificado" ? null : situacaoPrazo(achado.severidade, achado.criado_em);
+
   return (
     <article className="interativo brilho-hover rounded-xl border border-borda bg-superficie">
       <div className="flex flex-wrap items-start justify-between gap-3 px-5 py-4">
@@ -106,6 +117,14 @@ export function AchadoVerificacaoCard({ achado, onRegistrar, onVerDelta, onCopia
                 </>
               )}
             </p>
+            {prazo && (
+              <p
+                title={`Prazo de referência para severidade ${achado.severidade.toLowerCase()}: ${PRAZO_DIAS[achado.severidade]} dias a partir da entrega.`}
+                className={`mt-2 inline-flex items-center gap-1.5 rounded-sm border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider ${COR_PRAZO[prazo.estado]}`}
+              >
+                prazo de correção · {rotuloPrazo(prazo)} · {dataCurta(prazo.venceEm)}
+              </p>
+            )}
           </div>
         </div>
 

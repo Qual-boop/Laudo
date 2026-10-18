@@ -30,6 +30,7 @@ const ESPECIFICACOES = [
   "CVSS v3.1",
   "OWASP Top 10",
   "CWE",
+  "Nessus · Burp · ZAP",
   "SHA-256",
   "PDF A4",
   "Jira",
@@ -98,7 +99,7 @@ const RECURSOS: { titulo: string; texto: string; icone: NomeIcone }[] = [
   },
   {
     titulo: "Motor de verificação",
-    texto: "Status por achado — pendente, verificado ou não corrigido — com filtro e progresso.",
+    texto: "Status por achado, prazo de correção por severidade e alerta de atraso antes da reunião.",
     icone: "radar",
   },
   {
@@ -115,6 +116,21 @@ const RECURSOS: { titulo: string; texto: string; icone: NomeIcone }[] = [
     titulo: "IA que não te deixa na mão",
     texto: "Gemini, depois Groq, depois um relatório local. Você sempre sai com o documento.",
     icone: "camadas",
+  },
+  {
+    titulo: "Escudo de privacidade",
+    texto: "IPs, domínios, e-mails, CPF/CNPJ, senhas, tokens e o nome do cliente viram marcadores antes da IA — e voltam só no seu relatório.",
+    icone: "cadeado",
+  },
+  {
+    titulo: "Importação de scanners",
+    texto: "Nessus, Burp Suite e OWASP ZAP viram achados prontos. O mesmo problema em 30 hosts vira um achado só.",
+    icone: "exportar",
+  },
+  {
+    titulo: "Biblioteca em português",
+    texto: "Modelos dos achados mais comuns, de SQL Injection a JWT sem assinatura, com CWE e severidade típica.",
+    icone: "documento",
   },
 ];
 
@@ -202,7 +218,7 @@ const FAQ: { pergunta: string; resposta: string }[] = [
   {
     pergunta: "Os dados dos meus clientes vão para a IA?",
     resposta:
-      "O conteúdo dos achados é enviado ao provedor de IA (Google Gemini; Groq como reserva) no momento da geração, e pode ser processado fora do Brasil. O Laudo não usa analytics nem cookies de terceiros. Recomendamos anonimizar dados sensíveis antes de gerar — detalhes na página de Privacidade.",
+      "Os dados identificáveis, não. Antes de cada geração, o Escudo de privacidade troca IPs, domínios, e-mails, CPF/CNPJ, cartões, senhas, tokens, cookies e o nome do cliente por marcadores como [[IP-1]]; a IA (Google Gemini; Groq como reserva, possivelmente fora do Brasil) recebe só o texto técnico mascarado, e os valores reais voltam apenas no seu relatório. Nomes internos que não seguem esses padrões — um sistema chamado \"Financeiro-SAP\", por exemplo — não são reconhecidos: revise o texto antes de gerar.",
   },
   {
     pergunta: "Em quais planos está o certificado?",
@@ -475,7 +491,7 @@ export default function Landing() {
           <div className={CONTAINER}>
             <Cabecalho
               sobretitulo="o que está incluso"
-              titulo="Tudo o que um engagement precisa depois do teste."
+              titulo="Tudo o que um engagement precisa, do scan ao certificado."
             />
             <ul className="mt-14 grid grid-cols-1 gap-x-10 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
               {RECURSOS.map((r) => (

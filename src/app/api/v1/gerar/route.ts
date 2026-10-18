@@ -1,4 +1,5 @@
 import { exigirUsuario, erroApi } from "@/lib/api-auth";
+import { EscudoPrivacidade } from "@/lib/anonimizacao";
 import { gerarRelatorio } from "@/lib/ia";
 import { lerUso, verificarLimite } from "@/lib/limites";
 import { normalizarPlano } from "@/lib/planos";
@@ -39,5 +40,12 @@ export async function POST(request: Request) {
     );
   }
 
-  return Response.json(await gerarRelatorio(v.dados));
+  // Escudo de privacidade: a IA só vê marcadores; os dados reais voltam
+  // aqui, depois da resposta. A tabela de troca morre com a requisição.
+  const escudo = new EscudoPrivacidade([v.dados.cliente]);
+  const relatorio = escudo.restaurar(await gerarRelatorio(escudo.anonimizar(v.dados)));
+
+  return Response.json(relatorio, {
+    headers: { "X-Laudo-Protegidos": escudo.cabecalho() },
+  });
 }

@@ -92,7 +92,7 @@ const FAQ: { pergunta: string; resposta: string }[] = [
   {
     pergunta: "Meus dados saem do país?",
     resposta:
-      "Em parte: na geração do relatório, o conteúdo dos achados é enviado ao provedor de IA (Google Gemini; Groq como reserva), que pode processá-lo fora do Brasil. Não usamos analytics nem cookies de terceiros. Recomendamos anonimizar dados sensíveis antes de gerar — detalhes na página de Privacidade.",
+      "Só o texto técnico mascarado. Na geração, o Escudo de privacidade troca IPs, domínios, e-mails, CPF/CNPJ, cartões, senhas, tokens e o nome do cliente por marcadores; esse texto vai ao provedor de IA (Google Gemini; Groq como reserva), que pode processá-lo fora do Brasil, e os dados reais voltam só no seu relatório. Nomes internos fora desses padrões não são reconhecidos — revise antes de gerar. Não usamos analytics nem cookies de terceiros.",
   },
 ];
 
