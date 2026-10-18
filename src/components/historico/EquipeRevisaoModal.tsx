@@ -170,7 +170,7 @@ export function EquipeRevisaoModal({ relatorioId, titulo, onFechar }: Props) {
                     required
                     value={email}
                     onChange={(ev) => setEmail(ev.target.value)}
-                    placeholder="e-mail do colega com conta no Laudo"
+                    placeholder="e-mail do colega com conta no Provafix"
                     aria-label="E-mail do colega"
                     className="flex-1 rounded-md border border-borda bg-fundo px-3 py-2 text-sm text-texto placeholder:text-texto-2/50"
                   />

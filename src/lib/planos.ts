@@ -8,7 +8,7 @@ export type LimitesPlano = {
   retestesMes: number;
   exportacaoAvancada: boolean; // Jira/GitHub
   certificado: boolean;
-  marcaDagua: boolean; // "Gerado com Laudo Free" no PDF
+  marcaDagua: boolean; // "Gerado com Provafix Free" no PDF
   historicoDias: number; // Infinity = ilimitado
 };
 

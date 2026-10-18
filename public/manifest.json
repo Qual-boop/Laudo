@@ -1,6 +1,6 @@
 {
-  "name": "Laudo — Assurance para pentest",
-  "short_name": "Laudo",
+  "name": "Provafix — Assurance para pentest",
+  "short_name": "Provafix",
   "description": "Relatório de pentest com IA, reteste com evidência e certificado de correção",
   "start_url": "/",
   "display": "standalone",

@@ -322,7 +322,7 @@ export function kitLocal(a: AchadoParaKit, stack: Stack): KitCorrecao {
           comando,
         }
       : {
-          descricao: "Repita os passos de reprodução do relatório e registre a nova evidência no Laudo.",
+          descricao: "Repita os passos de reprodução do relatório e registre a nova evidência no Provafix.",
           comando: "",
         },
     checklist: guiaDe(a.cwe).checklist,
@@ -411,7 +411,7 @@ export function kitEmMarkdown(k: KitCorrecao, titulo: string): string {
     k.reteste.comando ? `### Reteste\n${k.reteste.descricao}\n\n${bloco(k.reteste.comando, "bash")}` : "",
     `### Checklist\n${k.checklist.map((c) => `- [ ] ${c}`).join("\n")}`,
     `### Referências\n${k.referencias.map((r) => `- ${r}`).join("\n")}`,
-    "_Gerado pelo Laudo — o código é ilustrativo do padrão de correção; adapte ao seu projeto._",
+    "_Gerado pelo Provafix — o código é ilustrativo do padrão de correção; adapte ao seu projeto._",
   ];
   return partes.filter(Boolean).join("\n\n");
 }

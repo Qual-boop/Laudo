@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { SeletorPrecos } from "@/components/precos/SeletorPrecos";
 
 export const metadata: Metadata = {
-  title: "Planos e preços — Laudo",
+  title: "Planos e preços — Provafix",
   description:
     "Comece grátis e faça upgrade para Pro ou Team quando precisar de relatórios ilimitados, exportação Jira/GitHub e certificado de correção.",
 };

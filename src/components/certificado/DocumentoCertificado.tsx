@@ -123,7 +123,7 @@ export function DocumentoCertificado({ certificado, acoes, children }: Props) {
             <p className="font-mono text-[10px] uppercase tracking-widest text-texto-2">
               emitido por
             </p>
-            <p className="mt-1 text-sm font-medium text-texto">Laudo</p>
+            <p className="mt-1 text-sm font-medium text-texto">Provafix</p>
             <p className="font-mono text-[11px] text-texto-2">
               assurance de pentest · v0.2
             </p>

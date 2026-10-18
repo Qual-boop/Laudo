@@ -1,4 +1,4 @@
-# Laudo
+# Provafix
 
 **Gerador de relatórios de pentest em segundos.** Transforme achados de teste em
 relatórios profissionais com IA, certificados de correção, exportação para Jira/

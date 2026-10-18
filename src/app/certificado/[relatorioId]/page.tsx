@@ -43,22 +43,22 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const { relatorioId } = await params;
   const id = Number(relatorioId);
   if (!Number.isInteger(id) || id <= 0) {
-    return { title: "Certificado de correção — Laudo" };
+    return { title: "Certificado de correção — Provafix" };
   }
 
   // Sem dono, sem metadados: o <title> vazaria cliente/título alheios.
   if (!(await visitanteEDono(id))) {
-    return { title: "Certificado de correção — Laudo" };
+    return { title: "Certificado de correção — Provafix" };
   }
 
   const certificado = await carregarCertificado(id);
   if (!certificado) {
-    return { title: "Certificado não encontrado — Laudo" };
+    return { title: "Certificado não encontrado — Provafix" };
   }
 
   const { relatorio } = certificado.dados;
   return {
-    title: `Certificado de correção — ${relatorio.cliente} — Laudo`,
+    title: `Certificado de correção — ${relatorio.cliente} — Provafix`,
     description: `Evidência de que os ${certificado.progresso.total} achados do relatório "${relatorio.titulo}" foram retestados e corrigidos. Emitido em ${certificado.dados.emitidoEm}.`,
   };
 }

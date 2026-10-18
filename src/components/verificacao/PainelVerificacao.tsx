@@ -65,6 +65,14 @@ export function PainelVerificacao({ onCopiar, onAviso, onResumo, plano = "free" 
   const [editando, setEditando] = useState<number | null>(null);
   const [deltaDe, setDeltaDe] = useState<DadosDelta | null>(null);
   const [filtro, setFiltro] = useState<Filtro>("todos");
+  // Comemoração curta quando um reteste comprova a correção.
+  const [comemoracao, setComemoracao] = useState<{ ref: string; faltam: number; chave: number } | null>(null);
+
+  useEffect(() => {
+    if (!comemoracao) return;
+    const t = setTimeout(() => setComemoracao(null), 6000);
+    return () => clearTimeout(t);
+  }, [comemoracao]);
 
   const carregar = useCallback(
     async (signal?: AbortSignal, silencioso = false) => {
@@ -108,6 +116,14 @@ export function PainelVerificacao({ onCopiar, onAviso, onResumo, plano = "free" 
     setAchados(proxima);
     contar(proxima);
     setEditando(null);
+    const antes = achados.find((a) => a.id === atualizado.id);
+    if (atualizado.status === "verificado" && antes?.status !== "verificado") {
+      setComemoracao({
+        ref: atualizado.achado_ref,
+        faltam: proxima.filter((a) => a.status !== "verificado").length,
+        chave: Date.now(),
+      });
+    }
     const delta = montarDelta(atualizado);
     if (delta) setDeltaDe(delta);
   }
@@ -154,6 +170,29 @@ export function PainelVerificacao({ onCopiar, onAviso, onResumo, plano = "free" 
   return (
     <div className="flex flex-col gap-5">
       <BarraProgresso verificados={verificados} total={total} />
+      {verificados < total && (
+        <p className="-mt-3 text-xs text-texto-2">
+          {verificados === 0 ? "Registre o primeiro reteste. " : ""}
+          Faltam <span className="font-medium text-texto">{total - verificados}</span>{" "}
+          {total - verificados === 1 ? "achado" : "achados"} para liberar o certificado de correção.
+        </p>
+      )}
+
+      {comemoracao && comemoracao.faltam > 0 && (
+        <div
+          key={comemoracao.chave}
+          role="status"
+          className="lp-brilho flex items-center gap-3 rounded-md border border-accent/40 bg-accent/[0.07] px-4 py-3"
+        >
+          <span className="lp-estalo flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-fundo">
+            ✓
+          </span>
+          <p className="text-sm text-texto">
+            <span className="font-mono text-accent">{comemoracao.ref}</span> comprovado corrigido.{" "}
+            {comemoracao.faltam === 1 ? "Falta só 1 para o certificado." : `Faltam ${comemoracao.faltam} para o certificado.`}
+          </p>
+        </div>
+      )}
 
       {/* Indicadores para a reunião de acompanhamento. */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -228,10 +267,21 @@ export function PainelVerificacao({ onCopiar, onAviso, onResumo, plano = "free" 
       )}
 
       {total > 0 && verificados === total && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-accent/40 bg-accent/10 px-5 py-4">
-          <p className="text-sm text-texto">
-            Ciclo concluído — todos os achados foram verificados. Emita o
-            certificado de correção.
+        <div
+          key={comemoracao?.chave ?? "ciclo"}
+          className="lp-brilho relative flex flex-wrap items-center justify-between gap-3 rounded-md border border-accent/40 bg-accent/10 px-5 py-4"
+        >
+          <p className="flex items-center gap-3 text-sm text-texto">
+            <span
+              aria-hidden="true"
+              className={`${comemoracao ? "lp-carimbo" : ""} flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-accent font-mono text-[8px] font-bold uppercase leading-tight text-accent`}
+            >
+              100%
+            </span>
+            <span>
+              <span className="font-semibold">Ciclo fechado.</span> Todos os achados foram comprovados
+              corrigidos — emita o certificado de correção.
+            </span>
           </p>
           <div className="flex flex-wrap items-center gap-2">
             {certificados.map((id) => (

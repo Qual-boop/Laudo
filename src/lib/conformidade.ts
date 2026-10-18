@@ -4,7 +4,7 @@ import type { ResultadoReteste, Severidade, StatusVerificacao } from "@/lib/tipo
 /**
  * Quadro de evidências para auditoria (PCI DSS, ISO/IEC 27001, LGPD e
  * Banco Central). Cada linha cita o requisito e diz qual evidência o
- * Laudo registrou — nunca afirma "conforme": quem avalia é o auditor/QSA
+ * Provafix registrou — nunca afirma "conforme": quem avalia é o auditor/QSA
  * e o responsável pela conformidade.
  */
 
@@ -48,7 +48,7 @@ export type DadosConformidade = {
 };
 
 export const AVISO_CONFORMIDADE =
-  "Este quadro organiza as evidências registradas no Laudo para apoiar auditorias e due diligence. Não é atestado de conformidade, certificação nem parecer jurídico: a avaliação de cada requisito cabe ao auditor (QSA, no PCI DSS) e ao responsável pela conformidade da organização.";
+  "Este quadro organiza as evidências registradas no Provafix para apoiar auditorias e due diligence. Não é atestado de conformidade, certificação nem parecer jurídico: a avaliação de cada requisito cabe ao auditor (QSA, no PCI DSS) e ao responsável pela conformidade da organização.";
 
 const DIA = 86_400_000;
 

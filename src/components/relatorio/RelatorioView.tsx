@@ -17,7 +17,7 @@ export function RelatorioView({
   marcaDagua = false,
 }: {
   relatorio: DadosRelatorio;
-  /** Plano free: imprime "Gerado com Laudo Free" no documento. */
+  /** Plano free: imprime "Gerado com Provafix Free" no documento. */
   marcaDagua?: boolean;
 }) {
   const { capa, sumarioExecutivo, escopoMetodologia, achados, recomendacoesGerais, conclusao } = relatorio;
@@ -29,7 +29,7 @@ export function RelatorioView({
           aria-hidden="true"
           className="rounded-md border border-dashed border-media/50 bg-media/10 px-4 py-2 text-center font-mono text-[11px] uppercase tracking-widest text-media print:border-media print:text-media"
         >
-          Gerado com Laudo Free — assine o Pro para remover
+          Gerado com Provafix Free — assine o Pro para remover
         </p>
       )}
       <div className="print-cabecalho border-b border-borda pb-1.5 text-[9px] tracking-wide text-texto-2/70">
@@ -47,7 +47,7 @@ export function RelatorioView({
           <span>
             {capa.classificacao} · v{capa.versao}
           </span>
-          <span>Gerado com Laudo</span>
+          <span>Gerado com Provafix</span>
         </div>
       </div>
 

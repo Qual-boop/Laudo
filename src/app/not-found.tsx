@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Página não encontrada — Laudo",
+  title: "Página não encontrada — Provafix",
   description: "A página solicitada não existe ou foi movida.",
 };
 

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Logo } from "@/components/Logo";
 import { Icone, type NomeIcone } from "@/components/landing/Icone";
-import { PainelHero } from "@/components/landing/PainelHero";
+import { DemoReteste } from "@/components/landing/DemoReteste";
 import { CicloAssurance } from "@/components/landing/CicloAssurance";
 import { CertificadoExemplo } from "@/components/landing/CertificadoExemplo";
 import {
@@ -15,7 +15,7 @@ import { LIMITES } from "@/lib/planos";
 import { EMAIL_CONTATO, REPOSITORIO, URL_SITE } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: { absolute: "Laudo — Relatório de pentest, reteste e certificado de correção" },
+  title: { absolute: "Provafix — Relatório de pentest, reteste e certificado de correção" },
   description:
     "Gere o relatório de pentest com IA, registre o reteste com evidência e entregue ao cliente um certificado de correção com hash SHA-256. Em português, grátis para começar.",
   alternates: { canonical: "/" },
@@ -69,7 +69,7 @@ const PROVAS_CERTIFICADO: { titulo: string; texto: string; icone: NomeIcone }[] 
   {
     titulo: "Só existe com 100% verificado",
     texto:
-      "Enquanto houver achado pendente ou não corrigido, o Laudo mostra o que falta — e não emite o selo.",
+      "Enquanto houver achado pendente ou não corrigido, o Provafix mostra o que falta — e não emite o selo.",
     icone: "check",
   },
   {
@@ -251,7 +251,7 @@ const FAQ: { pergunta: string; resposta: string }[] = [
   {
     pergunta: "A IA escreve o relatório por mim?",
     resposta:
-      "Ela escreve o rascunho: sumário executivo, CVSS, categoria OWASP, passos de reprodução e recomendações. Você revisa, ajusta e decide o que vai para o cliente. Se o provedor de IA estiver fora do ar, o Laudo tenta o próximo e, em último caso, gera um relatório local.",
+      "Ela escreve o rascunho: sumário executivo, CVSS, categoria OWASP, passos de reprodução e recomendações. Você revisa, ajusta e decide o que vai para o cliente. Se o provedor de IA estiver fora do ar, o Provafix tenta o próximo e, em último caso, gera um relatório local.",
   },
   {
     pergunta: "Os dados dos meus clientes vão para a IA?",
@@ -291,7 +291,7 @@ function Cabecalho({
   centro?: boolean;
 }) {
   return (
-    <div className={centro ? "mx-auto max-w-3xl text-center" : "max-w-3xl"}>
+    <div className={`lp-revelar ${centro ? "mx-auto max-w-3xl text-center" : "max-w-3xl"}`}>
       <p className="font-mono text-xs uppercase tracking-[0.18em] text-accent">{sobretitulo}</p>
       <h2 className="mt-4 text-balance text-[2rem] font-semibold leading-[1.1] tracking-[-0.025em] text-texto sm:text-[2.75rem]">
         {titulo}
@@ -331,8 +331,26 @@ const JSON_LD = {
   "@context": "https://schema.org",
   "@graph": [
     {
+      "@type": "Organization",
+      "@id": `${URL_SITE}/#organizacao`,
+      name: "Provafix",
+      url: URL_SITE,
+      logo: `${URL_SITE}/icon.svg`,
+      email: EMAIL_CONTATO,
+      sameAs: [REPOSITORIO],
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${URL_SITE}/#site`,
+      name: "Provafix",
+      url: URL_SITE,
+      inLanguage: "pt-BR",
+      publisher: { "@id": `${URL_SITE}/#organizacao` },
+    },
+    {
       "@type": "SoftwareApplication",
-      name: "Laudo",
+      name: "Provafix",
+      publisher: { "@id": `${URL_SITE}/#organizacao` },
       url: URL_SITE,
       applicationCategory: "SecurityApplication",
       operatingSystem: "Web",
@@ -367,9 +385,9 @@ export default function Landing() {
       {/* ---------------------------------------------------- Cabeçalho */}
       <header className="no-print sticky top-0 z-20 border-b border-white/[0.06] bg-fundo/75 backdrop-blur-xl">
         <div className={`${CONTAINER} flex h-16 items-center gap-2 sm:gap-3`}>
-          <a href="/" className="flex items-center gap-2.5" aria-label="Laudo — início">
+          <a href="/" className="flex items-center gap-2.5" aria-label="Provafix — início">
             <Logo className="h-8 w-8 shrink-0 text-accent" />
-            <span className="text-lg font-semibold tracking-tight text-texto">Laudo</span>
+            <span className="text-lg font-semibold tracking-tight text-texto">Provafix</span>
           </a>
           <nav aria-label="Seções" className="ml-8 hidden items-center gap-7 text-sm text-texto-2 lg:flex">
             <a href="#como-funciona" className="transition-colors hover:text-texto">Como funciona</a>
@@ -382,7 +400,8 @@ export default function Landing() {
               Entrar
             </a>
             <a href="/cadastro" className="lp-btn-primario lp-btn-pequeno">
-              Começar grátis
+              <span className="sm:hidden">Começar</span>
+              <span className="hidden sm:inline">Começar grátis</span>
             </a>
           </div>
         </div>
@@ -395,13 +414,13 @@ export default function Landing() {
             <div>
               <p className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-texto-2">
                 <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-                Beta aberto · assurance para pentest
+                Provafix · assurance para pentest · beta aberto
               </p>
               <h1 className="mt-7 text-[2.9rem] font-semibold leading-[1.02] tracking-[-0.035em] text-texto sm:text-[4rem] lg:text-[4.4rem]">
                 Prove que as correções <Destaque>funcionaram.</Destaque>
               </h1>
               <p className="mt-7 max-w-xl text-lg leading-relaxed text-texto-2 sm:text-xl">
-                O Laudo leva o pentest até o fim: relatório com IA, reteste com
+                O Provafix leva o pentest até o fim: relatório com IA, reteste com
                 evidência e um <span className="text-texto">certificado de correção</span>{" "}
                 com hash verificável.
               </p>
@@ -419,7 +438,7 @@ export default function Landing() {
               </p>
             </div>
 
-            <PainelHero />
+            <DemoReteste />
           </div>
         </section>
 
@@ -447,7 +466,7 @@ export default function Landing() {
               }
               texto="Você entrega o relatório, o cliente paga e o time de dev diz que corrigiu. Sem reteste com evidência, isso é uma afirmação — e no próximo ano a pergunta volta: quais continuam abertas?"
             />
-            <div className="mt-16">
+            <div className="lp-revelar mt-16">
               <CicloAssurance />
             </div>
           </div>
@@ -471,7 +490,7 @@ export default function Landing() {
                 return (
                   <li
                     key={p.titulo}
-                    className="grid grid-cols-1 items-center gap-8 lg:grid-cols-2 lg:gap-16"
+                    className="lp-revelar grid grid-cols-1 items-center gap-8 lg:grid-cols-2 lg:gap-16"
                   >
                     <div className={i % 2 === 1 ? "lg:order-2" : ""}>
                       <span className="font-mono text-sm text-accent">0{i + 1}</span>
@@ -504,7 +523,7 @@ export default function Landing() {
               }
               texto="O certificado de correção é o documento que fecha o ciclo: o que foi encontrado, quando foi retestado e a prova de que foi corrigido."
             />
-            <div className="mx-auto mt-14 max-w-4xl">
+            <div className="lp-revelar mx-auto mt-14 max-w-4xl">
               <CertificadoExemplo />
               <p className="mt-4 text-center text-xs text-texto-2">
                 Dados fictícios. O hash, não: é o SHA-256 real do conteúdo acima.
@@ -533,7 +552,7 @@ export default function Landing() {
             />
             <ul className="mt-14 grid grid-cols-1 gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
               {RECURSOS.map((r) => (
-                <li key={r.titulo} className="border-t border-white/[0.08] pt-6">
+                <li key={r.titulo} className="lp-revelar border-t border-white/[0.08] pt-6">
                   <Icone nome={r.icone} className="h-6 w-6 text-accent" />
                   <h3 className="mt-4 text-base font-semibold text-texto">{r.titulo}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-texto-2">{r.texto}</p>
@@ -549,7 +568,7 @@ export default function Landing() {
             <Cabecalho sobretitulo="para quem é" titulo="Feito para quem assina o pentest." />
             <ul className="mt-14 grid grid-cols-1 gap-5 lg:grid-cols-3">
               {PUBLICO.map((p) => (
-                <li key={p.titulo} className="lp-painel flex flex-col rounded-2xl p-7">
+                <li key={p.titulo} className="lp-painel lp-elevar lp-revelar flex flex-col rounded-2xl p-7">
                   <Icone nome={p.icone} className="h-6 w-6 text-texto-2" />
                   <h3 className="mt-5 text-lg font-semibold text-texto">{p.titulo}</h3>
                   <p className="mt-2 flex-1 text-sm leading-relaxed text-texto-2">{p.texto}</p>
@@ -585,7 +604,7 @@ export default function Landing() {
                       <span className="sr-only">Recurso</span>
                     </th>
                     <th scope="col" className="w-36 rounded-t-xl bg-accent/[0.07] px-4 py-4 text-center font-semibold text-accent">
-                      Laudo
+                      Provafix
                     </th>
                     <th scope="col" className="w-36 px-4 py-4 text-center font-normal text-texto-2">
                       Gerador de relatório
@@ -639,7 +658,7 @@ export default function Landing() {
               {PLANOS.map((p) => (
                 <article
                   key={p.nome}
-                  className={`relative flex flex-col rounded-2xl p-8 ${
+                  className={`lp-elevar relative flex flex-col rounded-2xl p-8 ${
                     p.destaque
                       ? "lp-painel ring-1 ring-accent/40 shadow-[0_0_80px_-30px_var(--color-accent)]"
                       : "border border-white/[0.08]"
@@ -746,9 +765,9 @@ export default function Landing() {
       <footer className="border-t border-white/[0.06]">
         <div className={`${CONTAINER} grid grid-cols-2 gap-10 py-14 sm:grid-cols-4`}>
           <div className="col-span-2 sm:col-span-1">
-            <a href="/" className="flex items-center gap-2.5" aria-label="Laudo — início">
+            <a href="/" className="flex items-center gap-2.5" aria-label="Provafix — início">
               <Logo className="h-7 w-7 text-accent" />
-              <span className="font-semibold tracking-tight text-texto">Laudo</span>
+              <span className="font-semibold tracking-tight text-texto">Provafix</span>
             </a>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-texto-2">
               Assurance para pentest: do relatório à prova de correção.
@@ -776,7 +795,7 @@ export default function Landing() {
         </div>
         <div className="border-t border-white/[0.06]">
           <p className={`${CONTAINER} py-6 font-mono text-[11px] text-texto-2/60`}>
-            © 2026 Laudo · feito no Brasil
+            © 2026 Provafix · feito no Brasil
           </p>
         </div>
       </footer>

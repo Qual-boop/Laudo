@@ -1,5 +1,5 @@
 /**
- * Logo oficial do Laudo — "O loop que conclui" (vencedora da Fase 1).
+ * Logo oficial do Provafix — "O loop que conclui" (vencedora da Fase 1).
  * Um anel quase fechado (o ciclo do pentest) com uma abertura no canto
  * superior direito, por onde escapa o braço longo do checkmark: o ciclo
  * só se completa com a prova da correção.
@@ -10,7 +10,7 @@ export function Logo({ className = "h-10 w-10" }: { className?: string }) {
       viewBox="0 0 48 48"
       fill="none"
       role="img"
-      aria-label="Laudo"
+      aria-label="Provafix"
       className={`transition-transform duration-300 hover:rotate-[10deg] ${className}`}
     >
       {/* anel com abertura entre -55° e -15° (canto superior direito) */}

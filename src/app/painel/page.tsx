@@ -881,7 +881,7 @@ export default function Home() {
                 </span>
                 <span>
                   <span className="font-medium text-texto">Escudo de privacidade ativo.</span>{" "}
-                  Antes de enviar à IA, o Laudo troca IPs, domínios, e-mails, CPF/CNPJ,
+                  Antes de enviar à IA, o Provafix troca IPs, domínios, e-mails, CPF/CNPJ,
                   senhas, tokens e o nome do cliente por marcadores — e devolve os dados
                   reais só no seu relatório.
                 </span>

@@ -33,7 +33,7 @@ async function chamar<T>(
     headers: {
       "Content-Type": "application/json",
       access_token: chave,
-      "User-Agent": "Laudo/1.0.0",
+      "User-Agent": "Provafix/1.0.0",
     },
     body: corpo === undefined ? undefined : JSON.stringify(corpo),
     signal: AbortSignal.timeout(30_000),
@@ -107,8 +107,8 @@ export async function criarCheckout(params: {
       : {}),
     items: [
       {
-        name: `Laudo ${plano} (${ciclo})`,
-        description: "Assinatura Laudo",
+        name: `Provafix ${plano} (${ciclo})`,
+        description: "Assinatura Provafix",
         quantity: 1,
         value: VALORES[params.planoCiclo],
       },

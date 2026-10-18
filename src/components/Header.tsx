@@ -32,7 +32,7 @@ export function Header({ aba, onAba, contagem, pendentes }: Props) {
         <div className="flex items-center gap-3">
           <Logo className="h-8 w-8 shrink-0 text-accent" />
           <span className="text-base font-bold tracking-tight text-texto">
-            Laudo
+            Provafix
           </span>
         </div>
 

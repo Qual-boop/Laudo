@@ -20,8 +20,8 @@ type Params = PageProps<"/c/[token]">["params"];
  * prévia de link e histórico não carregam cliente nem título do relatório.
  */
 export const metadata: Metadata = {
-  title: "Certificado de correção", // o layout acrescenta "| Laudo"
-  description: "Certificado de correção de pentest emitido pelo Laudo.",
+  title: "Certificado de correção", // o layout acrescenta "| Provafix"
+  description: "Certificado de correção de pentest emitido pelo Provafix.",
   robots: { index: false, follow: false, nocache: true },
   referrer: "no-referrer",
 };

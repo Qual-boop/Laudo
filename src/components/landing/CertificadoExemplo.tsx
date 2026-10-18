@@ -67,7 +67,7 @@ export function CertificadoExemplo() {
         <header className="flex items-center gap-3">
           <Logo className="h-8 w-8 text-[#047857]" />
           <div>
-            <p className="text-sm font-semibold tracking-tight text-[#0f172a]">Laudo</p>
+            <p className="text-sm font-semibold tracking-tight text-[#0f172a]">Provafix</p>
             <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#64748b]">
               certificado de correção
             </p>

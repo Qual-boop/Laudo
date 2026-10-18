@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 
 /* Imagem de compartilhamento (WhatsApp, LinkedIn, X...). Gerada no build. */
 
-export const alt = "Laudo — Prove que as correções funcionaram";
+export const alt = "Provafix — Prove que as correções funcionaram";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -41,7 +41,7 @@ export default function Image() {
               strokeLinejoin="round"
             />
           </svg>
-          <span style={{ fontSize: 40, fontWeight: 700, letterSpacing: -1 }}>Laudo</span>
+          <span style={{ fontSize: 40, fontWeight: 700, letterSpacing: -1 }}>Provafix</span>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column" }}>

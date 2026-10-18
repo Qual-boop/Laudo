@@ -15,7 +15,7 @@ export default function GlobalError({ error, reset }: Props) {
   return (
     <html lang="pt-BR">
       <head>
-        <title>Erro crítico — Laudo</title>
+        <title>Erro crítico — Provafix</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <style dangerouslySetInnerHTML={{
           __html: `

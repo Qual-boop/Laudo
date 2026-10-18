@@ -8,7 +8,7 @@ const ETAPAS: { nome: string; texto: string; icone: NomeIcone }[] = [
   { nome: "Certificado", texto: "Prova com hash SHA-256", icone: "hash" },
 ];
 
-/** Onde o pentest costuma parar (no PDF) vs. onde o Laudo termina (na prova). */
+/** Onde o pentest costuma parar (no PDF) vs. onde o Provafix termina (na prova). */
 export function CicloAssurance() {
   return (
     <div>

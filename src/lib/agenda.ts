@@ -32,7 +32,7 @@ export function eventosDaAgenda(achados: AchadoVerificavel[], hoje: Date = new D
         uid: `laudo-reteste-${a.id}@laudo`,
         data: a.data_reteste_sugerida,
         titulo: `Reteste: ${rotulo}`,
-        descricao: `Cliente: ${a.cliente}. Severidade ${SEV[a.severidade]}. Registre o resultado no Laudo para atualizar o status e o certificado.`,
+        descricao: `Cliente: ${a.cliente}. Severidade ${SEV[a.severidade]}. Registre o resultado no Provafix para atualizar o status e o certificado.`,
       });
     }
     const prazo = situacaoPrazo(a.severidade, a.criado_em, hoje);
@@ -94,10 +94,10 @@ export function gerarIcs(eventos: EventoAgenda[], agora: Date = new Date()): str
   const linhas = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Laudo//Agenda de retestes//PT-BR",
+    "PRODID:-//Provafix//Agenda de retestes//PT-BR",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    "X-WR-CALNAME:Laudo — retestes e prazos",
+    "X-WR-CALNAME:Provafix — retestes e prazos",
   ];
   for (const e of eventos) {
     linhas.push(

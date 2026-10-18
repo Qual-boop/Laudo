@@ -12,7 +12,7 @@ const REGRA_COMPARTILHAR = { limite: 30, janelaMs: 60 * 60_000 };
 
 /** Mesma resposta exista ou não a conta: compartilhar não vira enumeração de e-mails. */
 const MENSAGEM_ENVIO =
-  "Se houver uma conta Laudo com esse e-mail, ela já tem acesso de revisão a este relatório.";
+  "Se houver uma conta Provafix com esse e-mail, ela já tem acesso de revisão a este relatório.";
 
 async function relatorioId(ctx: Ctx): Promise<number | null> {
   const n = Number((await ctx.params).id);

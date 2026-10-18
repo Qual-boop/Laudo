@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { Logo } from "@/components/Logo";
 
 export const metadata: Metadata = {
-  title: "Privacidade — Laudo",
-  description: "Como o Laudo trata seus dados (beta).",
+  title: "Privacidade — Provafix",
+  description: "Como o Provafix trata seus dados (beta).",
 };
 
 export default function Privacidade() {
@@ -11,7 +11,7 @@ export default function Privacidade() {
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-12 sm:px-6">
       <div className="mb-8 flex items-center gap-3">
         <Logo className="h-8 w-8 text-accent" />
-        <span className="text-lg font-bold tracking-tight text-texto">Laudo</span>
+        <span className="text-lg font-bold tracking-tight text-texto">Provafix</span>
       </div>
       <p className="font-mono text-[11px] uppercase tracking-widest text-accent">
         Privacidade · beta

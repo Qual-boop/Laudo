@@ -36,7 +36,7 @@ ${blocoReteste(achado)}
 *Total de retestes:* ${achado.total_retestes}
 
 ---
-Gerado por Laudo
+Gerado por Provafix
 `.trim();
 }
 

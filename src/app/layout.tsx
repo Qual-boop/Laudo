@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import { ProvedorSessao } from "@/components/ProvedorSessao";
-import { URL_SITE } from "@/lib/site";
+import { URL_SITE, VERIFICACAO_GOOGLE } from "@/lib/site";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,7 +31,7 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-const TITULO = "Laudo — Relatório de pentest, reteste e certificado de correção";
+const TITULO = "Provafix — Relatório de pentest, reteste e certificado de correção";
 const DESCRICAO =
   "Gere o relatório de pentest com IA, registre o reteste com evidência e entregue ao cliente um certificado de correção com hash SHA-256. Em português, grátis para começar.";
 
@@ -39,11 +39,13 @@ export const metadata: Metadata = {
   metadataBase: new URL(URL_SITE),
   title: {
     default: TITULO,
-    template: "%s | Laudo",
+    template: "%s | Provafix",
   },
   description: DESCRICAO,
-  applicationName: "Laudo",
+  applicationName: "Provafix",
+  ...(VERIFICACAO_GOOGLE ? { verification: { google: VERIFICACAO_GOOGLE } } : {}),
   keywords: [
+    "Provafix",
     "relatório de pentest",
     "teste de intrusão",
     "reteste de vulnerabilidades",
@@ -53,9 +55,9 @@ export const metadata: Metadata = {
     "OWASP",
     "pentest freelancer",
   ],
-  authors: [{ name: "Laudo" }],
-  creator: "Laudo",
-  publisher: "Laudo",
+  authors: [{ name: "Provafix" }],
+  creator: "Provafix",
+  publisher: "Provafix",
   robots: {
     index: true,
     follow: true,
@@ -72,7 +74,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "pt_BR",
     url: "/",
-    siteName: "Laudo",
+    siteName: "Provafix",
     title: TITULO,
     description: DESCRICAO,
   },

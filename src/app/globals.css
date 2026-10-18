@@ -540,3 +540,85 @@ textarea::placeholder {
     transform: none;
   }
 }
+
+/* ============================================================
+   Recompensa e movimento (landing + painel).
+   Microinterações que celebram o progresso real — nada de
+   contadores falsos ou urgência inventada.
+   ============================================================ */
+
+/* Ponto "pendente" respirando. */
+@keyframes lp-pulsar {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.lp-pulsar { animation: lp-pulsar 1.6s ease-in-out infinite; }
+
+/* Anel que chama para a ação (some depois de 3 ciclos). */
+@keyframes lp-chamar {
+  0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-accent) 55%, transparent), 0 12px 40px -14px var(--color-accent); }
+  70% { box-shadow: 0 0 0 10px color-mix(in oklab, var(--color-accent) 0%, transparent), 0 12px 40px -14px var(--color-accent); }
+  100% { box-shadow: 0 0 0 0 transparent, 0 12px 40px -14px var(--color-accent); }
+}
+.lp-chamar { animation: lp-chamar 1.8s ease-out 1s 3; }
+
+/* Check que "estala" ao virar verificado. */
+@keyframes lp-estalo {
+  0% { transform: scale(0.4); }
+  60% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+.lp-estalo { animation: lp-estalo 420ms cubic-bezier(0.2, 0.8, 0.3, 1.4) both; }
+
+/* Selo batendo no certificado. */
+@keyframes lp-carimbo {
+  0% { opacity: 0; transform: scale(2.4) rotate(-28deg); }
+  55% { opacity: 1; transform: scale(0.92) rotate(-14deg); }
+  75% { transform: scale(1.06) rotate(-12deg); }
+  100% { opacity: 1; transform: scale(1) rotate(-12deg); }
+}
+.lp-carimbo { animation: lp-carimbo 620ms cubic-bezier(0.2, 0.7, 0.2, 1) 120ms both; transform: rotate(-12deg); }
+
+/* Brilho que atravessa uma superfície concluída (banner de ciclo fechado). */
+@keyframes lp-brilho {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+.lp-brilho {
+  background-image: linear-gradient(100deg, transparent 30%, color-mix(in oklab, var(--color-accent) 18%, transparent) 50%, transparent 70%);
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: lp-brilho 1.6s ease-out 1;
+}
+
+/* Revelação ao rolar — só onde o navegador suporta scroll-driven
+   animations; nos demais o conteúdo está simplesmente visível. */
+@supports (animation-timeline: view()) {
+  .lp-revelar {
+    animation: lp-entrar linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 40%;
+  }
+  @keyframes lp-entrar {
+    from { opacity: 0.001; transform: translateY(28px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+/* Cartões que reagem ao ponteiro. */
+.lp-elevar {
+  transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+}
+.lp-elevar:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in oklab, var(--color-accent) 35%, transparent);
+  box-shadow: 0 24px 60px -30px color-mix(in oklab, var(--color-accent) 45%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-pulsar, .lp-chamar, .lp-estalo, .lp-carimbo, .lp-brilho, .lp-revelar {
+    animation: none !important;
+  }
+  .lp-carimbo { transform: rotate(-12deg); }
+  .lp-elevar, .lp-elevar:hover { transition: none; transform: none; }
+}

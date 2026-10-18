@@ -112,7 +112,7 @@ async function Corpo({ params }: { params: Params }) {
                   <tr className="border-b border-borda font-mono text-[10px] uppercase tracking-widest text-texto-2">
                     <th scope="col" className="w-28 px-4 py-2.5 font-normal">ref.</th>
                     <th scope="col" className="px-4 py-2.5 font-normal">requisito</th>
-                    <th scope="col" className="px-4 py-2.5 font-normal">evidência no Laudo</th>
+                    <th scope="col" className="px-4 py-2.5 font-normal">evidência no Provafix</th>
                     <th scope="col" className="w-32 px-4 py-2.5 font-normal">estado</th>
                   </tr>
                 </thead>
@@ -138,7 +138,7 @@ async function Corpo({ params }: { params: Params }) {
         ))}
 
         <footer className="border-t border-borda pt-5 font-mono text-[11px] text-texto-2">
-          Gerado pelo Laudo a partir do relatório #{id} e dos retestes registrados.
+          Gerado pelo Provafix a partir do relatório #{id} e dos retestes registrados.
         </footer>
       </div>
     </article>

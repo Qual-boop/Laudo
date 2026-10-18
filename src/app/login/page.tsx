@@ -60,7 +60,7 @@ export default function PaginaLogin() {
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-10">
       <div className="mb-6 flex items-center gap-3">
         <Logo className="h-9 w-9 text-accent" />
-        <span className="text-xl font-bold tracking-tight text-texto">Laudo</span>
+        <span className="text-xl font-bold tracking-tight text-texto">Provafix</span>
       </div>
 
       <Card>

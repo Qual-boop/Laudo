@@ -196,7 +196,7 @@ h2. Conclusão
 ${escapeHtml(conclusao)}
 
 ---
-*Relatório gerado por Laudo v0.2 — ${new Date().toISOString().split("T")[0]}*
+*Relatório gerado por Provafix v0.2 — ${new Date().toISOString().split("T")[0]}*
 `.trim();
 
   const labels = ["pentest", "laudo", capa.cliente.toLowerCase().replace(/\s+/g, "-")];
@@ -254,7 +254,7 @@ ${recomendacoesFormatadas}
 ${conclusao}
 
 ---
-*Relatório gerado por Laudo v0.2 — ${new Date().toISOString().split("T")[0]}*
+*Relatório gerado por Provafix v0.2 — ${new Date().toISOString().split("T")[0]}*
 `.trim();
 
   const labels = ["pentest", "laudo", capa.cliente.toLowerCase().replace(/\s+/g, "-")];
@@ -290,7 +290,7 @@ export function gerarExportacaoTexto(relatorio: Relatorio): string {
     "",
     conclusao,
     "",
-    "Relatório gerado por Laudo",
+    "Relatório gerado por Provafix",
   ];
   return linhas.join("\n");
 }
