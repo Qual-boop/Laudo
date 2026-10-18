@@ -25,7 +25,7 @@ Já configuradas: `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `AUTH_SECRET`,
 `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `LAUDO_MODELO`, `LAUDO_MAX_TOKENS`,
 `GROQ_API_KEY`, `GROQ_MODELO`, `GROQ_MAX_TOKENS`.
 
-Faltam para cobrança: `ASAAS_API_KEY` e `ASAAS_WEBHOOK_TOKEN`
+Faltam para cobrança: `ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN` e `ASAAS_SAQUE_TOKEN`
 (+ `ASAAS_BASE_URL=https://api.asaas.com/v3`).
 
 ```bash
@@ -58,9 +58,11 @@ Para abrir um psql direto: `railway connect Postgres`.
 ## Webhook do Asaas (produção)
 
 - URL: `https://provafix.up.railway.app/api/v1/webhook/asaas`
-- Eventos: `CHECKOUT_PAID`, `SUBSCRIPTION_CREATED`, `PAYMENT_RECEIVED`,
+- Eventos: `CHECKOUT_PAID`, `SUBSCRIPTION_CREATED`, `PAYMENT_CONFIRMED`, `PAYMENT_RECEIVED`,
   `PAYMENT_OVERDUE`, `SUBSCRIPTION_DELETED`
 - Token → variável `ASAAS_WEBHOOK_TOKEN` no Railway
+- Trava de saques: `/api/v1/webhook/asaas/autorizacao-saque` (token →
+  `ASAAS_SAQUE_TOKEN`); ver seção 8 de `docs/ASAAS-SETUP.md`
 
 Passo a passo com sandbox em `docs/ASAAS-SETUP.md`.
 

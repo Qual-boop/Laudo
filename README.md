@@ -79,6 +79,7 @@ cp .env.example .env
 | `ASAAS_API_KEY` | sim (p/ checkout) | — | Chave do Asaas (sandbox p/ teste). Sem ela, `/api/v1/checkout` responde `ASAAS_AUSENTE`. |
 | `ASAAS_BASE_URL` | não | sandbox | `https://api.asaas.com/v3` em produção. |
 | `ASAAS_WEBHOOK_TOKEN` | não (sim em prod) | — | Token do webhook; sem ele a rota aceita chamadas locais. |
+| `ASAAS_SAQUE_TOKEN` | não (recomendado) | — | Token da trava de saques (`/api/v1/webhook/asaas/autorizacao-saque`, sempre `REFUSED`). |
 | `DATABASE_URL` | sim (em prod) | — | Postgres (Neon). Sem ela, usa `pentest.db` local. |
 | `NEXT_PUBLIC_APP_URL` | sim (em prod) | — | URL pública (redirects do checkout Asaas). |
 
