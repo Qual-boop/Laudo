@@ -32,12 +32,23 @@ Infra e produto (deferidos — exigem decisão/proxy, não bug de código):
 
 - [ ] Rate limiting em login/cadastro/token (fazer no reverse proxy ou middleware)
 - [ ] Logout não revoga JWT copiado (exige denylist/versão de sessão — desenho pendente)
-- [ ] `CHECKOUT_PAID` + 1º `PAYMENT_RECEIVED` estendem 2x (~60 dias por 1 mês pago)
+- [x] `CHECKOUT_PAID` + 1º `PAYMENT_RECEIVED` estendiam 2x (~60 dias por 1 mês pago) —
+      agora a expiração é absoluta (`fimDoPeriodo`: vencimento da cobrança + 1 mês/ano
+      de calendário, até 23:59 BRT), não cumulativa: CHECKOUT_PAID, `PAYMENT_CONFIRMED`
+      e `PAYMENT_RECEIVED` da mesma cobrança cobrem o mesmo período, em qualquer ordem.
+      `PAYMENT_CONFIRMED` passou a contar (cartão: RECEIVED só chega ~30 dias depois).
+      Efeito colateral: pagar durante o trial não soma os dias restantes do trial
 - [ ] `PAYMENT_OVERDUE` só marca `past_due` (sem carência/bloqueio — decisão de cobrança)
+- [ ] Pagamento que chega depois de o plano expirar não devolve o Pro: o downgrade
+      preguiçoso (`assinaturaDe`) zera `plano` e o webhook de pagamento só mexe na
+      expiração. Precisa guardar o plano assinado (ex.: coluna `assinatura_plano`)
+      e restaurá-lo no pagamento — ligado à decisão de carência do OVERDUE
 - [ ] `POST /gerar` checa mas não incrementa; `DELETE /verificacao` não reembolsa cota
 - [ ] Mês de cota em UTC (`mesAtual`), não BRT
-- [ ] Webhook sempre responde 200 (proposital p/ Asaas não reenviar; logar `aplicado/motivo`)
-- [ ] `BCRYPT_ROUNDS` aceita mínimo 4 (fixar ≥10 em prod)
+- [x] Webhook sempre responde 200 (proposital p/ Asaas não reenviar) — agora cada chamada
+      vira uma linha JSON no log (`{"webhook":"asaas","id","event","aplicado","motivo"}`,
+      sem payload), inclusive `token inválido` e `json inválido`
+- [x] `BCRYPT_ROUNDS` aceitava mínimo 4 — em produção (`NODE_ENV=production`) o piso é 10
 - [ ] Plano da UI vem do JWT (stale até relogar; API já usa o fresco do banco)
 - [ ] `resetarUsoMensal` sem chamada em produção (reset real é por `mes_ano`)
 - [x] Export `texto` com relatório parcial (500 em produção — `gerarExportacaoTexto` blindado no deploy)

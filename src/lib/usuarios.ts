@@ -17,11 +17,15 @@ export type Usuario = {
   atualizado_em: string;
 };
 
-/** Custo do bcrypt: 12 em produção, mínimo nos testes (via env). */
-function custoBcrypt(): number {
+/**
+ * Custo do bcrypt: 12 por padrão, BCRYPT_ROUNDS (4–14) para acelerar
+ * testes. Em produção o piso é 10 — um BCRYPT_ROUNDS=4 esquecido no
+ * ambiente não pode deixar os hashes baratos de quebrar.
+ */
+export function custoBcrypt(): number {
   const n = Number(process.env.BCRYPT_ROUNDS);
-  if (Number.isInteger(n) && n >= 4 && n <= 14) return n;
-  return 12;
+  if (!Number.isInteger(n) || n < 4 || n > 14) return 12;
+  return process.env.NODE_ENV === "production" ? Math.max(n, 10) : n;
 }
 
 export async function hashSenha(senha: string): Promise<string> {

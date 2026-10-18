@@ -62,7 +62,7 @@ type EventoAsaas = {
   event: string;
   checkout?: { id?: string; customer?: string; externalReference?: string };
   subscription?: { id?: string; customer?: string; cycle?: string };
-  payment?: { id?: string; subscription?: string };
+  payment?: { id?: string; subscription?: string; dueDate?: string };
 };
 
 function planoDaReferencia(ref: string | undefined): PlanoPago | null {
@@ -88,22 +88,58 @@ function cicloDaReferencia(ref: string | undefined): "YEARLY" | "MONTHLY" {
   return (ref ?? "").split(":")[2] === "anual" ? "YEARLY" : "MONTHLY";
 }
 
-async function estenderExpira(usuarioId: number, ciclo: string | undefined): Promise<void> {
-  const dias = ciclo === "YEARLY" ? 365 : 30;
+/**
+ * Fim do período pago que começa em `inicio`: +1 mês (ou +1 ano) de
+ * calendário, como o ciclo do Asaas. `inicio` = vencimento da cobrança
+ * ("YYYY-MM-DD", vale até 23:59:59 BRT) ou, sem ele, o instante atual.
+ */
+export function fimDoPeriodo(ciclo: string | undefined, inicio?: string): Date {
+  const meses = ciclo === "YEARLY" ? 12 : 1;
+  const venc = /^(\d{4})-(\d{2})-(\d{2})$/.exec(inicio ?? "");
+  if (venc) {
+    const [, a, m, d] = venc.map(Number);
+    // 23:59:59.999 BRT (UTC-3) = 02:59:59.999 UTC do dia seguinte.
+    return new Date(Date.UTC(a, m - 1 + meses, d + 1, 2, 59, 59, 999));
+  }
+  const fim = new Date();
+  fim.setUTCMonth(fim.getUTCMonth() + meses);
+  return fim;
+}
+
+/**
+ * Garante o plano coberto até o fim do período pago. Absoluto, não
+ * cumulativo: CHECKOUT_PAID e os eventos da 1ª cobrança (CONFIRMED,
+ * RECEIVED, em qualquer ordem) cobrem o mesmo período — 1 mês pago
+ * vale 1 mês. Antes cada evento somava +30 dias (~60 por 1 mês pago).
+ */
+async function cobrirPeriodo(
+  usuarioId: number,
+  ciclo: string | undefined,
+  inicio?: string,
+): Promise<boolean> {
   const atual = await buscarUm<{ plano_expira_em: string | null }>(
     "SELECT plano_expira_em FROM usuarios WHERE id = ?",
     usuarioId,
   );
-  const base = Math.max(
-    Date.now(),
-    atual?.plano_expira_em ? new Date(atual.plano_expira_em).getTime() : 0,
-  );
-  const nova = new Date(base + dias * 24 * 60 * 60 * 1000).toISOString();
+  const expiraAtual = atual?.plano_expira_em
+    ? new Date(atual.plano_expira_em).getTime()
+    : 0;
+  const fim = fimDoPeriodo(ciclo, inicio);
+  if (fim.getTime() <= expiraAtual) {
+    // Pagamento confirma a assinatura (sai de past_due), mas o período
+    // já estava coberto: não mexe na expiração.
+    await executar(
+      "UPDATE usuarios SET assinatura_status = 'ativa', atualizado_em = CURRENT_TIMESTAMP WHERE id = ?",
+      usuarioId,
+    );
+    return false;
+  }
   await executar(
     "UPDATE usuarios SET plano_expira_em = ?, assinatura_status = 'ativa', atualizado_em = CURRENT_TIMESTAMP WHERE id = ?",
-    nova,
+    fim.toISOString(),
     usuarioId,
   );
+  return true;
 }
 
 /**
@@ -149,7 +185,9 @@ export async function aplicarEventoAsaas(evento: EventoAsaas): Promise<{
       ciclo,
       usuarioId,
     );
-    await estenderExpira(usuarioId, ciclo);
+    // Sem vencimento no evento: período a partir de agora. Se a 1ª
+    // cobrança já tiver coberto (eventos fora de ordem), não soma de novo.
+    await cobrirPeriodo(usuarioId, ciclo);
     return { ok: true, aplicado: true };
   }
 
@@ -168,7 +206,10 @@ export async function aplicarEventoAsaas(evento: EventoAsaas): Promise<{
     return { ok: true, aplicado: true };
   }
 
-  if (event === "PAYMENT_RECEIVED") {
+  // Cartão: CONFIRMED sai na aprovação e RECEIVED só quando o saldo é
+  // liberado (~30 dias depois). Os dois cobrem o mesmo período (pelo
+  // vencimento), então tratar ambos não soma duas vezes.
+  if (event === "PAYMENT_CONFIRMED" || event === "PAYMENT_RECEIVED") {
     const subId = evento.payment?.subscription;
     if (!subId) {
       return { ok: true, aplicado: false, motivo: "payment sem subscription" };
@@ -181,8 +222,14 @@ export async function aplicarEventoAsaas(evento: EventoAsaas): Promise<{
       return { ok: true, aplicado: false, motivo: "subscription desconhecida" };
     }
     // Ciclo gravado no CHECKOUT_PAID; padrão mensal se ausente.
-    await estenderExpira(linha.id, linha.assinatura_ciclo ?? undefined);
-    return { ok: true, aplicado: true };
+    const estendeu = await cobrirPeriodo(
+      linha.id,
+      linha.assinatura_ciclo ?? undefined,
+      evento.payment?.dueDate,
+    );
+    return estendeu
+      ? { ok: true, aplicado: true }
+      : { ok: true, aplicado: false, motivo: "período já coberto" };
   }
 
   if (event === "PAYMENT_OVERDUE") {
