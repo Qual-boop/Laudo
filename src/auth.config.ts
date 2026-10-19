@@ -1,7 +1,7 @@
 import type { NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
-import { esquemaLogin } from "@/lib/validacao";
+import { esquemaLogin, esquemaTicket } from "@/lib/validacao";
 
 /**
  * Configuração do NextAuth v5 (sessão JWT — o mesmo token serve web,
@@ -24,19 +24,37 @@ export const authConfig: NextAuthConfig = {
       credentials: {
         email: { label: "E-mail", type: "email" },
         senha: { label: "Senha", type: "password" },
+        ticket: { label: "Ticket", type: "text" },
       },
       authorize: async (credentials) => {
-        const v = esquemaLogin.safeParse(credentials);
-        if (!v.success) return null;
         const { buscarUsuarioPorEmail, compararSenha } = await import(
           "@/lib/usuarios"
         );
-        const u = await buscarUsuarioPorEmail(v.data.email);
-        if (!u?.senha_hash) return null;
-        if (!(await compararSenha(v.data.senha, u.senha_hash))) return null;
+        const { emailAtivo } = await import("@/lib/email");
+        let u: Awaited<ReturnType<typeof buscarUsuarioPorEmail>> = null;
+
+        if (emailAtivo()) {
+          // Login em 2 etapas: só entra com o ticket emitido depois de
+          // senha + código de e-mail certos (/api/v1/auth/login/confirmar).
+          // Senha sozinha não abre sessão.
+          const v = esquemaTicket.safeParse(credentials);
+          if (!v.success) return null;
+          u = await buscarUsuarioPorEmail(v.data.email);
+          if (!u) return null;
+          const { conferirCodigo } = await import("@/lib/codigos");
+          if (!(await conferirCodigo(u.id, "ticket", v.data.ticket)).ok) return null;
+        } else {
+          // Sem provedor de e-mail configurado: e-mail + senha.
+          const v = esquemaLogin.safeParse(credentials);
+          if (!v.success) return null;
+          u = await buscarUsuarioPorEmail(v.data.email);
+          if (!u?.senha_hash) return null;
+          if (!(await compararSenha(v.data.senha, u.senha_hash))) return null;
+        }
+
         // O limite de tentativas fica no route handler (precisa responder
         // 429); aqui só liberamos o contador do e-mail no login certo.
-        (await import("@/lib/limite-taxa")).liberarEmailLogin(v.data.email);
+        (await import("@/lib/limite-taxa")).liberarEmailLogin(u.email);
         return { id: String(u.id), name: u.nome, email: u.email };
       },
     }),
@@ -55,29 +73,36 @@ export const authConfig: NextAuthConfig = {
       return true;
     },
     async jwt({ token, user }) {
+      const { buscarUsuarioPorId } = await import("@/lib/usuarios");
+      const { assinaturaDe } = await import("@/lib/assinatura");
+      const { criarSessao, sessaoValida } = await import("@/lib/sessoes");
+
+      // Login: nasce a linha em `sessoes`; o `sid` dela vai no JWT.
       if (user?.id) {
-        const { buscarUsuarioPorId } = await import("@/lib/usuarios");
-        const { assinaturaDe } = await import("@/lib/assinatura");
         const u = await buscarUsuarioPorId(Number(user.id));
-        if (u) {
-          token.usuarioId = u.id;
-          token.name = u.nome;
-          token.email = u.email;
-          token.plano = (await assinaturaDe(u)).plano;
-        }
+        if (!u) return null;
+        token.usuarioId = u.id;
+        token.name = u.nome;
+        token.email = u.email;
+        token.plano = (await assinaturaDe(u)).plano;
+        token.sid = await criarSessao(u.id);
+        return token;
       }
-      // Sessões que só têm `sub`: resolve o usuarioId na hora.
-      if (token.usuarioId === undefined && token.sub) {
-        const { buscarUsuarioPorId } = await import("@/lib/usuarios");
-        const { assinaturaDe } = await import("@/lib/assinatura");
-        const u = await buscarUsuarioPorId(Number(token.sub));
-        if (u) {
-          token.usuarioId = u.id;
-          token.name = u.nome;
-          token.email = u.email;
-          token.plano = (await assinaturaDe(u)).plano;
-        }
+
+      // Uso seguinte: sem sessão viva (logout, "sair de todos", senha
+      // trocada, token anterior a este controle) o JWT deixa de valer.
+      const usuarioId = Number(token.usuarioId ?? token.sub);
+      if (!Number.isInteger(usuarioId) || !(await sessaoValida(token.sid, usuarioId))) {
+        return null;
       }
+      // Nome e plano frescos do banco: antes o plano ficava parado no valor
+      // do login (assinou/cancelou → a UI só via depois de relogar).
+      const u = await buscarUsuarioPorId(usuarioId);
+      if (!u) return null;
+      token.usuarioId = u.id;
+      token.name = u.nome;
+      token.email = u.email;
+      token.plano = (await assinaturaDe(u)).plano;
       return token;
     },
     async session({ session, token }) {

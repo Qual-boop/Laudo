@@ -48,6 +48,9 @@ export function cabecalhosSeguranca(dev: boolean): Cabecalho[] {
     // Redundante com frame-ancestors, para navegadores antigos.
     { key: "X-Frame-Options", value: "DENY" },
     { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+    // Isola a janela: página de outro site aberta por link não alcança
+    // `window.opener` daqui (e vice-versa).
+    { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
     {
       key: "Permissions-Policy",
       value:

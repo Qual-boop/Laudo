@@ -10,5 +10,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     usuarioId?: number;
     plano?: "free" | "pro" | "team";
+    /** id da linha em `sessoes` (revogação de sessão). */
+    sid?: number;
   }
 }

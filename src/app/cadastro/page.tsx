@@ -1,17 +1,26 @@
 "use client";
 
-import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/Button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/Card";
 import { Field, Input } from "@/components/Field";
 import { Logo } from "@/components/Logo";
+import { EtapaCodigo } from "@/components/auth/EtapaCodigo";
+import { useEntrada } from "@/components/auth/useEntrada";
 
-/** /cadastro — cria conta e já entra (Credentials). */
+/** /cadastro — cria conta, confirma o e-mail (código) e já entra. */
 export default function PaginaCadastro() {
   const roteador = useRouter();
+  const entrada = useEntrada();
+
+  useEffect(() => {
+    if (entrada.etapa === "concluido") {
+      roteador.push("/painel");
+      roteador.refresh();
+    }
+  }, [entrada.etapa, roteador]);
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
@@ -37,18 +46,13 @@ export default function PaginaCadastro() {
         return;
       }
 
-      const login = await signIn("credentials", {
-        email: email.trim(),
-        senha,
-        redirect: false,
-      });
-      if (!login || login.error) {
+      // Mesmo fluxo do login: com e-mail ativo, o código que chega na
+      // caixa confirma que o e-mail é mesmo de quem se cadastrou.
+      const r = await entrada.iniciar(email, senha);
+      if (!r.ok) {
         setErro("Conta criada. Faça login para continuar.");
         roteador.push("/login");
-        return;
       }
-      roteador.push("/painel");
-      roteador.refresh();
     } catch {
       setErro("Não foi possível conectar ao servidor.");
     } finally {
@@ -65,10 +69,24 @@ export default function PaginaCadastro() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Criar conta</CardTitle>
-          <CardDescription>Comece a provar correções em minutos.</CardDescription>
+          <CardTitle>{entrada.etapa === "codigo" ? "Confirme seu e-mail" : "Criar conta"}</CardTitle>
+          <CardDescription>
+            {entrada.etapa === "codigo"
+              ? "Conta criada. Falta só o código que mandamos para o seu e-mail."
+              : "Comece a provar correções em minutos."}
+          </CardDescription>
         </CardHeader>
 
+        {entrada.etapa === "codigo" ? (
+          <EtapaCodigo
+            destino={entrada.destino}
+            reenvioEmSeg={entrada.reenvioEm}
+            onConfirmar={entrada.confirmar}
+            onReenviar={entrada.reenviar}
+            onVoltar={() => roteador.push("/login")}
+            rotuloBotao="confirmar e entrar"
+          />
+        ) : (
         <form onSubmit={cadastrar} className="flex flex-col gap-4 p-5 sm:p-6">
           <Field label="Nome" htmlFor="cad-nome">
             <Input
@@ -94,7 +112,7 @@ export default function PaginaCadastro() {
             />
           </Field>
 
-          <Field label="Senha" htmlFor="cad-senha" dica="mínimo 8 caracteres">
+          <Field label="Senha" htmlFor="cad-senha" dica="mínimo 8 caracteres; evite senhas óbvias">
             <Input
               id="cad-senha"
               type="password"
@@ -124,6 +142,7 @@ export default function PaginaCadastro() {
             </Link>
           </p>
         </form>
+        )}
       </Card>
     </main>
   );

@@ -228,7 +228,7 @@ const PLANOS = [
     periodo: "/mês",
     descricao: "Para quem entrega pentest todo mês.",
     itens: [
-      "Relatórios, achados e retestes ilimitados",
+      "300 relatórios por mês, achados e retestes ilimitados",
       "Certificado de correção com hash",
       "Quadro de conformidade e agenda de retestes",
       "Revisão em dupla com 1 colega",

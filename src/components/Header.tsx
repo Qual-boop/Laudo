@@ -1,8 +1,27 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { Logo } from "@/components/Logo";
 import { Tabs, type Aba } from "@/components/Tabs";
+
+/** Estado real da conexão (antes o selo dizia "online" sempre — F18). */
+function assinarConexao(aviso: () => void): () => void {
+  window.addEventListener("online", aviso);
+  window.addEventListener("offline", aviso);
+  return () => {
+    window.removeEventListener("online", aviso);
+    window.removeEventListener("offline", aviso);
+  };
+}
+
+function useOnline(): boolean {
+  return useSyncExternalStore(
+    assinarConexao,
+    () => navigator.onLine,
+    () => true,
+  );
+}
 
 type Props = {
   aba: Aba;
@@ -14,10 +33,11 @@ type Props = {
 export function Header({ aba, onAba, contagem, pendentes }: Props) {
   const { data: sessao } = useSession();
   const plano = sessao?.user?.plano ?? "free";
+  const online = useOnline();
 
   async function sair() {
-    // Expira o cookie httpOnly no servidor (o signout do NextAuth v5
-    // sozinho não limpa a sessão JWT) e depois sai no client.
+    // Revoga a sessão no servidor e expira o cookie httpOnly (o signout do
+    // NextAuth v5 sozinho não limpa a sessão JWT); depois sai no client.
     try {
       await fetch("/api/v1/auth/logout", { method: "POST" });
     } catch {
@@ -84,9 +104,14 @@ export function Header({ aba, onAba, contagem, pendentes }: Props) {
               sair
             </button>
           )}
-          <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-texto-2">
-            <span className="animate-ping-suave h-1.5 w-1.5 rounded-full bg-accent" />
-            online
+          <span
+            role="status"
+            className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-texto-2"
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${online ? "animate-ping-suave bg-accent" : "bg-critica"}`}
+            />
+            {online ? "online" : "offline"}
           </span>
         </div>
       </div>

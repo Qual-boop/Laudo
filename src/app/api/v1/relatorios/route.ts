@@ -1,10 +1,10 @@
 import { buscarTodos, dialeto, executar, inserir, transacao } from "@/lib/banco";
 import { exigirUsuario, erroApi } from "@/lib/api-auth";
 import {
-  incrementarUso,
+  consumirUso,
+  devolverUso,
   LIMITES,
-  obterUso,
-  verificarLimite,
+  respostaLimite,
 } from "@/lib/limites";
 import { normalizarConfianca } from "@/lib/verificacao";
 import {
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   if (achados.length > limites.achadosPorRelatorio) {
     return Response.json(
       {
-        error: `Seu plano ${auth.usuario.plano} permite até ${limites.achadosPorRelatorio} achados por relatório. Faça upgrade para ilimitado.`,
+        error: `Seu plano ${auth.usuario.plano} permite até ${limites.achadosPorRelatorio} achados por relatório. No Pro e no Team não há limite de achados.`,
         code: "LIMITE_PLANO",
         recurso: "achados",
         usados: achados.length,
@@ -45,25 +45,15 @@ export async function POST(request: Request) {
     );
   }
 
-  // Plano free: no máximo 3 relatórios por mês.
-  const uso = await obterUso(auth.usuario.id);
-  const veredito = verificarLimite(auth.usuario.plano, uso, "relatorios");
-  if (!veredito.permitido) {
-    return Response.json(
-      {
-        error: `Você usou ${veredito.usados}/${veredito.limite} relatórios este mês. Faça upgrade para continuar.`,
-        code: "LIMITE_PLANO",
-        recurso: "relatorios",
-        usados: veredito.usados,
-        limite: veredito.limite,
-      },
-      { status: 402 },
-    );
-  }
+  // Cota mensal de relatórios (Free 3, Pro 300, Team 900), consumida de
+  // forma atômica: dois salvamentos simultâneos não passam do limite.
+  const veredito = await consumirUso(auth.usuario.id, auth.usuario.plano, "relatorios");
+  if (!veredito.permitido) return respostaLimite(veredito, auth.usuario.plano);
   const riscoGeral = v.dados.sumarioExecutivo?.riscoGeral || "Medio";
 
   // Relatório e achados entram juntos: um relatório salvo sem achados
-  // verificáveis deixaria a aba Verificação inconsistente.
+  // verificáveis deixaria a aba Verificação inconsistente. Se a gravação
+  // falhar, a unidade consumida volta.
   const relatorioId = await transacao(async () => {
     const id = await inserir(
       `INSERT INTO relatorios (cliente, titulo, data, versao, risco_geral, total_achados, relatorio_json, usuario_id)
@@ -94,9 +84,10 @@ export async function POST(request: Request) {
     }
 
     return id;
+  }).catch(async (e: unknown) => {
+    await devolverUso(auth.usuario.id, "relatorios");
+    throw e;
   });
-
-  await incrementarUso(auth.usuario.id, "relatorios_criados");
 
   return Response.json(
     { id: relatorioId, achados: achados.length },

@@ -54,9 +54,16 @@ db.exec(`
     mes_ano TEXT NOT NULL,
     relatorios_criados INTEGER NOT NULL DEFAULT 0,
     retestes_registrados INTEGER NOT NULL DEFAULT 0,
+    geracoes_ia INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (usuario_id, mes_ano)
   )
 `);
+{
+  const colunasUso = db.prepare("PRAGMA table_info(uso_mensal)").all() as { name: string }[];
+  if (!colunasUso.some((c) => c.name === "geracoes_ia")) {
+    db.exec("ALTER TABLE uso_mensal ADD COLUMN geracoes_ia INTEGER NOT NULL DEFAULT 0");
+  }
+}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS sessoes (
@@ -165,6 +172,11 @@ for (const [coluna, tipo] of [
   // Trial é uma vez por conta: sobrevive a pagar→cancelar (plano_expira_em
   // é zerado no cancelamento, este carimbo não).
   ["trial_usado_em", "TEXT"],
+  // Plano assinado (pro/team): o downgrade por expiração zera `plano`, e
+  // um pagamento atrasado precisa saber qual plano devolver.
+  ["assinatura_plano", "TEXT"],
+  // Primeiro código de e-mail confirmado = e-mail comprovado.
+  ["email_verificado_em", "TEXT"],
 ] as const) {
   const atuais = db.prepare("PRAGMA table_info(usuarios)").all() as { name: string }[];
   if (!atuais.some((c) => c.name === coluna)) {
@@ -233,6 +245,25 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_compartilhamentos_usuario ON compartilhamentos(usuario_id);
   CREATE INDEX IF NOT EXISTS idx_comentarios_relatorio ON comentarios(relatorio_id, id);
   CREATE INDEX IF NOT EXISTS idx_evidencias_achado ON evidencias(achado_id, id);
+`);
+
+/* ------------------------------------------------------------
+   Códigos por e-mail (login em 2 etapas e troca de senha).
+   Só o HMAC do código fica no banco; tentativas erradas contam
+   e queimam o código na 5ª.
+   ------------------------------------------------------------ */
+db.exec(`
+  CREATE TABLE IF NOT EXISTS codigos_email (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    finalidade TEXT NOT NULL,
+    codigo_hash TEXT NOT NULL,
+    expira_em TEXT NOT NULL,
+    tentativas INTEGER NOT NULL DEFAULT 0,
+    usado_em TEXT,
+    criado_em TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX IF NOT EXISTS idx_codigos_usuario ON codigos_email(usuario_id, finalidade, id);
 `);
 
 export default db;

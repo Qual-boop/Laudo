@@ -66,7 +66,11 @@ curl -X DELETE http://localhost:3000/api/v1/auth/token \
 
 Todos exigem auth (exceto os de `/api/v1/auth/*`). Multi-tenant: cada query
 filtra por `usuario_id` do JWT. Planos: `free` (3 relatórios/mês, 5 achados,
-10 retestes, sem Jira/GitHub nem certificado), `pro` e `team` ilimitados.
+10 retestes, sem Jira/GitHub nem certificado), `pro` (300 relatórios/mês) e
+`team` (900 relatórios/mês), com achados e retestes ilimitados. Cada plano tem
+o dobro de gerações com IA (`/gerar`) sobre a cota de relatórios, e `/gerar`
+aceita no máximo 20 chamadas por usuário a cada 10 minutos (429). Limite
+estourado → 402 `LIMITE_PLANO` com `recurso`, `usados`, `limite` e `plano`.
 Limite atingido → **402** `{ error, code: "LIMITE_PLANO", recurso, usados, limite }`.
 
 ### `GET /api/v1/uso` — plano + consumo do mês

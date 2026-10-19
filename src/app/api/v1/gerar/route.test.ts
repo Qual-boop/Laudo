@@ -1,17 +1,37 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+
+// Usuário real (a cota mensal grava em uso_mensal, que tem FK para usuarios).
+const sessao = vi.hoisted(() => ({ id: 0, plano: "pro" as "free" | "pro" | "team" }));
 
 vi.mock("@/lib/api-auth", () => ({
   exigirUsuario: vi.fn(
     async () =>
-      ({ ok: true, usuario: { id: 1, nome: "QA", email: "qa@laudo.teste" } }) as const,
+      ({
+        ok: true,
+        usuario: { id: sessao.id, nome: "QA", email: "qa.gerar@laudo-teste.com", plano: sessao.plano },
+      }) as const,
   ),
   erroApi: (error: string, code: string, status: number) =>
     Response.json({ error, code }, { status }),
 }));
 
 import { POST } from "@/app/api/v1/gerar/route";
+import db from "@/lib/db";
+import { limparTudo } from "@/lib/limite-taxa";
+import { criarUsuario } from "@/lib/usuarios";
 import type { NextRequest } from "next/server";
 import type { Relatorio } from "@/lib/tipos";
+
+const EMAIL_QA = "qa.gerar@laudo-teste.com";
+
+beforeAll(async () => {
+  db.prepare("DELETE FROM usuarios WHERE email = ?").run(EMAIL_QA);
+  sessao.id = (await criarUsuario("QA Gerar", EMAIL_QA, "senha-123456"))!.id;
+});
+
+afterAll(() => {
+  db.prepare("DELETE FROM usuarios WHERE email = ?").run(EMAIL_QA);
+});
 
 /* ------------------------------------------------------------------ *
  * Utilidades                                                           *
@@ -110,6 +130,10 @@ const ehFallback = (r: Relatorio) =>
 let silenciado: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
+  // Cada teste começa com cota e rajada zeradas, no plano Pro.
+  sessao.plano = "pro";
+  limparTudo();
+  db.prepare("DELETE FROM uso_mensal WHERE usuario_id = ?").run(sessao.id);
   silenciado = vi.spyOn(console, "log").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
   // Host distinto do Groq de propósito: os testes da cadeia roteiam por host.
@@ -654,5 +678,62 @@ describe("POST /api/v1/gerar — fallback Gemini → Groq", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(ehFallback(corpo)).toBe(true);
     expect(corpo.sumarioExecutivo.visaoGeral).toContain("nenhuma chave de IA");
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Cota mensal e rajada                                                 *
+ * ------------------------------------------------------------------ */
+
+describe("POST /api/v1/gerar — cota de gerações e rajada", () => {
+  function semIA() {
+    vi.stubEnv("OPENAI_API_KEY", "");
+    vi.stubGlobal("fetch", vi.fn());
+  }
+
+  it("cada geração consome 1 da cota de gerações com IA", async () => {
+    semIA();
+    await POST(requisicao(ENTRADA));
+    await POST(requisicao(ENTRADA));
+    const linha = db
+      .prepare("SELECT geracoes_ia FROM uso_mensal WHERE usuario_id = ?")
+      .get(sessao.id) as { geracoes_ia: number };
+    expect(linha.geracoes_ia).toBe(2);
+  });
+
+  it("free: a 7ª geração do mês recebe 402 com recurso 'geracoes'", async () => {
+    semIA();
+    sessao.plano = "free";
+    for (let i = 0; i < 6; i++) {
+      expect((await POST(requisicao(ENTRADA))).status).toBe(200);
+    }
+    const res = await POST(requisicao(ENTRADA));
+    expect(res.status).toBe(402);
+    expect(await res.json()).toMatchObject({
+      code: "LIMITE_PLANO",
+      recurso: "geracoes",
+      usados: 6,
+      limite: 6,
+      plano: "free",
+    });
+  });
+
+  it("cota de relatórios esgotada bloqueia antes de gastar IA", async () => {
+    semIA();
+    sessao.plano = "free";
+    db.prepare(
+      "INSERT INTO uso_mensal (usuario_id, mes_ano, relatorios_criados) VALUES (?, ?, 3)",
+    ).run(sessao.id, (await import("@/lib/limites")).mesAtual());
+    const res = await POST(requisicao(ENTRADA));
+    expect(res.status).toBe(402);
+    expect((await res.json()).recurso).toBe("relatorios");
+  });
+
+  it("rajada: a 21ª chamada em 10 minutos recebe 429 com Retry-After", async () => {
+    semIA();
+    for (let i = 0; i < 20; i++) await POST(requisicao(ENTRADA));
+    const res = await POST(requisicao(ENTRADA));
+    expect(res.status).toBe(429);
+    expect(Number(res.headers.get("Retry-After"))).toBeGreaterThan(0);
   });
 });

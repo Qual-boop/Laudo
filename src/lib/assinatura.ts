@@ -23,6 +23,7 @@ export async function assinaturaDe(usuario: {
   plano: string;
   plano_expira_em: string | null;
   asaas_subscription_id: string | null;
+  assinatura_status?: string | null;
 }): Promise<ItemAssinatura> {
   const plano =
     usuario.plano === "pro" || usuario.plano === "team" ? usuario.plano : "free";
@@ -47,7 +48,12 @@ export async function assinaturaDe(usuario: {
     plano,
     expiraEm: expira,
     subscriptionId: usuario.asaas_subscription_id,
-    trial: plano !== "free" && !usuario.asaas_subscription_id,
+    // Sem assinatura e sem ter cancelado uma = trial. Cancelada mantém o
+    // plano até o fim do período pago, mas não é trial.
+    trial:
+      plano !== "free" &&
+      !usuario.asaas_subscription_id &&
+      usuario.assinatura_status !== "cancelada",
   };
 }
 
@@ -179,10 +185,13 @@ export async function aplicarEventoAsaas(evento: EventoAsaas): Promise<{
     }
     const ciclo = cicloDaReferencia(ref);
     await definirPlano(usuarioId, plano);
+    // assinatura_plano guarda o que foi assinado: o downgrade por expiração
+    // zera `plano`, e um pagamento atrasado precisa saber o que devolver.
     await executar(
       `UPDATE usuarios SET assinatura_status = 'ativa', assinatura_ciclo = ?,
-        atualizado_em = CURRENT_TIMESTAMP WHERE id = ?`,
+        assinatura_plano = ?, atualizado_em = CURRENT_TIMESTAMP WHERE id = ?`,
       ciclo,
+      plano,
       usuarioId,
     );
     // Sem vencimento no evento: período a partir de agora. Se a 1ª
@@ -214,8 +223,13 @@ export async function aplicarEventoAsaas(evento: EventoAsaas): Promise<{
     if (!subId) {
       return { ok: true, aplicado: false, motivo: "payment sem subscription" };
     }
-    const linha = await buscarUm<{ id: number; assinatura_ciclo: string | null }>(
-      "SELECT id, assinatura_ciclo FROM usuarios WHERE asaas_subscription_id = ?",
+    const linha = await buscarUm<{
+      id: number;
+      plano: string;
+      assinatura_ciclo: string | null;
+      assinatura_plano: string | null;
+    }>(
+      "SELECT id, plano, assinatura_ciclo, assinatura_plano FROM usuarios WHERE asaas_subscription_id = ?",
       subId,
     );
     if (!linha) {
@@ -227,8 +241,16 @@ export async function aplicarEventoAsaas(evento: EventoAsaas): Promise<{
       linha.assinatura_ciclo ?? undefined,
       evento.payment?.dueDate,
     );
-    return estendeu
-      ? { ok: true, aplicado: true }
+    // Pagamento que chega depois de o plano expirar: o downgrade preguiçoso
+    // já tinha zerado `plano` para free. Devolve o plano assinado.
+    const assinado = linha.assinatura_plano;
+    let restaurou = false;
+    if (linha.plano === "free" && (assinado === "pro" || assinado === "team")) {
+      await definirPlano(linha.id, assinado);
+      restaurou = true;
+    }
+    return estendeu || restaurou
+      ? { ok: true, aplicado: true, ...(restaurou ? { motivo: "plano restaurado" } : {}) }
       : { ok: true, aplicado: false, motivo: "período já coberto" };
   }
 
@@ -253,6 +275,7 @@ export async function aplicarEventoAsaas(evento: EventoAsaas): Promise<{
     await executar(
       `UPDATE usuarios SET plano = 'free', asaas_subscription_id = NULL,
         plano_expira_em = NULL, assinatura_status = 'cancelada',
+        assinatura_plano = NULL,
         atualizado_em = CURRENT_TIMESTAMP WHERE asaas_subscription_id = ?`,
       subId,
     );

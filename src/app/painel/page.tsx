@@ -15,7 +15,7 @@ import { ToastViewport, useToast } from "@/components/Toast";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import {
   PaywallModal,
-  dispararPaywall,
+  abrirPaywallSe402,
   usePaywall,
 } from "@/components/PaywallModal";
 import { ROTULO_TIPO, lerResumoProtecao } from "@/lib/anonimizacao";
@@ -82,7 +82,8 @@ const RelatorioView = dynamic(
     loading: () => <RelatorioSkeleton />,
   },
 );
-import type { Aba } from "@/components/Tabs";
+import { idAba, idPainel, type Aba } from "@/components/Tabs";
+import { copiarParaClipboard } from "@/lib/exportacao";
 import type {
   AchadoEntrada,
   Confianca,
@@ -155,10 +156,10 @@ export default function Home() {
   const copiar = useCallback(
     async (texto: string, rotulo: string) => {
       try {
-        await navigator.clipboard.writeText(texto);
+        // Clipboard API com fallback para http (execCommand) — F14.
+        await copiarParaClipboard(texto);
         sucesso(rotulo);
       } catch {
-        // clipboard API exige contexto seguro; cai para a seleção manual.
         toastAviso("Não foi possível copiar automaticamente. Selecione o texto.");
       }
     },
@@ -395,6 +396,7 @@ export default function Home() {
       const corpo = await res.json().catch(() => null);
 
       if (!res.ok) {
+        if (abrirPaywallSe402(res, corpo)) return;
         toastErro(corpo?.error ?? "A geração falhou. Tente novamente.");
         return;
       }
@@ -437,21 +439,15 @@ export default function Home() {
 
       if (!res.ok) {
         // 402 = limite do plano: abre o paywall em vez do toast.
-        if (
-          res.status === 402 &&
-          corpo &&
-          typeof corpo.recurso === "string" &&
-          typeof corpo.usados === "number" &&
-          typeof corpo.limite === "number"
-        ) {
-          dispararPaywall({
-            recurso: corpo.recurso,
-            usados: corpo.usados,
-            limite: corpo.limite,
-          });
-          return;
-        }
+        if (abrirPaywallSe402(res, corpo)) return;
         toastErro(corpo?.error ?? "Não foi possível salvar o relatório.");
+        return;
+      }
+
+      // 2xx sem corpo legível: antes caía no catch e dizia "sem conexão",
+      // o que era falso — o servidor respondeu (F19).
+      if (typeof corpo?.id !== "number") {
+        toastErro("O servidor confirmou o salvamento, mas a resposta veio incompleta. Confira a aba Histórico antes de salvar de novo.");
         return;
       }
 
@@ -526,6 +522,8 @@ export default function Home() {
               : null
           }
         >
+        {/* Painel ligado à aba ativa (aria-controls ↔ aria-labelledby). */}
+        <div role="tabpanel" id={idPainel(aba)} aria-labelledby={idAba(aba)} className="contents">
         {aba === "verificacao" && (
           <Suspense
             fallback={
@@ -972,6 +970,7 @@ export default function Home() {
         )}
           </>
         )}
+        </div>
         </LayoutComSidebar>
       </main>
 

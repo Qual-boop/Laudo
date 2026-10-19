@@ -86,7 +86,8 @@ export const metadata: Metadata = {
   icons: {
     icon: "/icon.svg",
     shortcut: "/favicon.ico",
-    apple: "/icon.svg",
+    // iOS não usa SVG como ícone da tela inicial: PNG 180×180.
+    apple: "/apple-icon.png",
   },
   manifest: "/manifest.json",
 };

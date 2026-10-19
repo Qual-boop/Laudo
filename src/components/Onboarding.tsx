@@ -35,14 +35,19 @@ interface OnboardingProps {
 
 export function Onboarding({ alreadyShown }: OnboardingProps = {}) {
   const [etapa, setEtapa] = useState<EtapaOnboarding>("step1");
-  const [shown, setShown] = useState(true);
-
-  // Verificar se já foi mostrado
-  useEffect(() => {
-    const jaMostrado = alreadyShown || localStorage.getItem("onboarding_shown");
-    if (jaMostrado) {
-      setShown(false);
+  // Lido já no primeiro render (o componente só monta no cliente): antes
+  // começava `true` e o tour piscava na tela de quem já tinha visto (F17).
+  const [shown, setShown] = useState(() => {
+    if (alreadyShown) return false;
+    try {
+      return !localStorage.getItem("onboarding_shown");
+    } catch {
+      return true;
     }
+  });
+
+  useEffect(() => {
+    if (alreadyShown) setShown(false);
   }, [alreadyShown]);
 
   // Escape fecha o tour — acessibilidade por teclado.

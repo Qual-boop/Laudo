@@ -25,18 +25,13 @@ export default function Image() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-          <svg width="56" height="56" viewBox="0 0 48 48" fill="none">
+          {/* Mesmo monograma P✓ de components/Logo.tsx. */}
+          <svg width="60" height="60" viewBox="0 0 48 48" fill="none">
+            <rect x="3" y="3" width="42" height="42" rx="13" fill={ACCENT} />
             <path
-              d="M37.5 20.4 A14 14 0 1 1 32 12.5"
-              stroke={ACCENT}
-              strokeOpacity="0.45"
-              strokeWidth="4.5"
-              strokeLinecap="round"
-            />
-            <path
-              d="M19 27.5 L26 34 L38 18"
-              stroke={ACCENT}
-              strokeWidth="5"
+              d="M16.5 35.5 V12.5 H25 A7.25 7.25 0 0 1 25 27 H22 L27 32 L38.5 18.5"
+              stroke="#0a0e14"
+              strokeWidth="4.6"
               strokeLinecap="round"
               strokeLinejoin="round"
             />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { Button } from "@/components/Button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/Card";
 import { Spinner } from "@/components/Spinner";
@@ -17,6 +17,7 @@ type Assinatura = {
 type Uso = {
   relatorios: { usados: number; limite: number | null };
   retestes: { usados: number; limite: number | null };
+  geracoes?: { usados: number; limite: number | null };
 };
 
 function formatarLimite(n: number | null): string {
@@ -32,18 +33,36 @@ export default function Perfil() {
   const [ok, setOk] = useState("");
   const [aguarde, setAguarde] = useState<string | null>(null);
 
+  const [seguranca, setSeguranca] = useState<{
+    duasEtapas: boolean;
+    emailVerificado: boolean;
+    sessoesAbertas: number;
+  } | null>(null);
+
   const carregar = useCallback(async () => {
     try {
-      const [a, u] = await Promise.all([
+      const [a, u, s] = await Promise.all([
         fetch("/api/v1/assinatura").then((r) => (r.ok ? r.json() : null)),
         fetch("/api/v1/uso").then((r) => (r.ok ? r.json() : null)),
+        fetch("/api/v1/auth/seguranca").then((r) => (r.ok ? r.json() : null)),
       ]);
       if (a) setAssinatura(a as Assinatura);
       if (u) setUso(u as Uso);
+      if (s) setSeguranca(s);
     } catch {
       // silencioso: a página mostra estado vazio
     }
   }, []);
+
+  async function sairDeTodos() {
+    if (!window.confirm("Encerrar a sessão em todos os navegadores e apps, inclusive este?")) return;
+    setAguarde("sessoes");
+    try {
+      await fetch("/api/v1/auth/logout?todos=1", { method: "POST" });
+    } finally {
+      await signOut({ callbackUrl: "/login" });
+    }
+  }
 
   useEffect(() => {
     void carregar();
@@ -76,6 +95,10 @@ export default function Perfil() {
   }
 
   async function abrirPortal() {
+    // Um clique só cancelava na hora: agora pede confirmação.
+    if (!window.confirm("Cancelar a renovação da assinatura? Você continua com o plano até o fim do período já pago.")) {
+      return;
+    }
     setErro("");
     setAguarde("portal");
     try {
@@ -85,12 +108,17 @@ export default function Perfil() {
       const corpo = (await res.json().catch(() => null)) as {
         ok?: boolean;
         error?: string;
+        acessoAte?: string | null;
       } | null;
       if (!res.ok || !corpo?.ok) {
         setErro(corpo?.error ?? "Cancelamento indisponível no momento.");
         return;
       }
-      setOk("Assinatura cancelada. Você voltou para o Free.");
+      setOk(
+        corpo.acessoAte
+          ? `Renovação cancelada. Seu plano continua até ${new Date(corpo.acessoAte).toLocaleDateString("pt-BR")}.`
+          : "Assinatura cancelada. Você voltou para o Free.",
+      );
       await carregar();
     } catch {
       setErro("Não foi possível conectar ao servidor.");
@@ -161,6 +189,11 @@ export default function Perfil() {
             <p>
               retestes: {uso ? `${uso.retestes.usados}/${formatarLimite(uso.retestes.limite)}` : "—"}
             </p>
+            {uso?.geracoes && (
+              <p>
+                gerações com IA: {uso.geracoes.usados}/{formatarLimite(uso.geracoes.limite)}
+              </p>
+            )}
             {assinatura?.expiraEm && (
               <p>
                 {assinatura.trial ? "trial até " : "ciclo até "}
@@ -198,14 +231,16 @@ export default function Perfil() {
           <CardHeader>
             <CardTitle>Assinatura</CardTitle>
             <CardDescription>
-              Pro R$ 19,90/mês · Team R$ 49,90/mês por usuário. Pagamentos via Asaas.
+              Pro R$ 19,90/mês (300 relatórios) · Team R$ 49,90/mês (900 relatórios, até 10 colegas). Pagamentos via Asaas.
             </CardDescription>
           </CardHeader>
+          {/* Quem está no trial (Pro sem assinatura) também pode assinar —
+              antes os botões travavam para qualquer plano diferente de free. */}
           <div className="flex flex-col gap-2.5 px-5 py-4 sm:flex-row sm:px-6">
             <Button
               variante="primaria"
               onClick={() => pagar("pro", "mensal")}
-              disabled={aguarde !== null || plano !== "free"}
+              disabled={aguarde !== null || Boolean(assinatura?.subscriptionId)}
               className="sm:flex-1"
             >
               {aguarde?.startsWith("pagar-pro") ? "abrindo…" : "assinar pro"}
@@ -213,7 +248,7 @@ export default function Perfil() {
             <Button
               variante="secundaria"
               onClick={() => pagar("team", "mensal")}
-              disabled={aguarde !== null || plano !== "free"}
+              disabled={aguarde !== null || Boolean(assinatura?.subscriptionId)}
               className="sm:flex-1"
             >
               {aguarde?.startsWith("pagar-team") ? "abrindo…" : "assinar team"}
@@ -221,10 +256,49 @@ export default function Perfil() {
             <Button
               variante="fantasma"
               onClick={abrirPortal}
-              disabled={aguarde !== null || (!assinatura?.subscriptionId && plano === "free")}
+              disabled={aguarde !== null || !assinatura?.subscriptionId}
             >
               {aguarde === "portal" ? "cancelando…" : "cancelar assinatura"}
             </Button>
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Segurança</CardTitle>
+            <CardDescription>Como sua conta está protegida.</CardDescription>
+          </CardHeader>
+          <div className="flex flex-col gap-3 px-5 py-4 sm:px-6">
+            <ul className="flex flex-col gap-1.5 font-mono text-xs text-texto-2">
+              <li>
+                verificação em duas etapas:{" "}
+                {seguranca ? (
+                  seguranca.duasEtapas ? (
+                    <span className="text-accent">ativa (senha + código por e-mail)</span>
+                  ) : (
+                    <span className="text-media">só senha (envio de e-mail ainda não configurado)</span>
+                  )
+                ) : (
+                  "—"
+                )}
+              </li>
+              <li>
+                e-mail confirmado:{" "}
+                {seguranca ? (seguranca.emailVerificado ? "sim" : "ainda não") : "—"}
+              </li>
+              <li>sessões abertas: {seguranca ? seguranca.sessoesAbertas : "—"}</li>
+            </ul>
+            <div className="flex flex-col gap-2.5 sm:flex-row">
+              <a
+                href="/esqueci-senha"
+                className="inline-flex items-center justify-center rounded-lg border border-borda px-4 py-2.5 font-mono text-[11px] uppercase tracking-wider text-texto-2 transition-colors hover:border-accent hover:text-accent"
+              >
+                trocar senha
+              </a>
+              <Button variante="fantasma" onClick={sairDeTodos} disabled={aguarde !== null}>
+                {aguarde === "sessoes" ? "encerrando…" : "sair de todos os dispositivos"}
+              </Button>
+            </div>
           </div>
         </Card>
 

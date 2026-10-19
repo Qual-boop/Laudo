@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/Button";
+import { copiarParaClipboard } from "@/lib/exportacao";
 
 const semAssinatura = () => () => {};
 
@@ -30,18 +31,26 @@ export function AcoesCertificado({ hash, linkPublico }: Props) {
   );
   const url = token && origem ? `${origem}/c/${token}` : null;
 
+  // Um timer só, limpo ao trocar e ao desmontar (F13).
+  const temporizador = useRef<number | null>(null);
+  useEffect(() => () => {
+    if (temporizador.current) window.clearTimeout(temporizador.current);
+  }, []);
+
   function avisar(novo: Estado) {
     setEstado(novo);
-    window.setTimeout(() => setEstado("ocioso"), 2500);
+    if (temporizador.current) window.clearTimeout(temporizador.current);
+    temporizador.current = window.setTimeout(() => setEstado("ocioso"), 2500);
   }
 
   async function copiarTexto(texto: string): Promise<boolean> {
     try {
-      await navigator.clipboard.writeText(texto);
+      // Com fallback para http (execCommand) — F14.
+      await copiarParaClipboard(texto);
       return true;
     } catch {
-      // Clipboard API exige contexto seguro: hash e link seguem visíveis na
-      // tela para copiar à mão.
+      // Sem nenhum caminho de cópia: hash e link seguem visíveis na tela
+      // para copiar à mão.
       return false;
     }
   }

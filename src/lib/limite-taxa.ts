@@ -18,6 +18,12 @@ export const REGRAS = {
   loginEmail: { limite: 10, janelaMs: 15 * 60_000 },
   cadastroIp: { limite: 20, janelaMs: 60 * 60_000 },
   cadastroEmail: { limite: 5, janelaMs: 60 * 60_000 },
+  // Geração com IA: rajada por usuário (a cota mensal limita o total; isto
+  // segura script que queima a cota inteira em minutos).
+  gerarUsuario: { limite: 20, janelaMs: 10 * 60_000 },
+  // Envio de código por e-mail: sem isto, vira canhão de spam/custo.
+  codigoEmail: { limite: 5, janelaMs: 60 * 60_000 },
+  codigoIp: { limite: 30, janelaMs: 60 * 60_000 },
 } satisfies Record<string, Regra>;
 
 /** Bloqueio ativo: segundos até a janela que estourou acabar. */
@@ -136,7 +142,16 @@ export function verificarCadastro(ip: string | null, email: unknown): Bloqueio |
   );
 }
 
-export const MENSAGEM_429 = "Muitas tentativas. Aguarde alguns minutos e tente de novo.";
+/** Envio de código (login, troca de senha): por e-mail e por IP. */
+export function verificarEnvioCodigo(ip: string | null, email: unknown): Bloqueio | null {
+  const e = normalizarEmail(email);
+  return pior(
+    ip ? consumir(`codigo:ip:${ip}`, REGRAS.codigoIp) : null,
+    e ? consumir(`codigo:email:${e}`, REGRAS.codigoEmail) : null,
+  );
+}
+
+export const MENSAGEM_429 ="Muitas tentativas. Aguarde alguns minutos e tente de novo.";
 
 /** 429 no formato de `erroApi`, com Retry-After em segundos. */
 export function resposta429(b: Bloqueio, corpoExtra: Record<string, unknown> = {}): Response {

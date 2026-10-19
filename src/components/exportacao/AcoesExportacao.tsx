@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/Button";
 import {
+  abrirNovaAbaGitHub,
+  abrirNovaAbaJira,
   gerarExportacaoJira,
   gerarExportacaoGitHub,
   copiarParaClipboard,
-  type ExportacaoJira,
-  type ExportacaoGitHub,
 } from "@/lib/exportacao";
 import { LIMITES, type Plano } from "@/lib/planos";
 import type { Relatorio } from "@/lib/tipos";
@@ -21,7 +21,23 @@ type Props = {
 
 export function AcoesExportacao({ relatorio, jiraBaseUrl, githubRepoUrl, plano = "free" }: Props) {
   const [copiado, setCopiado] = useState<"jira" | "github" | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
   const avancado = LIMITES[plano].exportacaoAvancada;
+  // Um timer só, limpo ao trocar e ao desmontar (antes ficavam órfãos).
+  const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (temporizador.current) clearTimeout(temporizador.current);
+  }, []);
+
+  function marcar(qual: "jira" | "github", texto: string | null = null) {
+    setCopiado(qual);
+    setAviso(texto);
+    if (temporizador.current) clearTimeout(temporizador.current);
+    temporizador.current = setTimeout(() => {
+      setCopiado(null);
+      setAviso(null);
+    }, texto ? 6000 : 2500);
+  }
 
   const exportacaoJira = gerarExportacaoJira(relatorio);
   const exportacaoGitHub = gerarExportacaoGitHub(relatorio);
@@ -29,8 +45,7 @@ export function AcoesExportacao({ relatorio, jiraBaseUrl, githubRepoUrl, plano =
   async function copiarJira() {
     try {
       await copiarParaClipboard(JSON.stringify(exportacaoJira, null, 2));
-      setCopiado("jira");
-      setTimeout(() => setCopiado(null), 2500);
+      marcar("jira");
     } catch {
       setCopiado(null);
     }
@@ -39,27 +54,26 @@ export function AcoesExportacao({ relatorio, jiraBaseUrl, githubRepoUrl, plano =
   async function copiarGitHub() {
     try {
       await copiarParaClipboard(exportacaoGitHub.body);
-      setCopiado("github");
-      setTimeout(() => setCopiado(null), 2500);
+      marcar("github");
     } catch {
       setCopiado(null);
     }
   }
 
-  function abrirJira() {
-    if (jiraBaseUrl) {
-      import("@/lib/exportacao").then(({ abrirNovaAbaJira }) => abrirNovaAbaJira(exportacaoJira, jiraBaseUrl));
-    } else {
-      copiarJira();
-    }
+  const AVISO_CORTE = "relatório grande: o link levou um resumo e o texto completo foi copiado — cole na issue";
+
+  // window.open precisa sair direto do clique (o import() dinâmico de antes
+  // abria a aba depois de um await e o bloqueador de pop-up barrava).
+  async function abrirJira() {
+    if (!jiraBaseUrl) return copiarJira();
+    const { cortado } = await abrirNovaAbaJira(exportacaoJira, jiraBaseUrl);
+    if (cortado) marcar("jira", AVISO_CORTE);
   }
 
-  function abrirGitHub() {
-    if (githubRepoUrl) {
-      import("@/lib/exportacao").then(({ abrirNovaAbaGitHub }) => abrirNovaAbaGitHub(exportacaoGitHub, githubRepoUrl));
-    } else {
-      copiarGitHub();
-    }
+  async function abrirGitHub() {
+    if (!githubRepoUrl) return copiarGitHub();
+    const { cortado } = await abrirNovaAbaGitHub(exportacaoGitHub, githubRepoUrl);
+    if (cortado) marcar("github", AVISO_CORTE);
   }
 
   return (
@@ -87,6 +101,11 @@ export function AcoesExportacao({ relatorio, jiraBaseUrl, githubRepoUrl, plano =
       <span className="font-mono text-[10px] uppercase tracking-wider text-texto-2/60">
         {jiraBaseUrl ? "configurado" : "sem url"} · {githubRepoUrl ? "configurado" : "sem url"}
       </span>
+      {aviso && (
+        <p role="status" className="w-full font-mono text-[11px] text-media">
+          {aviso}
+        </p>
+      )}
     </div>
   );
 }

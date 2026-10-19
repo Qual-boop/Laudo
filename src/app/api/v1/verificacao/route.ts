@@ -1,6 +1,6 @@
 import { buscarTodos, buscarUm, executar, inserir, transacao } from "@/lib/banco";
 import { exigirUsuario, erroApi } from "@/lib/api-auth";
-import { incrementarUso, obterUso, verificarLimite } from "@/lib/limites";
+import { consumirUso, devolverUso, respostaLimite } from "@/lib/limites";
 import { normalizarConfianca, statusParaResultado } from "@/lib/verificacao";
 import {
   esquemaAchadoIdQuery,
@@ -186,24 +186,9 @@ export async function POST(request: Request) {
     return erroApi("Acesso negado a este achado.", "ACESSO_NEGADO", 403);
   }
 
-  // Plano free: no máximo 10 retestes por mês.
-  const veredito = verificarLimite(
-    auth.usuario.plano,
-    await obterUso(auth.usuario.id),
-    "retestes",
-  );
-  if (!veredito.permitido) {
-    return Response.json(
-      {
-        error: `Você usou ${veredito.usados}/${veredito.limite} retestes este mês. Faça upgrade para continuar.`,
-        code: "LIMITE_PLANO",
-        recurso: "retestes",
-        usados: veredito.usados,
-        limite: veredito.limite,
-      },
-      { status: 402 },
-    );
-  }
+  // Plano free: no máximo 10 retestes por mês (consumo atômico).
+  const veredito = await consumirUso(auth.usuario.id, auth.usuario.plano, "retestes");
+  if (!veredito.permitido) return respostaLimite(veredito, auth.usuario.plano);
 
   const dataReteste =
     v.dados.dataReteste && /^\d{4}-\d{2}-\d{2}$/.test(v.dados.dataReteste)
@@ -230,9 +215,10 @@ export async function POST(request: Request) {
     );
 
     return id;
+  }).catch(async (e: unknown) => {
+    await devolverUso(auth.usuario.id, "retestes");
+    throw e;
   });
-
-  await incrementarUso(auth.usuario.id, "retestes_registrados");
 
   const [atualizado] = await listarAchados(auth.usuario.id, achadoId);
 

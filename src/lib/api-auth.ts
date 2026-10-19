@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { getToken } from "next-auth/jwt";
-import { buscarUm } from "@/lib/banco";
+import { sessaoValida } from "@/lib/sessoes";
 import { buscarUsuarioPorId, type Usuario } from "@/lib/usuarios";
 import { assinaturaDe } from "@/lib/assinatura";
 import type { Plano } from "@/lib/planos";
@@ -107,24 +107,25 @@ export async function exigirUsuario(
     };
   }
 
-  // Bearer de mobile/desktop: confere revogação e expiração em `sessoes`.
-  // (Claim próprio `sid`: o `jti` é sobrescrito pelo encode com UUID.)
-  const sid = token.sid;
-  if (typeof sid === "number" || (typeof sid === "string" && sid)) {
-    const sessao = await buscarUm<{ usuario_id: number; expira_em: string }>(
-      "SELECT usuario_id, expira_em FROM sessoes WHERE id = ?",
-      Number(sid),
+  // Web e Bearer: todo token precisa de uma sessão viva em `sessoes`
+  // (logout, "sair de todos" e troca de senha apagam a linha). Token sem
+  // `sid` é anterior a este controle e também cai. (Claim próprio `sid`:
+  // o `jti` é sobrescrito pelo encode com UUID.)
+  if (!(await sessaoValida(token.sid, usuarioId))) {
+    const resposta = erroApi(
+      "Sessão expirada ou revogada. Faça login de novo.",
+      "SESSAO_INVALIDA",
+      401,
     );
-    if (
-      !sessao ||
-      sessao.usuario_id !== usuarioId ||
-      new Date(sessao.expira_em).getTime() < Date.now()
-    ) {
-      return {
-        ok: false,
-        resposta: erroApi("Sessão expirada ou revogada. Faça login de novo.", "SESSAO_INVALIDA", 401),
-      };
+    // Apaga o cookie morto: sem isso o middleware seguiria vendo "sessão"
+    // e mandando o usuário para o painel em vez do login.
+    for (const nome of nomesCookieSessao()) {
+      resposta.headers.append(
+        "Set-Cookie",
+        `${nome}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax${nome.startsWith("__Secure-") ? "; Secure" : ""}`,
+      );
     }
+    return { ok: false, resposta };
   }
 
   const usuario = await buscarUsuarioPorId(usuarioId);

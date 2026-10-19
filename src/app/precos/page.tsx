@@ -4,7 +4,7 @@ import { SeletorPrecos } from "@/components/precos/SeletorPrecos";
 export const metadata: Metadata = {
   title: "Planos e preços — Provafix",
   description:
-    "Comece grátis e faça upgrade para Pro ou Team quando precisar de relatórios ilimitados, exportação Jira/GitHub e certificado de correção.",
+    "Comece grátis e faça upgrade para Pro ou Team quando precisar de até 300 ou 900 relatórios por mês, exportação Jira/GitHub e certificado de correção.",
 };
 
 export default function Precos() {

@@ -43,7 +43,7 @@ const PLANOS: {
     href: "/cadastro?plano=pro",
     destaque: true,
     features: [
-      "Relatórios ilimitados",
+      "300 relatórios por mês",
       "Achados ilimitados por relatório",
       "Retestes ilimitados",
       "Exportação Jira e GitHub",
@@ -66,6 +66,7 @@ const PLANOS: {
     href: "/cadastro?plano=team",
     features: [
       "Tudo do Pro",
+      "900 relatórios por mês",
       "Compartilhar relatórios com até 10 colegas",
       "Comentários de revisão por achado",
       "Suporte prioritário",

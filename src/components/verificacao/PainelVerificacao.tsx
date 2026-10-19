@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Spinner } from "@/components/Spinner";
 import { AchadoVerificacaoCard } from "@/components/verificacao/AchadoVerificacaoCard";
 import { DeltaRelatorio } from "@/components/verificacao/DeltaRelatorio";
@@ -61,6 +61,10 @@ type Props = {
 
 export function PainelVerificacao({ onCopiar, onAviso, onResumo, plano = "free" }: Props) {
   const [achados, setAchados] = useState<AchadoVerificavel[]>([]);
+  const achadosRef = useRef<AchadoVerificavel[]>([]);
+  useEffect(() => {
+    achadosRef.current = achados;
+  }, [achados]);
   const [carregando, setCarregando] = useState(true);
   const [editando, setEditando] = useState<number | null>(null);
   const [deltaDe, setDeltaDe] = useState<DadosDelta | null>(null);
@@ -110,13 +114,18 @@ export function PainelVerificacao({ onCopiar, onAviso, onResumo, plano = "free" 
   }
 
   function aoSalvar(atualizado: AchadoVerificavel) {
-    const proxima = achados.map((a) =>
+    // Lê a lista mais recente pelo ref: o formulário guarda este callback
+    // da renderização em que abriu, e um recarregamento no meio (outra aba,
+    // reteste em outro achado) faria a lista antiga sobrescrever a nova (F10).
+    const atuais = achadosRef.current;
+    const proxima = atuais.map((a) =>
       a.id === atualizado.id ? atualizado : a,
     );
+    achadosRef.current = proxima;
     setAchados(proxima);
     contar(proxima);
     setEditando(null);
-    const antes = achados.find((a) => a.id === atualizado.id);
+    const antes = atuais.find((a) => a.id === atualizado.id);
     if (atualizado.status === "verificado" && antes?.status !== "verificado") {
       setComemoracao({
         ref: atualizado.achado_ref,

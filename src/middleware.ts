@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { verificarOrigem } from "@/lib/origem";
 
 /**
  * Middleware (Edge runtime).
@@ -15,6 +16,7 @@ const PUBLICO = [
   "/",
   "/login",
   "/cadastro",
+  "/esqueci-senha",
   "/precos",
   "/apresentacao",
   "/termos",
@@ -23,6 +25,9 @@ const PUBLICO = [
   "/api/v1/auth",
   "/c", // link público do certificado (token de 256 bits; ver lib/certificado-publico.ts)
   "/icon.svg",
+  "/icon-192.png",
+  "/icon-512.png",
+  "/apple-icon.png",
   "/manifest.json",
   "/sitemap.xml",
   "/robots.txt",
@@ -63,6 +68,15 @@ async function temSessao(req: NextRequest): Promise<boolean> {
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  // CSRF: mutação na API só do próprio site (ver lib/origem.ts).
+  const origem = verificarOrigem(req.method, pathname, req.headers);
+  if (!origem.permitido) {
+    return NextResponse.json(
+      { error: "Requisição recusada: origem não permitida.", code: "ORIGEM_INVALIDA" },
+      { status: 403 },
+    );
+  }
 
   if (
     pathname.startsWith("/_next/") ||

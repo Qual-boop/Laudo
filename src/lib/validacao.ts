@@ -28,15 +28,72 @@ const confianca = z
 
 /* ---------- Auth ---------- */
 
-export const esquemaCadastro = z.object({
-  nome: z.string().trim().min(1, "Nome é obrigatório.").max(120),
-  email: z.string().trim().toLowerCase().email("E-mail inválido.").max(254),
-  senha: z.string().min(8, "Senha deve ter ao menos 8 caracteres.").max(128),
-});
+/**
+ * Senhas que caem nos primeiros segundos de qualquer ataque de dicionário
+ * (listas públicas de vazamentos, versões em português incluídas).
+ */
+const SENHAS_COMUNS = new Set([
+  "12345678", "123456789", "1234567890", "87654321", "11111111", "00000000",
+  "password", "password1", "password123", "senha123", "senha1234", "minhasenha",
+  "qwertyui", "qwerty123", "asdfghjk", "abcd1234", "abc12345", "iloveyou",
+  "admin123", "administrador", "welcome1", "letmein1", "11223344", "12341234",
+  "brasil123", "flamengo", "corinthians", "palmeiras", "pentest123", "provafix",
+  "123mudar", "mudar123", "trocar123", "changeme", "p@ssw0rd", "passw0rd",
+]);
+
+/** Fraca demais: lista de vazamentos ou um caractere só repetido. */
+export function senhaFraca(senha: string): boolean {
+  const s = senha.toLowerCase();
+  return SENHAS_COMUNS.has(s) || /^(.)\1+$/.test(s);
+}
+
+export const esquemaSenhaNova = z
+  .string()
+  .min(8, "Senha deve ter ao menos 8 caracteres.")
+  .max(128, "Senha deve ter no máximo 128 caracteres.")
+  .refine((s) => !senhaFraca(s), "Senha muito comum — escolha outra (uma frase curta funciona bem).");
+
+export const esquemaCadastro = z
+  .object({
+    nome: z.string().trim().min(1, "Nome é obrigatório.").max(120),
+    email: z.string().trim().toLowerCase().email("E-mail inválido.").max(254),
+    senha: esquemaSenhaNova,
+  })
+  .refine((d) => d.senha.toLowerCase() !== d.email, {
+    message: "A senha não pode ser o seu e-mail.",
+    path: ["senha"],
+  });
 
 export const esquemaLogin = z.object({
   email: z.string().trim().toLowerCase().email("E-mail inválido.").max(254),
   senha: z.string().min(1, "Senha é obrigatória.").max(128),
+});
+
+const esquemaEmail = z.string().trim().toLowerCase().email("E-mail inválido.").max(254);
+const esquemaCodigo6 = z
+  .string()
+  .transform((s) => s.replace(/\D/g, ""))
+  .refine((s) => s.length === 6, "O código tem 6 dígitos.");
+
+/** 2ª etapa do login: senha de novo + código recebido por e-mail. */
+export const esquemaConfirmarLogin = z.object({
+  email: esquemaEmail,
+  senha: z.string().min(1, "Senha é obrigatória.").max(128),
+  codigo: esquemaCodigo6,
+});
+
+/** Troca o ticket (senha + código já conferidos) pela sessão. */
+export const esquemaTicket = z.object({
+  email: esquemaEmail,
+  ticket: z.string().regex(/^[0-9a-f]{64}$/i, "Ticket inválido."),
+});
+
+export const esquemaSolicitarSenha = z.object({ email: esquemaEmail });
+
+export const esquemaRedefinirSenha = z.object({
+  email: esquemaEmail,
+  codigo: esquemaCodigo6,
+  senha: esquemaSenhaNova,
 });
 
 /* ---------- POST /api/v1/gerar ---------- */

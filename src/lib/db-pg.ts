@@ -184,4 +184,24 @@ export async function criarSchemaPg(): Promise<void> {
   await sql`CREATE INDEX IF NOT EXISTS idx_compartilhamentos_usuario ON compartilhamentos(usuario_id)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_comentarios_relatorio ON comentarios(relatorio_id, id)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_evidencias_achado ON evidencias(achado_id, id)`;
+
+  // Migrações aditivas: cota de IA, plano assinado, e-mail verificado.
+  await sql`ALTER TABLE uso_mensal ADD COLUMN IF NOT EXISTS geracoes_ia INTEGER NOT NULL DEFAULT 0`;
+  await sql`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS assinatura_plano TEXT`;
+  await sql`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS email_verificado_em TIMESTAMPTZ`;
+
+  // Códigos por e-mail (ver lib/db.ts).
+  await sql`
+    CREATE TABLE IF NOT EXISTS codigos_email (
+      id SERIAL PRIMARY KEY,
+      usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+      finalidade TEXT NOT NULL,
+      codigo_hash TEXT NOT NULL,
+      expira_em TIMESTAMPTZ NOT NULL,
+      tentativas INTEGER NOT NULL DEFAULT 0,
+      usado_em TIMESTAMPTZ,
+      criado_em TIMESTAMPTZ DEFAULT now()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_codigos_usuario ON codigos_email(usuario_id, finalidade, id)`;
 }

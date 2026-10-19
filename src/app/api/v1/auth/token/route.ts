@@ -1,5 +1,6 @@
 import { encode } from "next-auth/jwt";
-import { executar, inserir } from "@/lib/banco";
+import { executar } from "@/lib/banco";
+import { criarSessao } from "@/lib/sessoes";
 import {
   TOKEN_MAX_AGE_SEG,
   erroApi,
@@ -13,8 +14,10 @@ import {
   resposta429,
   verificarLogin,
 } from "@/lib/limite-taxa";
+import { conferirCodigo } from "@/lib/codigos";
+import { emailAtivo } from "@/lib/email";
 import { buscarUsuarioPorEmail, compararSenha } from "@/lib/usuarios";
-import { esquemaLogin, validar } from "@/lib/validacao";
+import { esquemaLogin, esquemaTicket, validar } from "@/lib/validacao";
 
 /**
  * POST /api/v1/auth/token — login para clientes não-web (mobile/desktop).
@@ -36,18 +39,32 @@ export async function POST(request: Request) {
   );
   if (bloqueio) return resposta429(bloqueio);
 
-  const v = validar(esquemaLogin, corpo);
-  if (!v.ok) return v.resposta;
-
-  const usuario = await buscarUsuarioPorEmail(v.dados.email);
-  // Mensagem genérica de propósito: não revela se o e-mail existe.
-  if (!usuario?.senha_hash) {
-    return erroApi("E-mail ou senha inválidos.", "CREDENCIAIS_INVALIDAS", 401);
+  let usuario: Awaited<ReturnType<typeof buscarUsuarioPorEmail>>;
+  if (emailAtivo()) {
+    // Login em 2 etapas também para apps: /login/iniciar (senha → código
+    // por e-mail) e /login/confirmar (código → ticket); aqui o ticket.
+    const t = esquemaTicket.safeParse(corpo);
+    if (!t.success) {
+      return erroApi(
+        "Login em duas etapas: chame /api/v1/auth/login/iniciar e /login/confirmar e envie { email, ticket }.",
+        "CODIGO_NECESSARIO",
+        401,
+      );
+    }
+    usuario = await buscarUsuarioPorEmail(t.data.email);
+    if (!usuario || !(await conferirCodigo(usuario.id, "ticket", t.data.ticket)).ok) {
+      return erroApi("Ticket inválido ou expirado.", "TICKET_INVALIDO", 401);
+    }
+  } else {
+    const v = validar(esquemaLogin, corpo);
+    if (!v.ok) return v.resposta;
+    usuario = await buscarUsuarioPorEmail(v.dados.email);
+    // Mensagem genérica de propósito: não revela se o e-mail existe.
+    if (!usuario?.senha_hash || !(await compararSenha(v.dados.senha, usuario.senha_hash))) {
+      return erroApi("E-mail ou senha inválidos.", "CREDENCIAIS_INVALIDAS", 401);
+    }
   }
-  if (!(await compararSenha(v.dados.senha, usuario.senha_hash))) {
-    return erroApi("E-mail ou senha inválidos.", "CREDENCIAIS_INVALIDAS", 401);
-  }
-  liberarEmailLogin(v.dados.email);
+  liberarEmailLogin(usuario.email);
 
   const segredo = process.env.AUTH_SECRET ?? "";
   if (!segredo) {
@@ -55,12 +72,9 @@ export async function POST(request: Request) {
   }
 
   const expiraEm = new Date(Date.now() + TOKEN_MAX_AGE_SEG * 1000);
-  const jti = await inserir(
-    "INSERT INTO sessoes (usuario_id, token_hash, expira_em) VALUES (?, ?, ?)",
-    usuario.id,
-    "pendente",
-    expiraEm.toISOString(),
-  );
+  // Placeholder único (o antigo "pendente" fixo batia no UNIQUE de
+  // token_hash quando dois logins chegavam juntos); o hash real vem abaixo.
+  const jti = await criarSessao(usuario.id);
 
   const token = await encode({
     token: {

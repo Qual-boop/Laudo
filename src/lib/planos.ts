@@ -4,6 +4,9 @@ export type Plano = "free" | "pro" | "team";
 
 export type LimitesPlano = {
   relatoriosMes: number; // Infinity = ilimitado
+  // Gerações com IA (cada uma gasta tokens pagos). Folga de 2x sobre os
+  // relatórios para regerar/ajustar antes de salvar.
+  geracoesIaMes: number;
   achadosPorRelatorio: number;
   retestesMes: number;
   exportacaoAvancada: boolean; // Jira/GitHub
@@ -15,6 +18,7 @@ export type LimitesPlano = {
 export const LIMITES: Record<Plano, LimitesPlano> = {
   free: {
     relatoriosMes: 3,
+    geracoesIaMes: 6,
     achadosPorRelatorio: 5,
     retestesMes: 10,
     exportacaoAvancada: false,
@@ -23,7 +27,8 @@ export const LIMITES: Record<Plano, LimitesPlano> = {
     historicoDias: 30,
   },
   pro: {
-    relatoriosMes: Infinity,
+    relatoriosMes: 300,
+    geracoesIaMes: 600,
     achadosPorRelatorio: Infinity,
     retestesMes: Infinity,
     exportacaoAvancada: true,
@@ -32,7 +37,8 @@ export const LIMITES: Record<Plano, LimitesPlano> = {
     historicoDias: Infinity,
   },
   team: {
-    relatoriosMes: Infinity,
+    relatoriosMes: 900,
+    geracoesIaMes: 1800,
     achadosPorRelatorio: Infinity,
     retestesMes: Infinity,
     exportacaoAvancada: true,

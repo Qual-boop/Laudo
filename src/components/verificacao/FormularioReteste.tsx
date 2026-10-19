@@ -3,7 +3,7 @@ import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { Field, Input, Select, Textarea } from "@/components/Field";
 import { Spinner } from "@/components/Spinner";
-import { dispararPaywall } from "@/components/PaywallModal";
+import { abrirPaywallSe402 } from "@/components/PaywallModal";
 import type { AchadoVerificavel, ResultadoReteste } from "@/lib/tipos";
 
 type Props = {
@@ -19,8 +19,10 @@ const RESULTADOS: { valor: ResultadoReteste; rotulo: string }[] = [
   { valor: "parcial", rotulo: "Parcial" },
 ];
 
+/** Data local (não UTC): à noite no Brasil o ISO já seria "amanhã". */
 function hoje(): string {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 export function FormularioReteste({ achado, onCancelar, onSalvo, onAviso }: Props) {
@@ -54,20 +56,7 @@ export function FormularioReteste({ achado, onCancelar, onSalvo, onAviso }: Prop
 
       if (!res.ok) {
         // 402 = limite do plano: abre o paywall em vez do toast.
-        if (
-          res.status === 402 &&
-          corpo &&
-          typeof corpo.recurso === "string" &&
-          typeof corpo.usados === "number" &&
-          typeof corpo.limite === "number"
-        ) {
-          dispararPaywall({
-            recurso: corpo.recurso,
-            usados: corpo.usados,
-            limite: corpo.limite,
-          });
-          return;
-        }
+        if (abrirPaywallSe402(res, corpo)) return;
         onAviso(corpo?.error ?? "Não foi possível registrar o reteste.");
         return;
       }
