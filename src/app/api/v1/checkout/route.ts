@@ -1,16 +1,13 @@
 import { buscarUm, executar } from "@/lib/banco";
 import { exigirUsuario, erroApi } from "@/lib/api-auth";
-import {
-  criarCheckout,
-  criarCliente,
-  type Ciclo,
-  type PlanoPago,
-} from "@/lib/asaas";
+import type { Periodo, PlanoPago } from "@/lib/planos";
+import { URL_SITE } from "@/lib/site";
+import { criarCheckout, criarCliente, stripeConfigurado } from "@/lib/stripe";
 
 /**
- * POST /api/v1/checkout — cria checkout recorrente no Asaas.
+ * POST /api/v1/checkout — cria a sessão de checkout recorrente no Stripe.
  * Body: { plano: "pro" | "team", periodo: "mensal" | "anual" (alias: ciclo) }.
- * Devolve { url } do checkout hospedado pelo Asaas.
+ * Devolve { url } do checkout hospedado pelo Stripe.
  */
 export async function POST(request: Request) {
   const auth = await exigirUsuario(request);
@@ -25,7 +22,7 @@ export async function POST(request: Request) {
 
   const b = (corpo ?? {}) as Record<string, unknown>;
   const plano = b.plano as PlanoPago;
-  const periodo = ((b.periodo ?? b.ciclo) ?? "mensal") as Ciclo;
+  const periodo = ((b.periodo ?? b.ciclo) ?? "mensal") as Periodo;
 
   if (plano !== "pro" && plano !== "team") {
     return erroApi("plano deve ser pro ou team.", "VALIDACAO", 400);
@@ -33,77 +30,63 @@ export async function POST(request: Request) {
   if (periodo !== "mensal" && periodo !== "anual") {
     return erroApi("periodo deve ser mensal ou anual.", "VALIDACAO", 400);
   }
-  if (!process.env.ASAAS_API_KEY) {
+  if (!stripeConfigurado()) {
     return erroApi(
-      "Checkout indisponível: ASAAS_API_KEY não configurada.",
-      "ASAAS_AUSENTE",
-      500,
+      "Pagamentos ainda não estão disponíveis. Tente de novo em breve.",
+      "PAGAMENTO_INDISPONIVEL",
+      503,
     );
   }
 
   const usuario = await buscarUm<{
-    id: number;
-    nome: string;
-    email: string;
-    asaas_customer_id: string | null;
-    asaas_subscription_id: string | null;
-    assinatura_status: string | null;
+    stripe_customer_id: string | null;
+    stripe_subscription_id: string | null;
   }>(
-    "SELECT id, nome, email, asaas_customer_id, asaas_subscription_id, assinatura_status FROM usuarios WHERE id = ?",
+    "SELECT stripe_customer_id, stripe_subscription_id FROM usuarios WHERE id = ?",
     auth.usuario.id,
   );
 
-  // Sem trava, um assinante ativo pagaria dobrado abrindo outro checkout
-  // (a UI desabilita, mas a API permitia). Trial (pro sem subscription)
-  // e ex-assinante podem assinar normalmente.
-  if (usuario?.asaas_subscription_id && usuario?.assinatura_status === "ativa") {
+  // Uma assinatura por conta: trocar de plano, reativar ou cancelar é no
+  // portal (sem isso daria para pagar duas vezes). O webhook de exclusão
+  // limpa o id quando a assinatura acaba de vez.
+  if (usuario?.stripe_subscription_id) {
     return erroApi(
-      "Você já tem uma assinatura ativa. Cancele a atual antes de assinar de novo.",
-      "ASSINATURA_ATIVA",
+      "Você já tem uma assinatura. Use \"gerenciar assinatura\" no perfil para trocar de plano, reativar ou cancelar.",
+      "ASSINATURA_EXISTENTE",
       409,
     );
   }
 
   try {
-    let customerId = usuario?.asaas_customer_id ?? null;
+    let customerId = usuario?.stripe_customer_id ?? null;
     if (!customerId) {
-      // O Asaas pode exigir cpfCnpj conforme a conta; sem ele, o erro
-      // volta transparente para o cliente decidir (ver ASAAS-SETUP.md).
-      const cliente = await criarCliente({
-        name: usuario?.nome ?? auth.usuario.nome,
-        email: usuario?.email ?? auth.usuario.email,
-      });
-      customerId = cliente.id;
+      customerId = (
+        await criarCliente({
+          nome: auth.usuario.nome,
+          email: auth.usuario.email,
+          usuarioId: auth.usuario.id,
+        })
+      ).id;
       await executar(
-        "UPDATE usuarios SET asaas_customer_id = ?, atualizado_em = CURRENT_TIMESTAMP WHERE id = ?",
+        "UPDATE usuarios SET stripe_customer_id = ?, atualizado_em = CURRENT_TIMESTAMP WHERE id = ?",
         customerId,
         auth.usuario.id,
       );
     }
 
-    // Base pública para os redirects do Asaas: em produção usa
-    // NEXT_PUBLIC_APP_URL (ex.: https://laudo.vercel.app); local cai
-    // para a origem da requisição.
-    const base =
-      process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, "") ||
-      new URL(request.url).origin;
-    const checkout = await criarCheckout({
+    const sessao = await criarCheckout({
       customerId,
-      planoCiclo: `${plano}_${periodo}`,
-      referencia: `${auth.usuario.id}:${plano}:${periodo}`,
-      preencheCliente: { name: auth.usuario.nome, email: auth.usuario.email },
-      successUrl: `${base}/perfil?assinatura=ok`,
-      cancelUrl: `${base}/precos?assinatura=cancelada`,
-      expiredUrl: `${base}/precos?assinatura=expirada`,
+      usuarioId: auth.usuario.id,
+      plano,
+      periodo,
+      // URL pública fixa: atrás do proxy do Railway, request.url chega
+      // com o host interno.
+      urlSucesso: `${URL_SITE}/perfil?assinatura=ok`,
+      urlCancelado: `${URL_SITE}/precos?assinatura=cancelada`,
     });
-
-    // A API devolve `link`; fallback monta a URL canônica.
-    const url =
-      checkout.link ?? `https://asaas.com/checkoutSession/show?id=${checkout.id}`;
-    return Response.json({ url });
+    return Response.json({ url: sessao.url });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    const status = (e as { status?: number }).status ?? 502;
-    return erroApi(msg || "Falha ao criar checkout.", "CHECKOUT_FALHOU", status);
+    return erroApi(msg || "Falha ao criar checkout.", "CHECKOUT_FALHOU", 502);
   }
 }

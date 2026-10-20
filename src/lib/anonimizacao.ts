@@ -92,6 +92,9 @@ const RE_CHAVES_CONHECIDAS = new RegExp(
     "\\bxox[abprs]-[A-Za-z0-9-]{10,}\\b", // Slack
     "\\bAIza[0-9A-Za-z_-]{35}\\b", // Google API
     "\\b\\$aact_[A-Za-z0-9_]{20,}", // Asaas
+    "\\b(?:sk|rk|pk)_(?:live|test)_[A-Za-z0-9]{16,}\\b", // Stripe
+    "\\bwhsec_[A-Za-z0-9]{16,}\\b", // Stripe (webhook)
+    "\\bxkeysib-[A-Za-z0-9-]{20,}\\b", // Brevo
   ].join("|"),
   "g",
 );

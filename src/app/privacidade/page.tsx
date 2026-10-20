@@ -39,6 +39,17 @@ export default function Privacidade() {
           analytics, sem cookies de terceiros, sem rastreamento.
         </p>
         <p>
+          <strong className="text-texto">Pagamentos:</strong> processados pelo
+          Stripe, que recebe nome, e-mail e os dados do cartão — o Provafix
+          nunca vê nem guarda o número do cartão; aqui ficam só os
+          identificadores do cliente e da assinatura no Stripe.
+        </p>
+        <p>
+          <strong className="text-texto">E-mail:</strong> os códigos de acesso e
+          de troca de senha são enviados pelo Brevo, que recebe o seu nome e
+          e-mail só para essa entrega.
+        </p>
+        <p>
           Pedidos de exportação/exclusão (LGPD):{" "}
           <a href="mailto:eliasmecenasseabra@gmail.com" className="text-accent hover:underline">
             eliasmecenasseabra@gmail.com

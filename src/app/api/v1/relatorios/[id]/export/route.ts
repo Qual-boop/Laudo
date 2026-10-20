@@ -5,16 +5,20 @@ import {
   gerarExportacaoJira,
   gerarExportacaoTexto,
 } from "@/lib/exportacao";
+import { gerarCsv } from "@/lib/csv";
+import { carregarDocumento } from "@/lib/documento";
+import { nomeArquivo } from "@/lib/documento-formato";
 import { LIMITES } from "@/lib/planos";
 import { esquemaId, validar } from "@/lib/validacao";
 import type { Relatorio } from "@/lib/tipos";
 
-const FORMATOS = ["markdown", "json", "texto"] as const;
+const FORMATOS = ["markdown", "json", "texto", "csv"] as const;
 type Formato = (typeof FORMATOS)[number];
 
 /**
- * GET /api/v1/relatorios/[id]/export?formato=markdown|json|texto
- * Exporta o relatório inteiro. Jira/GitHub exigem plano pago (free: só texto).
+ * GET /api/v1/relatorios/[id]/export?formato=markdown|json|texto|csv
+ * Exporta o relatório inteiro. Jira/GitHub/CSV exigem plano pago (free: só
+ * texto). O CSV sai como download (planilha de acompanhamento dos achados).
  */
 export async function GET(
   request: Request,
@@ -57,18 +61,31 @@ export async function GET(
   }
 
   if (
-    (formato === "markdown" || formato === "json") &&
+    (formato === "markdown" || formato === "json" || formato === "csv") &&
     !LIMITES[auth.usuario.plano].exportacaoAvancada
   ) {
     return Response.json(
       {
-        error: "Exportação Jira/GitHub disponível nos planos Pro e Team.",
+        error: "Exportação Jira/GitHub/CSV disponível nos planos Pro e Team.",
         code: "LIMITE_PLANO",
         recurso: "exportacao",
         plano: auth.usuario.plano,
       },
       { status: 402 },
     );
+  }
+
+  if (formato === "csv") {
+    const doc = await carregarDocumento(v.dados);
+    if (!doc) return erroApi("Relatório corrompido no banco.", "DADO_CORROMPIDO", 500);
+    const arquivo = `${nomeArquivo("Achados", doc.relatorio.capa.cliente, doc.relatorio.capa.data)}.csv`;
+    return new Response(gerarCsv(doc), {
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": `attachment; filename="${arquivo}"`,
+        "Cache-Control": "no-store",
+      },
+    });
   }
 
   if (formato === "json") {

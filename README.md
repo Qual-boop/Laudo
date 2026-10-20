@@ -76,17 +76,15 @@ cp .env.example .env
 | `GROQ_BASE_URL` | não | `https://api.groq.com/openai/v1` | Endpoint do Groq. |
 | `GROQ_MODELO` | não | `openai/gpt-oss-120b` | Modelo do Groq. |
 | `GROQ_MAX_TOKENS` | não | `6000` | Limite de tokens do Groq. |
-| `ASAAS_API_KEY` | sim (p/ checkout) | — | Chave do Asaas (sandbox p/ teste). Sem ela, `/api/v1/checkout` responde `ASAAS_AUSENTE`. |
-| `ASAAS_BASE_URL` | não | sandbox | `https://api.asaas.com/v3` em produção. |
-| `ASAAS_WEBHOOK_TOKEN` | não (sim em prod) | — | Token do webhook; sem ele a rota aceita chamadas locais. |
-| `ASAAS_SAQUE_TOKEN` | não (recomendado) | — | Token da trava de saques (`/api/v1/webhook/asaas/autorizacao-saque`, sempre `REFUSED`). |
+| `STRIPE_SECRET_KEY` | sim (p/ cobrar) | — | Chave secreta do Stripe (`sk_test_…`/`sk_live_…`). Sem ela, `/api/v1/checkout` responde 503 `PAGAMENTO_INDISPONIVEL`. |
+| `STRIPE_WEBHOOK_SECRET` | sim (em prod) | — | Signing secret do webhook (`whsec_…`); em produção, sem ele a rota recusa os eventos. |
 | `BREVO_API_KEY` ou `RESEND_API_KEY` | não (recomendado) | — | Envio de e-mail por API HTTPS. Com chave + `EMAIL_REMETENTE`, o login passa a ter 2 etapas (senha + código de 6 dígitos) e o "esqueci minha senha" funciona. |
 | `EMAIL_REMETENTE` | com e-mail | — | Endereço "de", verificado no provedor (`EMAIL_REMETENTE_NOME`, padrão "Provafix"). |
 | `DATABASE_URL` | sim (em prod) | — | Postgres (Neon). Sem ela, usa `pentest.db` local. |
-| `NEXT_PUBLIC_APP_URL` | sim (em prod) | — | URL pública (redirects do checkout Asaas). |
+| `NEXT_PUBLIC_APP_URL` | sim (em prod) | — | URL pública (SEO e retorno do checkout do Stripe). |
 
-Assinaturas via **Asaas** (checkout recorrente + webhook): guia em
-[docs/ASAAS-SETUP.md](docs/ASAAS-SETUP.md), deploy em
+Assinaturas via **Stripe** (checkout recorrente, webhook e portal do
+cliente): guia em [docs/STRIPE-SETUP.md](docs/STRIPE-SETUP.md), deploy em
 [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ### Comandos
@@ -242,7 +240,7 @@ componentes pequenos e tipados, nenhuma lógica de negócio em `components/`.
 
 - [x] Web multi-usuário com JWT + API `/api/v1/*`
 - [x] Exportação por achado (Jira/GitHub/texto) na Verificação
-- [ ] Assinaturas (Pro R$ 19,90 · Team R$ 49,90) + limites por plano
+- [x] Assinaturas pelo Stripe (Pro R$ 22,90 · Team R$ 49,90) + limites por plano
 - [ ] Mobile (React Native + Expo) sobre a mesma `/api/v1/*` com Bearer
 - [ ] Desktop (Tauri) sobre a mesma `/api/v1/*` com Bearer
 - [ ] Trocar SQLite por Postgres/Turso + rate limiting no proxy

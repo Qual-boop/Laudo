@@ -91,29 +91,54 @@ curl http://localhost:3000/api/v1/assinatura -H 'Authorization: Bearer eyJ...'
 
 Uma vez por conta free. `201 {"plano":"pro","expiraEm":"...","trial":true}`.
 
-### `POST /api/v1/checkout` — checkout recorrente (Asaas)
+### `POST /api/v1/checkout` — checkout recorrente (Stripe)
 
 ```bash
 curl -X POST http://localhost:3000/api/v1/checkout \
   -H 'Authorization: Bearer eyJ...' -H 'Content-Type: application/json' \
   -d '{"plano":"pro","periodo":"mensal"}'
-# 200 {"url":"https://sandbox.asaas.com/checkoutSession/show/..."}
+# 200 {"url":"https://checkout.stripe.com/c/pay/cs_..."}
 ```
 
-Cria o cliente no Asaas na primeira vez (nome + e-mail) e devolve o link
-de pagamento (cartão). Sem `ASAAS_API_KEY` → 500 `ASAAS_AUSENTE`.
+Cria o cliente no Stripe na primeira vez e devolve o checkout hospedado
+(cartão). Pro R$ 22,90/mês ou R$ 219,84/ano; Team R$ 49,90/mês ou
+R$ 479,04/ano. Sem `STRIPE_SECRET_KEY` → 503 `PAGAMENTO_INDISPONIVEL`.
+Já tem assinatura → 409 `ASSINATURA_EXISTENTE` (use o portal).
 
-### `POST /api/v1/assinatura/cancelar` — cancela no Asaas e volta p/ free
+### `POST /api/v1/assinatura/portal` — portal do cliente do Stripe
 
-`200 {"ok":true,"plano":"free"}`. Sem assinatura → 409.
+`200 {"url":"https://billing.stripe.com/p/session/..."}`: cartão, faturas,
+cancelar/reativar. Sem cliente no Stripe → 409.
 
-### `POST /api/v1/webhook/asaas` — webhook (idempotente)
+### `POST /api/v1/assinatura/cancelar` — cancela a renovação
 
-Eventos: `CHECKOUT_PAID` (ativa), `SUBSCRIPTION_CREATED` (salva id),
-`PAYMENT_RECEIVED` (renova ciclo), `PAYMENT_OVERDUE` (marca `past_due`
-sem cancelar), `SUBSCRIPTION_DELETED` (volta p/ free). Sempre 200;
-repetidos são ignorados (`webhook_eventos`). Com `ASAAS_WEBHOOK_TOKEN`
-configurado, exige header `asaas-access-token`.
+`200 {"ok":true,"plano":"pro","acessoAte":"..."}`: o plano segue até o fim
+do período pago. Sem assinatura → 409.
+
+### `POST /api/v1/webhook/stripe` — webhook (assinado, idempotente)
+
+Confere `Stripe-Signature` com `STRIPE_WEBHOOK_SECRET` (obrigatório em
+produção). Eventos: `checkout.session.completed` (ativa),
+`invoice.paid` (estende até o fim do período), `invoice.payment_failed`
+(`past_due`), `customer.subscription.updated` (cancelamento agendado),
+`customer.subscription.deleted` (volta p/ free). 400 assinatura inválida,
+200 processado/ignorado, 500 falha (o Stripe reenvia; `webhook_eventos`
+evita aplicar duas vezes).
+
+### `GET/PUT /api/v1/marca` — marca própria no PDF (Pro/Team)
+
+`{ nome, cor: "#RRGGBB", logo: "data:image/png;base64,…", responsavel,
+contato }`. Logo PNG/JPEG/WebP até 200 KB (conferido pelos bytes; SVG
+recusado). Campo ausente mantém; `null` apaga.
+
+### Documentos (páginas, com sessão)
+
+- `/relatorio/[id]/pdf` — relatório final para "Salvar como PDF": capa,
+  controle do documento, sumário, um achado por página, apêndices,
+  "Página X de Y". Dono ou revisor.
+- `/relatorio/[id]/resumo` — resumo executivo de 1 página (Pro/Team).
+- `GET /api/v1/relatorios/[id]/export?formato=csv` — planilha dos achados
+  (`;` + BOM para o Excel; fórmulas neutralizadas). Pro/Team.
 
 ### `POST /api/v1/gerar` — gerar relatório via IA
 

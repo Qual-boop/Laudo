@@ -1,4 +1,4 @@
-# Deploy do Laudo (Railway + PostgreSQL + Asaas)
+# Deploy do Provafix (Railway + PostgreSQL + Stripe)
 
 Produção: **https://provafix.up.railway.app**
 
@@ -23,10 +23,11 @@ push e pull request — não publica nada.
 Já configuradas: `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `AUTH_SECRET`,
 `AUTH_URL`, `NEXTAUTH_URL`, `NEXT_PUBLIC_APP_URL`, `AUTH_TRUST_HOST=true`,
 `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `LAUDO_MODELO`, `LAUDO_MAX_TOKENS`,
-`GROQ_API_KEY`, `GROQ_MODELO`, `GROQ_MAX_TOKENS`.
+`GROQ_API_KEY`, `GROQ_MODELO`, `GROQ_MAX_TOKENS`, `BREVO_API_KEY`,
+`EMAIL_REMETENTE`, `EMAIL_REMETENTE_NOME`.
 
-Faltam para cobrança: `ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN` e `ASAAS_SAQUE_TOKEN`
-(+ `ASAAS_BASE_URL=https://api.asaas.com/v3`).
+Faltam para cobrança: `STRIPE_SECRET_KEY` e `STRIPE_WEBHOOK_SECRET`
+(passo a passo em `docs/STRIPE-SETUP.md`).
 
 ```bash
 railway variable set 'CHAVE=valor' --service laudo --skip-deploys
@@ -55,16 +56,15 @@ aviso — foi o caso do relatório de teste local.
 
 Para abrir um psql direto: `railway connect Postgres`.
 
-## Webhook do Asaas (produção)
+## Webhook do Stripe (produção)
 
-- URL: `https://provafix.up.railway.app/api/v1/webhook/asaas`
-- Eventos: `CHECKOUT_PAID`, `SUBSCRIPTION_CREATED`, `PAYMENT_CONFIRMED`, `PAYMENT_RECEIVED`,
-  `PAYMENT_OVERDUE`, `SUBSCRIPTION_DELETED`
-- Token → variável `ASAAS_WEBHOOK_TOKEN` no Railway
-- Trava de saques: `/api/v1/webhook/asaas/autorizacao-saque` (token →
-  `ASAAS_SAQUE_TOKEN`); ver seção 8 de `docs/ASAAS-SETUP.md`
+- URL: `https://provafix.up.railway.app/api/v1/webhook/stripe`
+- Eventos: `checkout.session.completed`, `invoice.paid`,
+  `invoice.payment_failed`, `customer.subscription.updated`,
+  `customer.subscription.deleted`
+- Signing secret → variável `STRIPE_WEBHOOK_SECRET` no Railway
 
-Passo a passo com sandbox em `docs/ASAAS-SETUP.md`.
+Passo a passo (inclusive modo de teste) em `docs/STRIPE-SETUP.md`.
 
 ## Rollback
 

@@ -1,7 +1,8 @@
 #!/bin/sh
 # Sobe o ambiente completo: dev server + túnel cloudflared.
 # Uso: bash scripts/iniciar-tudo.sh   (ou npm run ambiente:iniciar)
-# (O Asaas não precisa de infra local: checkout e webhook são HTTPS.)
+# (O Stripe não precisa de infra local: checkout e webhook são HTTPS;
+#  para testar o webhook em dev: stripe listen --forward-to localhost:3000/api/v1/webhook/stripe)
 set -u
 
 PROJETO="$(cd "$(dirname "$0")/.." && pwd)"

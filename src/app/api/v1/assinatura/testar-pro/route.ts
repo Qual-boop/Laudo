@@ -13,9 +13,9 @@ export async function POST(request: Request) {
     plano: string;
     plano_expira_em: string | null;
     trial_usado_em: string | null;
-    asaas_subscription_id: string | null;
+    stripe_subscription_id: string | null;
   }>(
-    "SELECT plano, plano_expira_em, trial_usado_em, asaas_subscription_id FROM usuarios WHERE id = ?",
+    "SELECT plano, plano_expira_em, trial_usado_em, stripe_subscription_id FROM usuarios WHERE id = ?",
     auth.usuario.id,
   );
 
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     return erroApi("Usuário não existe mais.", "USUARIO_REMOVIDO", 401);
   }
 
-  if (u.plano !== "free" || u.asaas_subscription_id) {
+  if (u.plano !== "free" || u.stripe_subscription_id) {
     return erroApi("Trial disponível só para contas free sem assinatura.", "TRIAL_INDISPONIVEL", 409);
   }
   // Uma vez por conta: o carimbo sobrevive a pagar→cancelar (plano_expira_em

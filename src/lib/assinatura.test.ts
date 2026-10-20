@@ -1,253 +1,224 @@
-import { afterAll, describe, expect, it } from "vitest";
+import { createHmac } from "node:crypto";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db from "@/lib/db";
-import {
-  aplicarEventoAsaas,
-  assinaturaDe,
-  fimDoPeriodo,
-} from "@/lib/assinatura";
+import { aplicarEventoStripe, assinaturaDe, type EventoStripe } from "@/lib/assinatura";
+import { assinaturaWebhookValida, codificarForm } from "@/lib/stripe";
+import { POST as webhook } from "@/app/api/v1/webhook/stripe/route";
 import { criarUsuario } from "@/lib/usuarios";
 
-const EMAIL = "qa.assinatura@laudo-teste.com";
+const EMAIL = "qa.stripe@laudo-teste.com";
+const DIA = 86_400_000;
+let seq = 0;
 
-// Só os eventos deste arquivo: os arquivos de teste rodam em paralelo no
-// mesmo SQLite (o teste da rota do webhook também grava eventos).
-function limparEventos() {
-  db.prepare("DELETE FROM webhook_eventos WHERE id LIKE 'evt_teste_%'").run();
+function evento(type: string, object: Record<string, unknown>): EventoStripe {
+  seq += 1;
+  return { id: `evt_teste_stripe_${Date.now()}_${seq}`, type, data: { object } };
 }
 
-describe("assinatura (Asaas)", () => {
-  it("CHECKOUT_PAID ativa o plano pela referência", async () => {
-    const u = (await criarUsuario("QA Ass", EMAIL, "senha-123456"))!;
-    const r = await aplicarEventoAsaas({
-      id: "evt_teste_001",
-      event: "CHECKOUT_PAID",
-      checkout: { id: "ck_1", customer: "cus_1", externalReference: `${u.id}:pro:mensal` },
-    });
-    expect(r).toMatchObject({ ok: true, aplicado: true });
-    const linha = db
-      .prepare("SELECT plano, assinatura_status, assinatura_ciclo FROM usuarios WHERE id = ?")
-      .get(u.id) as Record<string, string>;
-    expect(linha.plano).toBe("pro");
-    expect(linha.assinatura_status).toBe("ativa");
-    expect(linha.assinatura_ciclo).toBe("MONTHLY");
-  });
-
-  it("idempotência: mesmo evento 2x aplica só uma vez", async () => {
-    const u = (
-      db.prepare("SELECT id FROM usuarios WHERE email = ?").get(EMAIL) as { id: number }
-    );
-    const r = await aplicarEventoAsaas({
-      id: "evt_teste_001",
-      event: "CHECKOUT_PAID",
-      checkout: { id: "ck_1", customer: "cus_1", externalReference: `${u.id}:pro:mensal` },
-    });
-    expect(r).toMatchObject({ ok: true, aplicado: false });
-  });
-
-  it("SUBSCRIPTION_CREATED salva o id da assinatura", async () => {
-    const u = (
-      db.prepare("SELECT id FROM usuarios WHERE email = ?").get(EMAIL) as { id: number }
-    );
-    db.prepare("UPDATE usuarios SET asaas_customer_id = 'cus_1' WHERE id = ?").run(u.id);
-    const r = await aplicarEventoAsaas({
-      id: "evt_teste_002",
-      event: "SUBSCRIPTION_CREATED",
-      subscription: { id: "sub_1", customer: "cus_1", cycle: "MONTHLY" },
-    });
-    expect(r.aplicado).toBe(true);
-    const linha = db
-      .prepare("SELECT asaas_subscription_id FROM usuarios WHERE id = ?")
-      .get(u.id) as { asaas_subscription_id: string };
-    expect(linha.asaas_subscription_id).toBe("sub_1");
-  });
-
-  it("PAYMENT_OVERDUE marca past_due sem cancelar", async () => {
-    const r = await aplicarEventoAsaas({
-      id: "evt_teste_003",
-      event: "PAYMENT_OVERDUE",
-      payment: { id: "pay_1", subscription: "sub_1" },
-    });
-    expect(r.aplicado).toBe(true);
-    const u = (
-      db.prepare("SELECT plano, assinatura_status FROM usuarios WHERE email = ?").get(EMAIL) as {
-        plano: string;
-        assinatura_status: string;
-      }
-    );
-    expect(u.plano).toBe("pro");
-    expect(u.assinatura_status).toBe("past_due");
-  });
-
-  it("SUBSCRIPTION_DELETED volta para free", async () => {
-    const r = await aplicarEventoAsaas({
-      id: "evt_teste_004",
-      event: "SUBSCRIPTION_DELETED",
-      subscription: { id: "sub_1" },
-    });
-    expect(r.aplicado).toBe(true);
-    const u = (
-      db.prepare("SELECT plano, asaas_subscription_id FROM usuarios WHERE email = ?").get(EMAIL) as {
-        plano: string;
-        asaas_subscription_id: string | null;
-      }
-    );
-    expect(u.plano).toBe("free");
-    expect(u.asaas_subscription_id).toBeNull();
-  });
-
-  it("assinaturaDe degrada plano expirado (lazy downgrade)", async () => {
-    const a = await assinaturaDe({
-      id: 1,
-      plano: "pro",
-      plano_expira_em: "2000-01-01T00:00:00.000Z",
-      asaas_subscription_id: null,
-    });
-    expect(a.plano).toBe("free");
-  });
-
-  it("trial = pro sem subscription", async () => {
-    const a = await assinaturaDe({
-      id: 1,
-      plano: "pro",
-      plano_expira_em: new Date(Date.now() + 86400_000).toISOString(),
-      asaas_subscription_id: null,
-    });
-    expect(a.plano).toBe("pro");
-    expect(a.trial).toBe(true);
-  });
-
-  afterAll(() => {
-    limparEventos();
-    db.prepare("DELETE FROM usuarios WHERE email = ?").run(EMAIL);
-  });
-});
-
-const EMAIL_COBRANCA = "qa.cobranca@laudo-teste.com";
-const DIA = 24 * 60 * 60 * 1000;
-
-/** Vencimento da 1ª cobrança: amanhã, como em criarCheckout (lib/asaas.ts). */
-function amanha(): string {
-  return new Date(Date.now() + DIA).toISOString().slice(0, 10);
+function ler(id: number) {
+  return db
+    .prepare(
+      `SELECT plano, plano_expira_em, stripe_customer_id, stripe_subscription_id,
+              assinatura_status, assinatura_plano, assinatura_ciclo FROM usuarios WHERE id = ?`,
+    )
+    .get(id) as Record<string, string | null>;
 }
 
-/** Mesmo dia do mês seguinte ("YYYY-MM-DD"): vencimento da renovação. */
-function mesSeguinte(data: string): string {
-  const d = new Date(`${data}T12:00:00Z`);
-  d.setUTCMonth(d.getUTCMonth() + 1);
-  return d.toISOString().slice(0, 10);
-}
-
-function diasAteExpirar(id: number): number {
-  const { plano_expira_em } = db
-    .prepare("SELECT plano_expira_em FROM usuarios WHERE id = ?")
-    .get(id) as { plano_expira_em: string };
-  return (new Date(plano_expira_em).getTime() - Date.now()) / DIA;
-}
-
-/** Usuário com customer e subscription já vinculados (SUBSCRIPTION_CREATED). */
-async function assinante(sufixo: string): Promise<number> {
-  db.prepare("DELETE FROM usuarios WHERE email = ?").run(EMAIL_COBRANCA);
-  const u = (await criarUsuario("QA Cobrança", EMAIL_COBRANCA, "senha-123456"))!;
-  db.prepare(
-    "UPDATE usuarios SET asaas_customer_id = ?, asaas_subscription_id = ? WHERE id = ?",
-  ).run(`cus_${sufixo}`, `sub_${sufixo}`, u.id);
+async function novoUsuario(): Promise<number> {
+  db.prepare("DELETE FROM usuarios WHERE email = ?").run(EMAIL);
+  const u = (await criarUsuario("QA Stripe", EMAIL, "frase de teste 77"))!;
+  db.prepare("UPDATE usuarios SET stripe_customer_id = 'cus_qa' WHERE id = ?").run(u.id);
   return u.id;
 }
 
-function checkoutPago(id: string, usuarioId: number, periodo = "mensal") {
-  return aplicarEventoAsaas({
-    id,
-    event: "CHECKOUT_PAID",
-    checkout: { id: "ck_c", externalReference: `${usuarioId}:pro:${periodo}` },
+function checkoutPago(usuarioId: number, plano = "pro", periodo = "mensal") {
+  return evento("checkout.session.completed", {
+    id: "cs_qa",
+    customer: "cus_qa",
+    subscription: "sub_qa",
+    client_reference_id: String(usuarioId),
+    payment_status: "paid",
+    metadata: { usuario_id: String(usuarioId), plano, periodo },
   });
 }
 
-function pagamento(id: string, event: string, sub: string, dueDate: string) {
-  return aplicarEventoAsaas({
-    id,
-    event,
-    payment: { id: `pay_${sub}_${dueDate}`, subscription: sub, dueDate },
+/** Fatura no formato novo da API (assinatura em parent.subscription_details). */
+function faturaPaga(fimSeg: number, plano = "pro") {
+  return evento("invoice.paid", {
+    id: "in_qa",
+    customer: "cus_qa",
+    parent: { subscription_details: { subscription: "sub_qa", metadata: { plano } } },
+    lines: { data: [{ period: { start: fimSeg - 30 * 86400, end: fimSeg } }] },
   });
 }
 
-// Limites folgados: +1 mês de calendário vai de 28 a 31 dias, e o
-// vencimento (amanhã, até 23:59 BRT) soma até ~2 dias.
-describe("cobrança: 1º pagamento conta uma vez só", () => {
-  it("fimDoPeriodo: +1 mês/ano de calendário até 23:59:59 BRT do vencimento", () => {
-    expect(fimDoPeriodo("MONTHLY", "2026-10-18").toISOString()).toBe(
-      "2026-11-19T02:59:59.999Z",
-    );
-    expect(fimDoPeriodo("YEARLY", "2026-10-18").toISOString()).toBe(
-      "2027-10-19T02:59:59.999Z",
-    );
-    expect(fimDoPeriodo(undefined, "2026-12-31").toISOString()).toBe(
-      "2027-02-01T02:59:59.999Z",
-    );
-  });
+afterAll(() => {
+  db.prepare("DELETE FROM webhook_eventos WHERE id LIKE 'evt_teste_stripe_%'").run();
+  db.prepare("DELETE FROM usuarios WHERE email = ?").run(EMAIL);
+});
 
-  it("CHECKOUT_PAID + 1º PAYMENT_RECEIVED = ~1 mês (não ~60 dias)", async () => {
-    const id = await assinante("c1");
-    expect((await checkoutPago("evt_teste_c101", id)).aplicado).toBe(true);
-    await pagamento("evt_teste_c102", "PAYMENT_RECEIVED", "sub_c1", amanha());
-    const dias = diasAteExpirar(id);
-    expect(dias).toBeGreaterThan(27);
-    expect(dias).toBeLessThan(35);
-  });
+describe("Stripe: assinatura do webhook", () => {
+  const segredo = "whsec_teste";
+  const corpo = '{"id":"evt_1"}';
+  const agora = 1_800_000_000;
+  const assinar = (t: number, c = corpo, s = segredo) =>
+    `t=${t},v1=${createHmac("sha256", s).update(`${t}.${c}`).digest("hex")}`;
 
-  it("CONFIRMED + RECEIVED da mesma cobrança, fora de ordem, não somam", async () => {
-    const id = await assinante("c2");
-    // 1ª cobrança confirmada antes do CHECKOUT_PAID chegar.
+  it("aceita assinatura correta", () => {
+    expect(assinaturaWebhookValida(corpo, assinar(agora), segredo, agora)).toBe(true);
+  });
+  it("recusa corpo alterado, segredo errado e cabeçalho ausente", () => {
+    expect(assinaturaWebhookValida('{"id":"evt_2"}', assinar(agora), segredo, agora)).toBe(false);
+    expect(assinaturaWebhookValida(corpo, assinar(agora, corpo, "whsec_outro"), segredo, agora)).toBe(false);
+    expect(assinaturaWebhookValida(corpo, null, segredo, agora)).toBe(false);
+  });
+  it("recusa assinatura velha (replay > 5 min)", () => {
+    expect(assinaturaWebhookValida(corpo, assinar(agora - 301), segredo, agora)).toBe(false);
+  });
+  it("codificarForm gera o formato aninhado do Stripe", () => {
     expect(
-      (await pagamento("evt_teste_c201", "PAYMENT_CONFIRMED", "sub_c2", amanha())).aplicado,
-    ).toBe(true);
-    expect((await checkoutPago("evt_teste_c202", id)).aplicado).toBe(true);
-    // RECEIVED do cartão chega bem depois, mesma cobrança.
-    const r = await pagamento("evt_teste_c203", "PAYMENT_RECEIVED", "sub_c2", amanha());
-    expect(r).toMatchObject({ ok: true, aplicado: false, motivo: "período já coberto" });
-    const dias = diasAteExpirar(id);
-    expect(dias).toBeGreaterThan(27);
-    expect(dias).toBeLessThan(35);
+      codificarForm({ a: "1", b: { c: "2" }, d: [{ e: "3" }] }).map(decodeURIComponent),
+    ).toEqual(["a=1", "b[c]=2", "d[0][e]=3"]);
   });
+});
 
-  it("renovação (vencimento do mês seguinte) cobre o 2º mês", async () => {
-    const id = await assinante("c3");
-    await checkoutPago("evt_teste_c301", id);
-    await pagamento("evt_teste_c302", "PAYMENT_CONFIRMED", "sub_c3", amanha());
-    const r = await pagamento(
-      "evt_teste_c303",
-      "PAYMENT_RECEIVED",
-      "sub_c3",
-      mesSeguinte(amanha()),
-    );
+describe("Stripe: eventos", () => {
+  it("checkout pago ativa o plano, grava ids e plano assinado", async () => {
+    const id = await novoUsuario();
+    const r = await aplicarEventoStripe(checkoutPago(id, "team", "anual"));
     expect(r.aplicado).toBe(true);
-    const dias = diasAteExpirar(id);
-    expect(dias).toBeGreaterThan(56);
-    expect(dias).toBeLessThan(66);
-  });
-
-  it("anual: CHECKOUT_PAID + 1ª cobrança = ~1 ano", async () => {
-    const id = await assinante("c4");
-    await checkoutPago("evt_teste_c401", id, "anual");
-    await pagamento("evt_teste_c402", "PAYMENT_RECEIVED", "sub_c4", amanha());
-    const dias = diasAteExpirar(id);
+    expect(ler(id)).toMatchObject({
+      plano: "team",
+      stripe_subscription_id: "sub_qa",
+      assinatura_status: "ativa",
+      assinatura_plano: "team",
+      assinatura_ciclo: "anual",
+    });
+    const dias = (new Date(ler(id).plano_expira_em!).getTime() - Date.now()) / DIA;
     expect(dias).toBeGreaterThan(364);
-    expect(dias).toBeLessThan(369);
   });
 
-  it("pagamento tira de past_due mesmo com o período já coberto", async () => {
-    const id = await assinante("c5");
-    await checkoutPago("evt_teste_c501", id);
-    await pagamento("evt_teste_c502", "PAYMENT_CONFIRMED", "sub_c5", amanha());
-    db.prepare("UPDATE usuarios SET assinatura_status = 'past_due' WHERE id = ?").run(id);
-    await pagamento("evt_teste_c503", "PAYMENT_RECEIVED", "sub_c5", amanha());
-    const { assinatura_status } = db
-      .prepare("SELECT assinatura_status FROM usuarios WHERE id = ?")
-      .get(id) as { assinatura_status: string };
-    expect(assinatura_status).toBe("ativa");
+  it("mesmo evento duas vezes aplica uma só", async () => {
+    const id = await novoUsuario();
+    const e = checkoutPago(id);
+    expect((await aplicarEventoStripe(e)).aplicado).toBe(true);
+    expect(await aplicarEventoStripe(e)).toMatchObject({ aplicado: false, motivo: "evento já processado" });
   });
 
-  afterAll(() => {
-    limparEventos();
-    db.prepare("DELETE FROM usuarios WHERE email = ?").run(EMAIL_COBRANCA);
+  it("checkout sem pagamento confirmado não ativa", async () => {
+    const id = await novoUsuario();
+    const e = checkoutPago(id);
+    e.data.object.payment_status = "unpaid";
+    expect((await aplicarEventoStripe(e)).aplicado).toBe(false);
+    expect(ler(id).plano).toBe("free");
+  });
+
+  it("invoice.paid usa o fim real do período e nunca encurta", async () => {
+    const id = await novoUsuario();
+    await aplicarEventoStripe(checkoutPago(id));
+    const fim = Math.floor((Date.now() + 40 * DIA) / 1000);
+    expect((await aplicarEventoStripe(faturaPaga(fim))).aplicado).toBe(true);
+    expect(new Date(ler(id).plano_expira_em!).getTime()).toBe(fim * 1000);
+    // Fatura repetida/antiga não reduz a data.
+    const r = await aplicarEventoStripe(faturaPaga(fim - 10 * 86400));
+    expect(r).toMatchObject({ aplicado: false, motivo: "período já coberto" });
+  });
+
+  it("pagamento depois de expirar devolve o plano assinado", async () => {
+    const id = await novoUsuario();
+    await aplicarEventoStripe(checkoutPago(id, "team"));
+    db.prepare("UPDATE usuarios SET plano_expira_em = ? WHERE id = ?").run(
+      new Date(Date.now() - DIA).toISOString(),
+      id,
+    );
+    const u = db.prepare("SELECT * FROM usuarios WHERE id = ?").get(id) as Parameters<typeof assinaturaDe>[0];
+    expect((await assinaturaDe(u)).plano).toBe("free");
+    const r = await aplicarEventoStripe(faturaPaga(Math.floor((Date.now() + 30 * DIA) / 1000), "team"));
+    expect(r).toMatchObject({ aplicado: true, motivo: "plano restaurado" });
+    expect(ler(id).plano).toBe("team");
+  });
+
+  it("falha de pagamento marca past_due sem tirar o plano", async () => {
+    const id = await novoUsuario();
+    await aplicarEventoStripe(checkoutPago(id));
+    await aplicarEventoStripe(
+      evento("invoice.payment_failed", { customer: "cus_qa", subscription: "sub_qa" }),
+    );
+    expect(ler(id)).toMatchObject({ plano: "pro", assinatura_status: "past_due" });
+  });
+
+  it("cancelar no fim do período: status cancelada, plano segue", async () => {
+    const id = await novoUsuario();
+    await aplicarEventoStripe(checkoutPago(id));
+    await aplicarEventoStripe(
+      evento("customer.subscription.updated", {
+        id: "sub_qa",
+        customer: "cus_qa",
+        status: "active",
+        cancel_at_period_end: true,
+      }),
+    );
+    expect(ler(id)).toMatchObject({ plano: "pro", assinatura_status: "cancelada" });
+  });
+
+  it("assinatura encerrada volta para free e limpa ids", async () => {
+    const id = await novoUsuario();
+    await aplicarEventoStripe(checkoutPago(id));
+    await aplicarEventoStripe(evento("customer.subscription.deleted", { id: "sub_qa" }));
+    expect(ler(id)).toMatchObject({
+      plano: "free",
+      stripe_subscription_id: null,
+      assinatura_plano: null,
+    });
+  });
+
+  it("trial = pro sem assinatura; cancelada não é trial", async () => {
+    const base = {
+      id: 1,
+      plano: "pro",
+      plano_expira_em: new Date(Date.now() + DIA).toISOString(),
+      stripe_subscription_id: null,
+    };
+    expect((await assinaturaDe(base)).trial).toBe(true);
+    expect((await assinaturaDe({ ...base, assinatura_status: "cancelada" })).trial).toBe(false);
+  });
+});
+
+describe("rota do webhook", () => {
+  beforeEach(() => {
+    vi.stubEnv("STRIPE_WEBHOOK_SECRET", "whsec_rota");
+    vi.spyOn(console, "info").mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  function req(corpo: string, assinatura?: string) {
+    return new Request("http://localhost/api/v1/webhook/stripe", {
+      method: "POST",
+      headers: assinatura ? { "stripe-signature": assinatura } : {},
+      body: corpo,
+    });
+  }
+
+  it("assinatura inválida → 400, nada aplicado", async () => {
+    const res = await webhook(req('{"id":"evt_x","type":"invoice.paid","data":{"object":{}}}', "t=1,v1=00"));
+    expect(res.status).toBe(400);
+  });
+
+  it("assinatura válida → 200", async () => {
+    const corpo = JSON.stringify(evento("ping.qualquer", { id: "x" }));
+    const t = Math.floor(Date.now() / 1000);
+    const sig = createHmac("sha256", "whsec_rota").update(`${t}.${corpo}`).digest("hex");
+    const res = await webhook(req(corpo, `t=${t},v1=${sig}`));
+    expect(res.status).toBe(200);
+  });
+
+  it("produção sem segredo configurado → 503", async () => {
+    vi.stubEnv("STRIPE_WEBHOOK_SECRET", "");
+    vi.stubEnv("NODE_ENV", "production");
+    const res = await webhook(req("{}"));
+    expect(res.status).toBe(503);
   });
 });

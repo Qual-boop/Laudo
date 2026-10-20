@@ -115,10 +115,10 @@ export async function certificadoPorToken(token: unknown): Promise<Certificado |
     usuario_id: number;
     plano: string;
     plano_expira_em: string | null;
-    asaas_subscription_id: string | null;
+    stripe_subscription_id: string | null;
   }>(
     `SELECT r.id AS relatorio_id, u.id AS usuario_id, u.plano,
-            u.plano_expira_em, u.asaas_subscription_id
+            u.plano_expira_em, u.stripe_subscription_id
        FROM relatorios r
        JOIN usuarios u ON u.id = r.usuario_id
       WHERE r.certificado_token = ?`,
@@ -130,7 +130,7 @@ export async function certificadoPorToken(token: unknown): Promise<Certificado |
     id: Number(linha.usuario_id),
     plano: linha.plano,
     plano_expira_em: linha.plano_expira_em,
-    asaas_subscription_id: linha.asaas_subscription_id,
+    stripe_subscription_id: linha.stripe_subscription_id,
   });
   if (!LIMITES[plano].certificado) return null;
 

@@ -40,9 +40,9 @@ describe("verificarOrigem (CSRF)", () => {
     expect(verificarOrigem("POST", "/api/v1/auth/token", h({}), APP).permitido).toBe(true);
   });
 
-  it("webhook do Asaas é isento", () => {
+  it("webhook do Stripe é isento", () => {
     expect(
-      verificarOrigem("POST", "/api/v1/webhook/asaas", h({ origin: "https://www.asaas.com" }), APP).permitido,
+      verificarOrigem("POST", "/api/v1/webhook/stripe", h({ origin: "https://stripe.com" }), APP).permitido,
     ).toBe(true);
   });
 

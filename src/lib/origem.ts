@@ -10,7 +10,7 @@
  *  - `Origin` presente → precisa ser uma das origens do Provafix.
  *  - sem `Origin`, `Sec-Fetch-Site: cross-site` → recusa.
  *  - sem nenhum dos dois → passa: não é navegador (app mobile/desktop com
- *    Bearer, curl, webhook do Asaas), e esses não carregam cookie alheio.
+ *    Bearer, curl, webhook do Stripe), e esses não carregam cookie alheio.
  */
 
 const METODOS_SEGUROS = new Set(["GET", "HEAD", "OPTIONS"]);

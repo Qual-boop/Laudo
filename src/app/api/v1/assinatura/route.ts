@@ -14,10 +14,11 @@ export async function GET(request: Request) {
     id: number;
     plano: string;
     plano_expira_em: string | null;
-    asaas_subscription_id: string | null;
+    stripe_subscription_id: string | null;
+    stripe_customer_id: string | null;
     assinatura_status: string | null;
   }>(
-    "SELECT id, plano, plano_expira_em, asaas_subscription_id, assinatura_status FROM usuarios WHERE id = ?",
+    "SELECT id, plano, plano_expira_em, stripe_subscription_id, stripe_customer_id, assinatura_status FROM usuarios WHERE id = ?",
     auth.usuario.id,
   );
 

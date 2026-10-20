@@ -155,18 +155,13 @@ if (!colunasUsuarios.some((c) => c.name === "plano_expira_em")) {
   db.exec("ALTER TABLE usuarios ADD COLUMN plano_expira_em TEXT");
 }
 
-// Migração de saída do provedor anterior: remove colunas legadas (linhas preservadas).
-for (const coluna of ["stripe_customer_id", "stripe_subscription_id"]) {
-  const atuais = db.prepare("PRAGMA table_info(usuarios)").all() as { name: string }[];
-  if (atuais.some((c) => c.name === coluna)) {
-    db.exec(`ALTER TABLE usuarios DROP COLUMN ${coluna}`);
-  }
-}
-
-// Migração leve: billing Asaas.
+// Migração leve: billing. As colunas asaas_* são legado do provedor
+// anterior (ficam, sem uso); a cobrança atual é pelo Stripe.
 for (const [coluna, tipo] of [
   ["asaas_customer_id", "TEXT"],
   ["asaas_subscription_id", "TEXT"],
+  ["stripe_customer_id", "TEXT"],
+  ["stripe_subscription_id", "TEXT"],
   ["assinatura_status", "TEXT"],
   ["assinatura_ciclo", "TEXT"],
   // Trial é uma vez por conta: sobrevive a pagar→cancelar (plano_expira_em
@@ -264,6 +259,20 @@ db.exec(`
     criado_em TEXT DEFAULT CURRENT_TIMESTAMP
   );
   CREATE INDEX IF NOT EXISTS idx_codigos_usuario ON codigos_email(usuario_id, finalidade, id);
+`);
+
+/* Marca própria no PDF (Pro/Team). Tabela à parte: o logo (data URL) não
+   pode pesar no SELECT * de usuarios, que roda a cada requisição. */
+db.exec(`
+  CREATE TABLE IF NOT EXISTS marcas (
+    usuario_id INTEGER PRIMARY KEY REFERENCES usuarios(id) ON DELETE CASCADE,
+    nome TEXT,
+    cor TEXT,
+    logo TEXT,
+    responsavel TEXT,
+    contato TEXT,
+    atualizado_em TEXT DEFAULT CURRENT_TIMESTAMP
+  )
 `);
 
 export default db;

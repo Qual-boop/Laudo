@@ -9,7 +9,7 @@ import type { RelatorioCompartilhado } from "@/lib/equipe";
 import type { Relatorio, ResumoRelatorio } from "@/lib/tipos";
 
 type Props = {
-  onAbrir: (relatorio: Relatorio) => void;
+  onAbrir: (relatorio: Relatorio, id: number) => void;
   onAviso: (texto: string) => void;
   onResumo: (relatorio: ResumoRelatorio[]) => void;
 };
@@ -71,7 +71,7 @@ export function PainelHistorico({ onAbrir, onAviso, onResumo }: Props) {
     try {
       const res = await fetch(`/api/v1/relatorios/${id}`);
       if (!res.ok) throw new Error("falha");
-      onAbrir((await res.json()) as Relatorio);
+      onAbrir((await res.json()) as Relatorio, id);
     } catch {
       onAviso("Não foi possível abrir o relatório.");
     } finally {
@@ -170,10 +170,31 @@ export function PainelHistorico({ onAbrir, onAviso, onResumo }: Props) {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button variante="fantasma" tamanho="sm" onClick={() => setEquipeDe({ id: r.id, titulo: r.titulo })}>
               equipe
             </Button>
+            <a
+              href={`/relatorio/${r.id}/pdf`}
+              aria-label={`PDF do relatório ${r.titulo}`}
+              className="interativo inline-flex items-center justify-center rounded-md border border-accent/60 px-3 py-1.5 font-mono text-[10px] font-medium uppercase tracking-wider text-accent hover:bg-accent hover:text-fundo"
+            >
+              pdf
+            </a>
+            <a
+              href={`/relatorio/${r.id}/resumo`}
+              aria-label={`Resumo executivo do relatório ${r.titulo}`}
+              className="interativo inline-flex items-center justify-center rounded-md border border-borda px-3 py-1.5 font-mono text-[10px] font-medium uppercase tracking-wider text-texto-2 hover:border-accent hover:text-accent"
+            >
+              resumo
+            </a>
+            <a
+              href={`/api/v1/relatorios/${r.id}/export?formato=csv`}
+              aria-label={`Planilha CSV dos achados do relatório ${r.titulo}`}
+              className="interativo inline-flex items-center justify-center rounded-md border border-borda px-3 py-1.5 font-mono text-[10px] font-medium uppercase tracking-wider text-texto-2 hover:border-accent hover:text-accent"
+            >
+              csv
+            </a>
             <a
               href={`/certificado/${r.id}`}
               aria-label={`Certificado de correção do relatório ${r.titulo}`}

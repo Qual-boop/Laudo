@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/Button";
+import { precoMensal } from "@/lib/planos";
 
 export type InfoPaywall = {
   recurso: "relatorios" | "retestes" | "achados" | "geracoes" | string;
@@ -101,7 +102,7 @@ const TEXTO_POR_PLANO: Record<
       "Exportação Jira e GitHub em todos os formatos",
       "Certificado de correção sem marca d'água",
     ],
-    cta: "Assinar Pro por R$ 19,90/mês",
+    cta: `Assinar Pro por ${precoMensal("pro")}/mês`,
   },
   pro: {
     nomePlano: "Pro",

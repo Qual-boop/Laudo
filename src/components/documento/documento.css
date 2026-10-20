@@ -1,0 +1,430 @@
+/* ==================================================================
+   Documento final (PDF do relatório e resumo executivo).
+   Paleta própria de papel — não usa as variáveis do tema escuro —, então
+   a tela mostra exatamente o que sai na impressão. A cor da marca chega
+   por --doc-cor (inline no wrapper).
+   ================================================================== */
+
+.doc-fundo {
+  background: #e5e7eb;
+  min-height: 100vh;
+  padding: 24px 12px 64px;
+}
+
+.doc {
+  --doc-cor: #047857;
+  --doc-texto: #0f172a;
+  --doc-texto-2: #475569;
+  --doc-borda: #d7dde5;
+  --doc-suave: #f4f6f9;
+  --sev-critica: #b91c1c;
+  --sev-alta: #c2410c;
+  --sev-media: #a16207;
+  --sev-baixa: #1d4ed8;
+  color: var(--doc-texto);
+  font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+  font-size: 10.5pt;
+  line-height: 1.55;
+  max-width: 210mm;
+  margin: 0 auto;
+}
+
+.doc-folha {
+  background: #ffffff;
+  box-shadow: 0 2px 18px rgba(15, 23, 42, 0.18);
+  padding: 18mm 16mm;
+  margin: 0 auto 18px;
+}
+
+.doc h1,
+.doc h2,
+.doc h3 {
+  color: var(--doc-texto);
+  line-height: 1.25;
+  margin: 0;
+}
+.doc h2 {
+  font-size: 16pt;
+  font-weight: 700;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--doc-cor);
+  margin-bottom: 14px;
+}
+.doc h3 {
+  font-size: 11.5pt;
+  font-weight: 700;
+  margin: 16px 0 6px;
+}
+.doc p {
+  margin: 0 0 8px;
+}
+.doc-num {
+  color: var(--doc-cor);
+  font-variant-numeric: tabular-nums;
+  margin-right: 8px;
+}
+.doc-rotulo {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 7.5pt;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--doc-texto-2);
+}
+.doc-mono {
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+.doc-suave {
+  color: var(--doc-texto-2);
+}
+
+/* ---------- Capa ---------- */
+.doc-capa {
+  position: relative;
+  min-height: 257mm;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+.doc-capa-faixa {
+  height: 10mm;
+  background: var(--doc-cor);
+}
+.doc-capa-corpo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 22mm 18mm 16mm;
+}
+.doc-capa-logo {
+  max-height: 22mm;
+  max-width: 70mm;
+  object-fit: contain;
+  object-position: left center;
+}
+.doc-capa-titulo {
+  font-size: 28pt;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-top: 46mm;
+}
+.doc-capa-cliente {
+  font-size: 15pt;
+  color: var(--doc-cor);
+  font-weight: 600;
+  margin-top: 6mm;
+}
+.doc-capa-meta {
+  margin-top: auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 24px;
+  border-top: 1px solid var(--doc-borda);
+  padding-top: 8mm;
+}
+.doc-capa-classificacao {
+  display: inline-block;
+  border: 1.5px solid var(--sev-critica);
+  color: var(--sev-critica);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 8pt;
+  padding: 3px 10px;
+  margin-top: 8mm;
+  width: fit-content;
+}
+
+/* ---------- Tabelas ---------- */
+.doc table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9.5pt;
+  margin: 6px 0 12px;
+}
+.doc th,
+.doc td {
+  border: 1px solid var(--doc-borda);
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+.doc thead th {
+  background: var(--doc-suave);
+  font-size: 7.5pt;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--doc-texto-2);
+}
+.doc tbody th {
+  width: 34%;
+  background: var(--doc-suave);
+  font-weight: 600;
+}
+.doc tr {
+  break-inside: avoid;
+}
+
+/* ---------- Severidade ---------- */
+.doc-sev {
+  display: inline-block;
+  font-size: 7.5pt;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 1px 7px;
+  border: 1.5px solid currentColor;
+  border-left-width: 4px;
+  white-space: nowrap;
+}
+.doc-sev-Critica { color: var(--sev-critica); }
+.doc-sev-Alta { color: var(--sev-alta); }
+.doc-sev-Media { color: var(--sev-media); }
+.doc-sev-Baixa { color: var(--sev-baixa); }
+
+.doc-barra {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0;
+}
+.doc-barra-rotulo {
+  width: 64px;
+  font-size: 9pt;
+}
+.doc-barra-trilho {
+  flex: 1;
+  height: 12px;
+  background: var(--doc-suave);
+  border: 1px solid var(--doc-borda);
+}
+.doc-barra-cheio {
+  height: 100%;
+}
+.doc-barra-valor {
+  width: 28px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.doc-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 0 14px;
+}
+.doc-kpi {
+  border: 1px solid var(--doc-borda);
+  border-top: 3px solid var(--doc-cor);
+  padding: 8px 10px;
+}
+.doc-kpi strong {
+  display: block;
+  font-size: 18pt;
+  line-height: 1.1;
+}
+
+/* ---------- Achado ---------- */
+.doc-achado {
+  break-before: page;
+}
+.doc-achado-cabeca {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 2px solid var(--doc-cor);
+  padding-bottom: 6px;
+  margin-bottom: 10px;
+}
+.doc-achado-cabeca h3 {
+  margin: 2px 0 0;
+  font-size: 13pt;
+}
+.doc-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.doc-meta > div {
+  background: var(--doc-suave);
+  border: 1px solid var(--doc-borda);
+  padding: 5px 8px;
+  font-size: 9pt;
+  overflow-wrap: anywhere;
+}
+.doc pre {
+  background: var(--doc-suave);
+  border: 1px solid var(--doc-borda);
+  border-left: 3px solid var(--doc-cor);
+  padding: 8px 10px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 8.5pt;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0 0 8px;
+}
+/* O preflight do Tailwind zera list-style: o documento precisa dos números. */
+.doc ol,
+.doc ul {
+  margin: 0 0 8px;
+  padding-left: 20px;
+}
+.doc ol {
+  list-style: decimal outside;
+}
+.doc ul {
+  list-style: disc outside;
+}
+.doc li {
+  margin-bottom: 2px;
+}
+.doc td.doc-mono {
+  font-size: 8.5pt;
+  white-space: nowrap;
+}
+.doc-caixa {
+  border: 1px solid var(--doc-borda);
+  border-left: 4px solid var(--doc-cor);
+  padding: 8px 12px;
+  margin: 8px 0 12px;
+  break-inside: avoid;
+}
+
+/* ---------- Sumário ---------- */
+.doc-indice a {
+  color: inherit;
+  text-decoration: none;
+}
+.doc-indice li {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px dotted var(--doc-borda);
+  padding: 3px 0;
+}
+.doc-indice ul {
+  list-style: none;
+  padding: 0;
+}
+.doc-indice li > span:first-child {
+  white-space: nowrap;
+}
+
+.doc-quebra {
+  break-before: page;
+}
+
+.doc-assinatura {
+  margin-top: 28mm;
+  width: 75mm;
+  border-top: 1px solid var(--doc-texto);
+  padding-top: 4px;
+  font-size: 9pt;
+}
+
+/* Marca d'água do plano Free: fixa = repete em toda página impressa. */
+.doc-marca-dagua {
+  position: fixed;
+  top: 45%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  transform: rotate(-28deg);
+  font-size: 46pt;
+  font-weight: 800;
+  color: rgba(15, 23, 42, 0.07);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.doc-barra-ferramentas {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  max-width: 210mm;
+  margin: 0 auto 14px;
+  padding: 10px 14px;
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: 10px;
+  font-size: 13px;
+}
+.doc-barra-ferramentas a {
+  color: #93c5fd;
+}
+.doc-botao {
+  cursor: pointer;
+  border: 0;
+  border-radius: 8px;
+  background: #00ff88;
+  color: #0a0e14;
+  font-weight: 700;
+  padding: 8px 14px;
+  font-size: 13px;
+}
+
+@media print {
+  .doc-fundo {
+    background: #ffffff !important;
+    padding: 0;
+  }
+  /* Na folha, a largura útil é a da página menos as margens do @page:
+     os 210 mm da tela empurravam o texto para fora pela direita. */
+  .doc {
+    max-width: none;
+    width: auto;
+  }
+  .doc-folha {
+    box-shadow: none;
+    padding: 0;
+    margin: 0;
+  }
+  .doc-capa {
+    break-after: page;
+    min-height: 255mm;
+  }
+  .doc-capa-corpo {
+    padding: 18mm 4mm 10mm;
+  }
+  .doc-barra-ferramentas {
+    display: none !important;
+  }
+  .doc a[href^="#"] {
+    color: inherit;
+  }
+  /* Cores de severidade/marca saem mesmo com "gráficos de fundo" desligado. */
+  .doc {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
+
+@media (max-width: 640px) {
+  .doc-fundo {
+    padding: 12px 8px 48px;
+  }
+  .doc-folha {
+    padding: 18px 14px;
+    overflow-wrap: anywhere;
+  }
+  /* Tabela larga rola dentro da folha em vez de empurrar a página. */
+  .doc table {
+    display: block;
+    overflow-x: auto;
+  }
+  .doc-meta,
+  .doc-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .doc-capa-titulo {
+    margin-top: 24mm;
+    font-size: 22pt;
+  }
+}

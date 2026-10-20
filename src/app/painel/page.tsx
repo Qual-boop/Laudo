@@ -28,6 +28,8 @@ const NOME_SCANNER: Record<FormatoScanner, string> = {
   burp: "Burp Suite",
   zap: "OWASP ZAP",
   sarif: "SARIF",
+  nuclei: "Nuclei",
+  openvas: "OpenVAS",
 };
 
 /** Mesmo teto do esquema de geração (lib/validacao.ts). */
@@ -243,8 +245,14 @@ export default function Home() {
   );
 
   /** Abre um relatório do histórico na aba "novo". */
-  const abrirRelatorio = useCallback((r: Relatorio) => {
+  // id do relatório já salvo que está na tela (null = gerado e ainda não
+  // salvo). O PDF profissional só existe para relatório salvo, e salvar de
+  // novo um relatório aberto do histórico duplicaria e gastaria cota.
+  const [idSalvo, setIdSalvo] = useState<number | null>(null);
+
+  const abrirRelatorio = useCallback((r: Relatorio, id: number) => {
     setRelatorio(r);
+    setIdSalvo(id);
     setAba("novo");
   }, []);
 
@@ -407,6 +415,7 @@ export default function Home() {
       }
 
       setRelatorio(corpo as Relatorio);
+      setIdSalvo(null);
 
       const protegidos = lerResumoProtecao(res.headers.get("X-Laudo-Protegidos"));
       if (protegidos.length > 0) {
@@ -424,8 +433,10 @@ export default function Home() {
     }
   }
 
-  async function salvar() {
-    if (!relatorio) return;
+  /** Salva e devolve o id (null se não salvou). */
+  async function salvar(): Promise<number | null> {
+    if (!relatorio) return null;
+    if (idSalvo) return idSalvo;
 
     setSalvando(true);
 
@@ -439,26 +450,39 @@ export default function Home() {
 
       if (!res.ok) {
         // 402 = limite do plano: abre o paywall em vez do toast.
-        if (abrirPaywallSe402(res, corpo)) return;
+        if (abrirPaywallSe402(res, corpo)) return null;
         toastErro(corpo?.error ?? "Não foi possível salvar o relatório.");
-        return;
+        return null;
       }
 
       // 2xx sem corpo legível: antes caía no catch e dizia "sem conexão",
       // o que era falso — o servidor respondeu (F19).
       if (typeof corpo?.id !== "number") {
         toastErro("O servidor confirmou o salvamento, mas a resposta veio incompleta. Confira a aba Histórico antes de salvar de novo.");
-        return;
+        return null;
       }
 
+      setIdSalvo(corpo.id);
       sucesso(
         `Relatório salvo com ID #${corpo.id}. Os achados já estão na aba Verificação.`,
       );
+      return corpo.id as number;
     } catch {
       toastErro("Não foi possível conectar ao servidor. Verifique sua conexão.");
+      return null;
     } finally {
       setSalvando(false);
     }
+  }
+
+  /** PDF profissional: relatório salvo abre em nova aba; senão salva e vai. */
+  async function abrirPdf() {
+    if (idSalvo) {
+      window.open(`/relatorio/${idSalvo}/pdf`, "_blank", "noopener");
+      return;
+    }
+    const id = await salvar();
+    if (id) window.location.href = `/relatorio/${id}/pdf`;
   }
 
   const entrada = montarEntrada();
@@ -676,7 +700,7 @@ export default function Home() {
                 {importando ? "importando…" : "importar de scanner"}
                 <input
                   type="file"
-                  accept=".nessus,.xml,.json,.sarif"
+                  accept=".nessus,.xml,.json,.jsonl,.sarif"
                   className="sr-only"
                   disabled={importando}
                   onChange={(e) => {
@@ -706,7 +730,7 @@ export default function Home() {
                 ))}
               </Select>
               <p className="text-xs leading-relaxed text-texto-2 sm:ml-auto sm:max-w-[16rem] sm:text-right">
-                Nessus, Burp, ZAP e SARIF (Semgrep, CodeQL, Trivy…). Achados iguais viram um só.
+                Nessus, Burp, ZAP, Nuclei, OpenVAS e SARIF (Semgrep, CodeQL, Trivy…). Achados iguais viram um só.
               </p>
             </div>
 
@@ -905,8 +929,8 @@ export default function Home() {
                 <Button
                   variante="secundaria"
                   tamanho="lg"
-                  onClick={salvar}
-                  disabled={!relatorio || salvando}
+                  onClick={() => void salvar()}
+                  disabled={!relatorio || salvando || idSalvo !== null}
                 >
                   {salvando ? (
                     <>
@@ -952,12 +976,24 @@ export default function Home() {
                     plano={plano}
                   />
                 </Suspense>
-                <Button variante="secundaria" onClick={salvar} disabled={salvando}>
-                  {salvando ? "salvando..." : "salvar"}
+                {!idSalvo && (
+                  <Button variante="secundaria" onClick={() => void salvar()} disabled={salvando}>
+                    {salvando ? "salvando..." : "salvar"}
+                  </Button>
+                )}
+                <Button variante="sucesso" onClick={abrirPdf} disabled={salvando}>
+                  {idSalvo ? "abrir pdf" : "salvar e abrir pdf"}
                 </Button>
-                <Button variante="sucesso" onClick={() => window.print()}>
-                  exportar pdf
-                </Button>
+                {idSalvo && (
+                  <a
+                    href={`/relatorio/${idSalvo}/resumo`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="interativo inline-flex items-center justify-center rounded-md border border-borda px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider text-texto-2 hover:border-accent hover:text-accent"
+                  >
+                    resumo executivo
+                  </a>
+                )}
               </div>
             </div>
 

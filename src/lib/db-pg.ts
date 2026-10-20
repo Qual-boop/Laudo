@@ -188,6 +188,23 @@ export async function criarSchemaPg(): Promise<void> {
   // Migrações aditivas: cota de IA, plano assinado, e-mail verificado.
   await sql`ALTER TABLE uso_mensal ADD COLUMN IF NOT EXISTS geracoes_ia INTEGER NOT NULL DEFAULT 0`;
   await sql`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS assinatura_plano TEXT`;
+  // Cobrança pelo Stripe (as colunas asaas_* ficam como legado, sem uso).
+  await sql`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT`;
+  await sql`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_usuarios_stripe_sub ON usuarios(stripe_subscription_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_usuarios_stripe_cus ON usuarios(stripe_customer_id)`;
+  // Marca própria no PDF (ver lib/db.ts e lib/marca.ts).
+  await sql`
+    CREATE TABLE IF NOT EXISTS marcas (
+      usuario_id INTEGER PRIMARY KEY REFERENCES usuarios(id) ON DELETE CASCADE,
+      nome TEXT,
+      cor TEXT,
+      logo TEXT,
+      responsavel TEXT,
+      contato TEXT,
+      atualizado_em TIMESTAMPTZ DEFAULT now()
+    )
+  `;
   await sql`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS email_verificado_em TIMESTAMPTZ`;
 
   // Códigos por e-mail (ver lib/db.ts).

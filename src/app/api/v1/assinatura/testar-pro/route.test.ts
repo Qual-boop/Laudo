@@ -68,7 +68,7 @@ describe("testar-pro (trial uma vez por conta)", () => {
       // Simula ciclo pago + cancelamento (zera expira/subscription, como
       // fazem cancelar/route.ts e SUBSCRIPTION_DELETED — o carimbo fica).
       db.prepare(
-        `UPDATE usuarios SET plano = 'free', asaas_subscription_id = NULL,
+        `UPDATE usuarios SET plano = 'free', stripe_subscription_id = NULL,
           plano_expira_em = NULL, assinatura_status = 'cancelada' WHERE id = ?`,
       ).run(USUARIO.id);
       const deNovo = await POST(requisicao());

@@ -78,7 +78,7 @@ Infra e produto (deferidos — exigem decisão/proxy, não bug de código):
 
 - [ ] Revogar no GitHub o PAT antigo (`ghp_...`) — o remote já está sem token (auth via `gh auth setup-git`)
 - [x] `deploy.yml` (Vercel) virou `ci.yml`: só testes + build, com `next typegen` (o CI quebrava com `PageProps` ausente)
-- [ ] Configurar Asaas no Railway (`ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN`) — sem isso o checkout responde 502
+- [ ] Configurar o Stripe no Railway (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`) — sem isso o checkout responde 503 (ver `docs/STRIPE-SETUP.md`)
 - [x] SEO sem o placeholder `laudo.app`: metadataBase, sitemap e robots vêm de `NEXT_PUBLIC_APP_URL` (`src/lib/site.ts`) — domínio próprio = trocar só a variável
 - [ ] Redirects de compat da API usam `Location` relativo (proxy do Railway entrega host interno); revisar se algum cliente depender de URL absoluta
 
@@ -98,3 +98,13 @@ Infra e produto (deferidos — exigem decisão/proxy, não bug de código):
 - [x] CSRF explícito: mutação em /api/ só com Origin do próprio site (lib/origem.ts)
 - [x] Senhas óbvias recusadas no cadastro e na troca; Cross-Origin-Opener-Policy: same-origin`n- [ ] Configurar o provedor de e-mail no Railway (decisão do dono: Brevo grátis com remetente verificado, ou Resend com domínio próprio)
 - [ ] 2FA por app autenticador (TOTP) como alternativa ao e-mail
+
+## Stripe, preços e documentos (20/10/2026)
+
+- [x] Cobrança migrada do Asaas para o Stripe (checkout, webhook assinado, portal do cliente); trava de saques do Asaas removida
+- [x] Pro R$ 22,90/mês (R$ 219,84/ano) e Team R$ 49,90/mês (R$ 479,04/ano) — fonte única em `PRECOS_CENTAVOS`
+- [x] PDF profissional (/relatorio/[id]/pdf): capa, controle do documento, sumário com links, um achado por página, apêndices e "Página X de Y" (margin boxes do @page — Chrome/Edge 131+; no Firefox sai sem numeração)
+- [x] Marca própria no PDF (tabela `marcas`) e resumo executivo de 1 página (Pro/Team)
+- [x] Importação de Nuclei (JSON/JSONL) e OpenVAS/Greenbone (XML); exportação CSV com proteção contra CSV injection
+- [ ] PDF gerado no servidor (download direto, sem a janela de impressão) — exige Chromium no Railway
+- [ ] Permitir troca de plano pelo portal do Stripe (hoje os metadados do plano vêm do checkout)

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useSession } from "next-auth/react";
+import { PRECOS_CENTAVOS } from "@/lib/planos";
 
 type PlanoId = "free" | "pro" | "team";
 
@@ -31,14 +32,15 @@ const PLANOS: {
       "Exportação em texto simples",
       "Histórico de 30 dias",
       "Prints de evidência com tarja",
+      "Importa Nessus, Burp, ZAP, SARIF, Nuclei e OpenVAS",
     ],
   },
   {
     id: "pro",
     nome: "Pro",
     descricao: "Para freelancers",
-    mensal: 19.9,
-    anual: 191.04,
+    mensal: PRECOS_CENTAVOS.pro.mensal / 100,
+    anual: PRECOS_CENTAVOS.pro.anual / 100,
     cta: "Assinar Pro",
     href: "/cadastro?plano=pro",
     destaque: true,
@@ -46,7 +48,10 @@ const PLANOS: {
       "300 relatórios por mês",
       "Achados ilimitados por relatório",
       "Retestes ilimitados",
-      "Exportação Jira e GitHub",
+      "PDF profissional: capa, sumário, paginação e anexo técnico",
+      "Sua marca no PDF: logo, nome e cor da consultoria",
+      "Resumo executivo de 1 página para a diretoria",
+      "Exportação Jira, GitHub e planilha (CSV)",
       "Certificado de correção",
       "Quadro de conformidade (PCI DSS, ISO 27001, LGPD, BCB)",
       "Agenda de retestes para o seu calendário",
@@ -60,8 +65,8 @@ const PLANOS: {
     id: "team",
     nome: "Team",
     descricao: "Para consultorias",
-    mensal: 49.9,
-    anual: 479.04,
+    mensal: PRECOS_CENTAVOS.team.mensal / 100,
+    anual: PRECOS_CENTAVOS.team.anual / 100,
     cta: "Assinar Team",
     href: "/cadastro?plano=team",
     features: [
@@ -74,6 +79,10 @@ const PLANOS: {
   },
 ];
 
+function reais(v: number): string {
+  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
 const FAQ: { pergunta: string; resposta: string }[] = [
   {
     pergunta: "O que acontece quando atinjo o limite do Free?",
@@ -83,12 +92,17 @@ const FAQ: { pergunta: string; resposta: string }[] = [
   {
     pergunta: "Posso cancelar quando quiser?",
     resposta:
-      "Sim. O cancelamento vale ao fim do ciclo pago e sua conta volta para o Free com os dados intactos.",
+      "Sim, pelo portal do cliente (no seu perfil). O plano segue até o fim do período já pago e depois a conta volta para o Free com os dados intactos.",
+  },
+  {
+    pergunta: "Como é feito o pagamento?",
+    resposta:
+      "Cartão de crédito, processado pelo Stripe — o Provafix não vê nem guarda o número do cartão. Fatura e recibo ficam no portal do cliente.",
   },
   {
     pergunta: "Como funciona o desconto anual?",
     resposta:
-      "O plano anual custa 20% menos que 12 mensalidades (Pro: R$ 191,04/ano; Team: R$ 479,04/ano por usuário).",
+      `O plano anual custa 20% menos que 12 mensalidades (Pro: ${reais(PRECOS_CENTAVOS.pro.anual / 100)}/ano; Team: ${reais(PRECOS_CENTAVOS.team.anual / 100)}/ano, para a equipe toda).`,
   },
   {
     pergunta: "O certificado de correção está em quais planos?",
@@ -102,9 +116,6 @@ const FAQ: { pergunta: string; resposta: string }[] = [
   },
 ];
 
-function reais(v: number): string {
-  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 /** Cards de planos + FAQ (client: toggle mensal/anual). */
 export function SeletorPrecos() {

@@ -206,18 +206,18 @@ if deve_rodar reteste; then
   registrar "7. Registrar reteste" "$OK" $(( $(agora_ms) - INI ))
 fi
 
-# ---------- FLUXO 8 — checkout (Asaas) ----------
-# Sem ASAAS_API_KEY: espera 500 ASAAS_AUSENTE (degradação limpa).
-# Com chave: 200 + link do checkout Asaas.
+# ---------- FLUXO 8 — checkout (Stripe) ----------
+# Sem STRIPE_SECRET_KEY: espera 503 PAGAMENTO_INDISPONIVEL (degradação limpa).
+# Com chave: 200 + link do checkout hospedado do Stripe.
 if deve_rodar checkout; then
   INI=$(agora_ms); OK=1
   C=$(curl -s -w "\n%{http_code}" -X POST "$BASE/api/v1/checkout" -H "Authorization: Bearer $TOKEN1" -H 'Content-Type: application/json' -d '{"plano":"pro","ciclo":"mensal"}')
-  if grep -q '^ASAAS_API_KEY=.\+' .env 2>/dev/null; then
+  if grep -q '^STRIPE_SECRET_KEY=.\+' .env 2>/dev/null; then
     [ "$(printf '%s' "$C" | tail -n 1)" = "200" ] || OK=0
-    printf '%s' "$C" | head -n 1 | grep -q "asaas.com/checkoutSession/show" || OK=0
+    printf '%s' "$C" | head -n 1 | grep -q "checkout.stripe.com" || OK=0
   else
-    [ "$(printf '%s' "$C" | tail -n 1)" = "500" ] || OK=0
-    printf '%s' "$C" | head -n 1 | grep -q "ASAAS_AUSENTE" || OK=0
+    [ "$(printf '%s' "$C" | tail -n 1)" = "503" ] || OK=0
+    printf '%s' "$C" | head -n 1 | grep -q "PAGAMENTO_INDISPONIVEL" || OK=0
   fi
   CA=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE/api/v1/checkout" -H 'Content-Type: application/json' -d '{"plano":"pro","periodo":"mensal"}')
   [ "$CA" = "401" ] || OK=0
@@ -226,16 +226,17 @@ if deve_rodar checkout; then
   registrar "8. Checkout" "$OK" $(( $(agora_ms) - INI ))
 fi
 
-# ---------- FLUXO 8b — webhook Asaas (idempotência, hermético) ----------
+# ---------- FLUXO 8b — webhook Stripe (idempotência, hermético) ----------
+# Em dev sem STRIPE_WEBHOOK_SECRET a rota aceita sem assinatura.
 # Evento desconhecido com id único: registra e ignora (sem efeito no plano).
 # Repetir o mesmo id → "já processado". Limpa a linha de teste no final.
 if deve_rodar checkout; then
   INI=$(agora_ms); OK=1
   EVID="evt_e2e_${TS}"
-  W1=$(curl -s -w "\n%{http_code}" -X POST "$BASE/api/v1/webhook/asaas" -H 'Content-Type: application/json' -d "{\"id\":\"$EVID\",\"event\":\"E2E_IGNORADO\"}")
+  W1=$(curl -s -w "\n%{http_code}" -X POST "$BASE/api/v1/webhook/stripe" -H 'Content-Type: application/json' -d "{\"id\":\"$EVID\",\"type\":\"e2e.ignorado\",\"data\":{\"object\":{\"id\":\"x\"}}}")
   [ "$(printf '%s' "$W1" | tail -n 1)" = "200" ] || OK=0
   printf '%s' "$W1" | head -n 1 | grep -q '"ok":true' || OK=0
-  W2=$(curl -s -X POST "$BASE/api/v1/webhook/asaas" -H 'Content-Type: application/json' -d "{\"id\":\"$EVID\",\"event\":\"E2E_IGNORADO\"}")
+  W2=$(curl -s -X POST "$BASE/api/v1/webhook/stripe" -H 'Content-Type: application/json' -d "{\"id\":\"$EVID\",\"type\":\"e2e.ignorado\",\"data\":{\"object\":{\"id\":\"x\"}}}")
   echo "$W2" | grep -q '"ok":true' || OK=0
   N=$(sqlite3 pentest.db "SELECT COUNT(*) FROM webhook_eventos WHERE id='$EVID';")
   [ "$N" = "1" ] || OK=0

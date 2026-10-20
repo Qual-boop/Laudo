@@ -9,8 +9,10 @@ export type Usuario = {
   plano: string;
   plano_expira_em: string | null;
   trial_usado_em: string | null;
-  asaas_customer_id: string | null;
-  asaas_subscription_id: string | null;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  assinatura_plano: string | null;
+  email_verificado_em: string | null;
   assinatura_status: string | null;
   assinatura_ciclo: string | null;
   criado_em: string;

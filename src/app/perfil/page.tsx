@@ -6,12 +6,16 @@ import { Button } from "@/components/Button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/Card";
 import { Spinner } from "@/components/Spinner";
 import { Logo } from "@/components/Logo";
+import { MarcaPdf } from "@/components/perfil/MarcaPdf";
+import { PRECOS_CENTAVOS, formatarReais, type Periodo } from "@/lib/planos";
 
 type Assinatura = {
   plano: "free" | "pro" | "team";
   expiraEm: string | null;
   subscriptionId: string | null;
   trial: boolean;
+  status: string | null;
+  temPortal: boolean;
 };
 
 type Uso = {
@@ -66,7 +70,15 @@ export default function Perfil() {
 
   useEffect(() => {
     void carregar();
+    // Volta do checkout do Stripe: o webhook pode levar alguns segundos.
+    if (new URLSearchParams(window.location.search).get("assinatura") === "ok") {
+      setOk("Pagamento confirmado pelo Stripe. Seu plano é ativado em instantes.");
+      const t = setTimeout(() => void carregar(), 4000);
+      return () => clearTimeout(t);
+    }
   }, [carregar]);
+
+  const [periodo, setPeriodo] = useState<Periodo>("mensal");
 
   async function pagar(plano: "pro" | "team", periodo: "mensal" | "anual") {
     setErro("");
@@ -94,16 +106,33 @@ export default function Perfil() {
     }
   }
 
+  /** Portal do Stripe: cartão, faturas, troca de plano, cancelar/reativar. */
   async function abrirPortal() {
+    setErro("");
+    setAguarde("portal");
+    try {
+      const res = await fetch("/api/v1/assinatura/portal", { method: "POST" });
+      const corpo = (await res.json().catch(() => null)) as { url?: string; error?: string } | null;
+      if (!res.ok || !corpo?.url) {
+        setErro(corpo?.error ?? "Portal indisponível no momento.");
+        return;
+      }
+      window.location.href = corpo.url;
+    } catch {
+      setErro("Não foi possível conectar ao servidor.");
+    } finally {
+      setAguarde(null);
+    }
+  }
+
+  async function cancelarRenovacao() {
     // Um clique só cancelava na hora: agora pede confirmação.
     if (!window.confirm("Cancelar a renovação da assinatura? Você continua com o plano até o fim do período já pago.")) {
       return;
     }
     setErro("");
-    setAguarde("portal");
+    setAguarde("cancelar");
     try {
-      // O Asaas não tem Customer Portal: o cancelamento é via API e as
-      // faturas ficam no painel do Asaas. Aqui, "gerenciar" = cancelar.
       const res = await fetch("/api/v1/assinatura/cancelar", { method: "POST" });
       const corpo = (await res.json().catch(() => null)) as {
         ok?: boolean;
@@ -231,37 +260,92 @@ export default function Perfil() {
           <CardHeader>
             <CardTitle>Assinatura</CardTitle>
             <CardDescription>
-              Pro R$ 19,90/mês (300 relatórios) · Team R$ 49,90/mês (900 relatórios, até 10 colegas). Pagamentos via Asaas.
+              Cartão de crédito pelo Stripe. Cancele quando quiser: o plano segue até o fim do período pago.
             </CardDescription>
           </CardHeader>
-          {/* Quem está no trial (Pro sem assinatura) também pode assinar —
-              antes os botões travavam para qualquer plano diferente de free. */}
-          <div className="flex flex-col gap-2.5 px-5 py-4 sm:flex-row sm:px-6">
-            <Button
-              variante="primaria"
-              onClick={() => pagar("pro", "mensal")}
-              disabled={aguarde !== null || Boolean(assinatura?.subscriptionId)}
-              className="sm:flex-1"
-            >
-              {aguarde?.startsWith("pagar-pro") ? "abrindo…" : "assinar pro"}
-            </Button>
-            <Button
-              variante="secundaria"
-              onClick={() => pagar("team", "mensal")}
-              disabled={aguarde !== null || Boolean(assinatura?.subscriptionId)}
-              className="sm:flex-1"
-            >
-              {aguarde?.startsWith("pagar-team") ? "abrindo…" : "assinar team"}
-            </Button>
-            <Button
-              variante="fantasma"
-              onClick={abrirPortal}
-              disabled={aguarde !== null || !assinatura?.subscriptionId}
-            >
-              {aguarde === "portal" ? "cancelando…" : "cancelar assinatura"}
-            </Button>
-          </div>
+
+          {assinatura?.subscriptionId ? (
+            <div className="flex flex-col gap-3 px-5 py-4 sm:px-6">
+              <p className="font-mono text-xs text-texto-2">
+                {assinatura.status === "past_due"
+                  ? "⚠ o último pagamento falhou — atualize o cartão no portal"
+                  : assinatura.status === "cancelada"
+                    ? `renovação cancelada · acesso até ${assinatura.expiraEm ? new Date(assinatura.expiraEm).toLocaleDateString("pt-BR") : "o fim do período"}`
+                    : `assinatura ativa · renova em ${assinatura.expiraEm ? new Date(assinatura.expiraEm).toLocaleDateString("pt-BR") : "—"}`}
+              </p>
+              <div className="flex flex-col gap-2.5 sm:flex-row">
+                <Button
+                  variante="primaria"
+                  onClick={abrirPortal}
+                  disabled={aguarde !== null}
+                  className="sm:flex-1"
+                >
+                  {aguarde === "portal" ? "abrindo…" : "gerenciar assinatura (cartão, faturas, plano)"}
+                </Button>
+                {assinatura.status !== "cancelada" && (
+                  <Button variante="fantasma" onClick={cancelarRenovacao} disabled={aguarde !== null}>
+                    {aguarde === "cancelar" ? "cancelando…" : "cancelar renovação"}
+                  </Button>
+                )}
+              </div>
+            </div>
+          ) : (
+            // Quem está no trial (Pro sem assinatura) também pode assinar.
+            <div className="flex flex-col gap-3 px-5 py-4 sm:px-6">
+              <div
+                role="radiogroup"
+                aria-label="Período de cobrança"
+                className="flex w-fit gap-1 rounded-lg border border-borda p-1 font-mono text-[11px] uppercase tracking-wider"
+              >
+                {(["mensal", "anual"] as const).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    role="radio"
+                    aria-checked={periodo === p}
+                    onClick={() => setPeriodo(p)}
+                    className={`cursor-pointer rounded-md px-3 py-1.5 ${periodo === p ? "bg-accent/15 text-accent" : "text-texto-2 hover:text-texto"}`}
+                  >
+                    {p === "anual" ? "anual (−20%)" : "mensal"}
+                  </button>
+                ))}
+              </div>
+              <div className="flex flex-col gap-2.5 sm:flex-row">
+                <Button
+                  variante="primaria"
+                  onClick={() => pagar("pro", periodo)}
+                  disabled={aguarde !== null}
+                  className="sm:flex-1"
+                >
+                  {aguarde?.startsWith("pagar-pro")
+                    ? "abrindo…"
+                    : `assinar pro · ${formatarReais(PRECOS_CENTAVOS.pro[periodo])}/${periodo === "anual" ? "ano" : "mês"}`}
+                </Button>
+                <Button
+                  variante="secundaria"
+                  onClick={() => pagar("team", periodo)}
+                  disabled={aguarde !== null}
+                  className="sm:flex-1"
+                >
+                  {aguarde?.startsWith("pagar-team")
+                    ? "abrindo…"
+                    : `assinar team · ${formatarReais(PRECOS_CENTAVOS.team[periodo])}/${periodo === "anual" ? "ano" : "mês"}`}
+                </Button>
+              </div>
+              {assinatura?.temPortal && (
+                <button
+                  type="button"
+                  onClick={abrirPortal}
+                  className="w-fit cursor-pointer font-mono text-[11px] text-texto-2 hover:text-accent"
+                >
+                  ver faturas anteriores
+                </button>
+              )}
+            </div>
+          )}
         </Card>
+
+        <MarcaPdf />
 
         <Card>
           <CardHeader>

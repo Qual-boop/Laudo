@@ -11,7 +11,7 @@ import {
   VinhetaRelatorio,
   VinhetaReteste,
 } from "@/components/landing/Vinhetas";
-import { LIMITES } from "@/lib/planos";
+import { LIMITES, PRECOS_CENTAVOS, precoMensal } from "@/lib/planos";
 import { EMAIL_CONTATO, REPOSITORIO, URL_SITE } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -30,9 +30,10 @@ const ESPECIFICACOES = [
   "CVSS v3.1",
   "OWASP Top 10",
   "CWE",
-  "Nessus · Burp · ZAP · SARIF",
+  "Nessus · Burp · ZAP · SARIF · Nuclei · OpenVAS",
   "SHA-256",
-  "PDF A4",
+  "PDF A4 com sua marca",
+  "CSV",
   "Jira",
   "GitHub",
   "Código aberto · MIT",
@@ -88,8 +89,8 @@ const PROVAS_CERTIFICADO: { titulo: string; texto: string; icone: NomeIcone }[] 
 
 const RECURSOS: { titulo: string; texto: string; icone: NomeIcone }[] = [
   {
-    titulo: "Relatório de 7 seções",
-    texto: "Capa, sumário executivo, escopo, achados, recomendações, conclusão e disclaimer.",
+    titulo: "Relatório + resumo executivo",
+    texto: "Sete seções para o time técnico e um resumo de 1 página, em linguagem de negócio, para a diretoria.",
     icone: "documento",
   },
   {
@@ -108,8 +109,8 @@ const RECURSOS: { titulo: string; texto: string; icone: NomeIcone }[] = [
     icone: "delta",
   },
   {
-    titulo: "PDF, Jira e GitHub",
-    texto: "PDF A4 com capa isolada e exportação de cada achado como ticket.",
+    titulo: "PDF profissional com a sua marca",
+    texto: "Capa, sumário, páginas numeradas e anexo técnico, com o logo, o nome e a cor da sua consultoria. Exporta também para Jira, GitHub e planilha (CSV).",
     icone: "exportar",
   },
   {
@@ -124,7 +125,7 @@ const RECURSOS: { titulo: string; texto: string; icone: NomeIcone }[] = [
   },
   {
     titulo: "Importação de scanners e SAST",
-    texto: "Nessus, Burp Suite, OWASP ZAP e SARIF (Semgrep, CodeQL, Trivy, Snyk). O mesmo problema em 30 alvos vira um achado só.",
+    texto: "Nessus, Burp Suite, OWASP ZAP, Nuclei, OpenVAS e SARIF (Semgrep, CodeQL, Trivy, Snyk). O mesmo problema em 30 alvos vira um achado só.",
     icone: "exportar",
   },
   {
@@ -217,6 +218,7 @@ const PLANOS = [
       "Exportação em texto",
       `Histórico de ${FREE.historicoDias} dias`,
       "Prints de evidência com tarja",
+      "Importação de Nessus, Burp, ZAP, SARIF, Nuclei e OpenVAS",
     ],
     cta: "Começar grátis",
     href: "/cadastro",
@@ -224,15 +226,16 @@ const PLANOS = [
   },
   {
     nome: "Pro",
-    preco: "R$ 19,90",
+    preco: precoMensal("pro"),
     periodo: "/mês",
     descricao: "Para quem entrega pentest todo mês.",
     itens: [
       "300 relatórios por mês, achados e retestes ilimitados",
+      "PDF profissional com a sua marca e resumo executivo",
       "Certificado de correção com hash",
       "Quadro de conformidade e agenda de retestes",
       "Revisão em dupla com 1 colega",
-      "Exportação para Jira e GitHub",
+      "Exportação para Jira, GitHub e CSV",
       "Sem marca d'água",
       "Histórico ilimitado",
     ],
@@ -359,8 +362,8 @@ const JSON_LD = {
         "Plataforma de assurance para pentest: relatório com IA, reteste com evidência e certificado de correção com hash SHA-256.",
       offers: [
         { "@type": "Offer", name: "Free", price: "0", priceCurrency: "BRL" },
-        { "@type": "Offer", name: "Pro", price: "19.90", priceCurrency: "BRL" },
-        { "@type": "Offer", name: "Team", price: "49.90", priceCurrency: "BRL" },
+        { "@type": "Offer", name: "Pro", price: (PRECOS_CENTAVOS.pro.mensal / 100).toFixed(2), priceCurrency: "BRL" },
+        { "@type": "Offer", name: "Team", price: (PRECOS_CENTAVOS.team.mensal / 100).toFixed(2), priceCurrency: "BRL" },
       ],
     },
     {
@@ -693,7 +696,7 @@ export default function Landing() {
               ))}
             </div>
             <p className="mx-auto mt-8 max-w-2xl text-center text-sm leading-relaxed text-texto-2">
-              Consultoria? O <span className="text-texto">Team</span> (R$ 49,90/mês) inclui
+              Consultoria? O <span className="text-texto">Team</span> ({precoMensal("team")}/mês) inclui
               tudo do Pro e compartilha cada relatório com até 10 colegas, com comentários de
               revisão por achado. Plano anual com 20%
               de desconto —{" "}

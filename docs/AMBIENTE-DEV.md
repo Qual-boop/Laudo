@@ -2,8 +2,9 @@
 
 ## Instalação única (só uma vez)
 
-Nada além do repo: o Asaas não precisa de infra local (checkout e
-webhook são HTTPS, sem `stripe listen` nem serviços systemd).
+Nada além do repo: o Stripe não precisa de infra local (checkout e
+webhook são HTTPS). Para receber webhooks em dev, use o Stripe CLI
+(`stripe listen`, abaixo).
 
 ```bash
 npm ci                  # dependências
@@ -19,8 +20,10 @@ npm run ambiente:iniciar   # dev + túnel (mostra o link público)
 npm run ambiente:parar     # ao terminar
 ```
 
-> O Asaas não precisa de infra local (checkout e webhook são HTTPS).
-> Para simular um webhook: `bash scripts/simular-webhook-asaas.sh CHECKOUT_PAID <usuario_id> pro mensal`.
+> Webhook do Stripe em dev (chaves de teste no `.env`):
+> `stripe listen --forward-to localhost:3000/api/v1/webhook/stripe` e,
+> noutro terminal, `stripe trigger checkout.session.completed`.
+> Sem `STRIPE_WEBHOOK_SECRET` no `.env`, a rota de dev aceita sem assinatura.
 
 ## Diagnóstico
 

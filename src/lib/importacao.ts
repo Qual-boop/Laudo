@@ -2,8 +2,9 @@ import { XMLParser } from "fast-xml-parser";
 import type { AchadoEntrada, Confianca, Severidade } from "@/lib/tipos";
 
 /**
- * Importação de scanners: Nessus (.nessus), Burp Suite (XML de issues) e
- * OWASP ZAP (relatório JSON ou XML) viram achados do formulário.
+ * Importação de scanners: Nessus (.nessus), Burp Suite (XML de issues),
+ * OWASP ZAP (JSON ou XML), Nuclei (JSON/JSONL), OpenVAS/Greenbone (XML)
+ * e SARIF viram achados do formulário.
  *
  * O mesmo problema em vários alvos vira UM achado com a lista de locais —
  * é assim que um relatório de pentest agrupa, não um por host.
@@ -14,13 +15,15 @@ import type { AchadoEntrada, Confianca, Severidade } from "@/lib/tipos";
  * as entidades básicas de HTML são decodificadas à mão, depois.
  */
 
-export type FormatoScanner = "nessus" | "burp" | "zap" | "sarif";
+export type FormatoScanner = "nessus" | "burp" | "zap" | "sarif" | "nuclei" | "openvas";
 
 export const NOME_SCANNER: Record<FormatoScanner, string> = {
   nessus: "Nessus",
   burp: "Burp Suite",
   zap: "OWASP ZAP",
   sarif: "SARIF (análise de código)",
+  nuclei: "Nuclei",
+  openvas: "OpenVAS / Greenbone",
 };
 
 export type ResultadoImportacao = {
@@ -119,7 +122,7 @@ const parser = new XMLParser({
   htmlEntities: false,
   trimValues: true,
   isArray: (nome: string) =>
-    ["ReportHost", "ReportItem", "issue", "site", "alertitem", "instance", "cwe"].includes(nome),
+    ["ReportHost", "ReportItem", "issue", "site", "alertitem", "instance", "cwe", "result", "ref"].includes(nome),
 });
 
 function agrupar(
@@ -185,6 +188,9 @@ export function detectarFormato(conteudo: string): FormatoScanner | null {
   if (/^\s*\{/.test(inicio) && /"runs"\s*:/.test(conteudo) && /sarif|"version"\s*:\s*"2\.1\.0"/i.test(inicio)) return "sarif";
   if (/^\s*\{/.test(inicio) && /"site"\s*:/.test(conteudo) && /"alerts"\s*:/.test(conteudo)) return "zap";
   if (/<issues[\s>]/.test(inicio) && /<issue>/.test(conteudo)) return "burp";
+  if (/<report[\s>]/.test(inicio) && /<results[\s>]/.test(conteudo) && /<nvt[\s>]/.test(conteudo)) return "openvas";
+  // Nuclei: -jsonl (um objeto por linha) ou -json-export (array).
+  if (/^\s*[\[{]/.test(inicio) && /"template-id"\s*:/.test(inicio)) return "nuclei";
   return null;
 }
 
@@ -417,6 +423,137 @@ function importarSarif(conteudo: string): Omit<ResultadoImportacao, "formato"> {
 }
 
 /* ------------------------------------------------------------------ *
+ * Nuclei (-jsonl: um objeto por linha; -json-export: array)
+ * ------------------------------------------------------------------ */
+
+const SEV_NUCLEI: Record<string, Severidade> = {
+  critical: "Critica",
+  high: "Alta",
+  medium: "Media",
+  low: "Baixa",
+};
+
+function linhasNuclei(conteudo: string): Record<string, any>[] {
+  const s = conteudo.trim();
+  if (s.startsWith("[")) return lista<Record<string, any>>(JSON.parse(s));
+  return s
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((l) => JSON.parse(l) as Record<string, any>);
+}
+
+function importarNuclei(conteudo: string): Omit<ResultadoImportacao, "formato"> {
+  const grupos = new Map<string, Grupo>();
+  let ocorrencias = 0;
+  let informativos = 0;
+
+  for (const r of linhasNuclei(conteudo)) {
+    const info = (r.info ?? {}) as Record<string, any>;
+    const severidade = SEV_NUCLEI[texto(info.severity).toLowerCase()];
+    if (!severidade) {
+      informativos++;
+      continue;
+    }
+    ocorrencias++;
+    const template = texto(r["template-id"]) || texto(r.templateID) || "template";
+    const classificacao = (info.classification ?? {}) as Record<string, any>;
+    const extraidos = lista<string>(r["extracted-results"]).map(texto).filter(Boolean);
+    const referencias = lista<string>(info.reference).map(texto).filter(Boolean);
+    agrupar(
+      grupos,
+      `nuclei:${template}`,
+      {
+        titulo: texto(info.name) || `Template Nuclei ${template}`,
+        severidade,
+        cwe: lista(classificacao["cwe-id"]).map(cweDe).find(Boolean) ?? "",
+        descricao: [
+          limparHtml(info.description),
+          referencias.length ? `Referências:\n${referencias.slice(0, 5).map((x) => `- ${x}`).join("\n")}` : "",
+        ]
+          .filter(Boolean)
+          .join("\n\n"),
+        solucao: limparHtml(info.remediation),
+        confianca: "Media",
+        origem: `Nuclei (template ${template})`,
+      },
+      texto(r["matched-at"]) || texto(r.matched) || texto(r.host),
+      extraidos.length ? `Extraído: ${extraidos.slice(0, 10).join(", ")}` : texto(r["curl-command"]),
+    );
+  }
+  return { ...paraAchados(grupos), ocorrencias, informativosIgnorados: informativos };
+}
+
+/* ------------------------------------------------------------------ *
+ * OpenVAS / Greenbone (relatório XML exportado do GSA)
+ * ------------------------------------------------------------------ */
+
+/** Nota CVSS do resultado → severidade; 0 (Log) = informativo. */
+function severidadeOpenvas(nota: number, ameaca: string): Severidade | null {
+  if (Number.isFinite(nota) && nota > 0) {
+    if (nota >= 9) return "Critica";
+    if (nota >= 7) return "Alta";
+    if (nota >= 4) return "Media";
+    return "Baixa";
+  }
+  return ({ high: "Alta", medium: "Media", low: "Baixa" } as Record<string, Severidade>)[ameaca.toLowerCase()] ?? null;
+}
+
+/** "summary=…|insight=…|solution=…" → { summary, insight, … }. */
+function tagsOpenvas(valor: unknown): Record<string, string> {
+  const r: Record<string, string> = {};
+  for (const parte of texto(valor).split("|")) {
+    const i = parte.indexOf("=");
+    if (i > 0) r[parte.slice(0, i).trim()] = parte.slice(i + 1).trim();
+  }
+  return r;
+}
+
+function importarOpenvas(xml: string): Omit<ResultadoImportacao, "formato"> {
+  const doc = parser.parse(xml) as Record<string, any>;
+  // O export do GSA embrulha o relatório num <report> externo.
+  const raiz = doc?.report?.report ?? doc?.report ?? {};
+  const resultados = lista<Record<string, any>>(raiz?.results?.result);
+  const grupos = new Map<string, Grupo>();
+  let ocorrencias = 0;
+  let informativos = 0;
+
+  for (const r of resultados) {
+    const nvt = (r.nvt ?? {}) as Record<string, any>;
+    const severidade = severidadeOpenvas(Number.parseFloat(texto(r.severity)), texto(r.threat));
+    if (!severidade) {
+      informativos++;
+      continue;
+    }
+    ocorrencias++;
+    const oid = texto(nvt["@_oid"]) || texto(r.name);
+    const tags = tagsOpenvas(nvt.tags);
+    const host = texto(r.host);
+    const porta = texto(r.port);
+    const refs = lista<Record<string, any>>(nvt.refs?.ref);
+    const cwe = refs.filter((x) => texto(x["@_type"]).toLowerCase() === "cwe").map((x) => cweDe(x["@_id"])).find(Boolean);
+    agrupar(
+      grupos,
+      `openvas:${oid}`,
+      {
+        titulo: texto(nvt.name) || texto(r.name) || `NVT ${oid}`,
+        severidade,
+        cwe: cwe ?? "",
+        descricao: [tags.summary, tags.insight && `Detalhe: ${tags.insight}`, tags.impact && `Impacto: ${tags.impact}`]
+          .filter(Boolean)
+          .join("\n\n"),
+        solucao: limparHtml(nvt.solution) || tags.solution || "",
+        confianca: "Media",
+        origem: `OpenVAS/Greenbone (NVT ${oid})`,
+      },
+      porta && !/^general\//i.test(porta) ? `${host}:${porta}` : host,
+      limparHtml(r.description),
+    );
+  }
+  return { ...paraAchados(grupos), ocorrencias, informativosIgnorados: informativos };
+}
+
+/* ------------------------------------------------------------------ *
  * Entrada pública
  * ------------------------------------------------------------------ */
 
@@ -426,7 +563,7 @@ export function importarScanner(conteudo: string): ResultadoImportacao {
   const formato = detectarFormato(conteudo);
   if (!formato) {
     throw new ErroImportacao(
-      "Formato não reconhecido. Envie um .nessus (Nessus), o XML de issues do Burp Suite, o relatório JSON/XML do OWASP ZAP ou um .sarif (Semgrep, CodeQL, Trivy, Snyk…).",
+      "Formato não reconhecido. Envie um .nessus (Nessus), o XML de issues do Burp Suite, o relatório JSON/XML do OWASP ZAP, a saída JSON/JSONL do Nuclei, o relatório XML do OpenVAS/Greenbone ou um .sarif (Semgrep, CodeQL, Trivy, Snyk…).",
     );
   }
   try {
@@ -437,7 +574,11 @@ export function importarScanner(conteudo: string): ResultadoImportacao {
           ? importarBurp(conteudo)
           : formato === "sarif"
             ? importarSarif(conteudo)
-            : importarZap(conteudo);
+            : formato === "nuclei"
+              ? importarNuclei(conteudo)
+              : formato === "openvas"
+                ? importarOpenvas(conteudo)
+                : importarZap(conteudo);
     return { formato, ...r };
   } catch (e) {
     if (e instanceof ErroImportacao) throw e;
